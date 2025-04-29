@@ -6,15 +6,12 @@ namespace ovkdesktop.Converters
 {
     public class IntToVisibilityConverter : IValueConverter
     {
-        // Преобразование int → Visibility
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is int i && i == 1)
                 return Visibility.Visible;
             return Visibility.Collapsed;
         }
-
-        // Обратное преобразование не нужно — бросаем
         public object ConvertBack(object value, Type targetType, object parameter, string language)
         {
             throw new NotImplementedException();
