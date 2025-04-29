@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.WelcomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Image Source="/Assets/Images/openvklogoScaled.png" Height="250" Margin="0,0,870,0"/>
+        <TextBlock Text="Добро пожаловать в OVK Desktop!" Margin="850,340,0,0" FontSize="28" Style="{ThemeResource TitleTextBlockStyle}"/>
+        <TextBlock Text="Данное приложение является десктоп-клиентом соцсети под названием OpenVK." Margin="850,395,0,0" FontSize="14" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+        <Button Content="Начать общение" Margin="850,50,0,0" FontSize="16" Style="{StaticResource AccentButtonStyle}" Click="WelcomeButtonClick"/>
+
+        <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="600,770,0,0"/>
+        <HyperlinkButton Content="Сайт OVK Desktop" NavigateUri="https://google.com" Margin="770,770,0,0"/>
+        <TextBlock Text="OVK Desktop, version: 0.0.1 Alpha. Made with love by Fayzetwin :3." Margin="550,850,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"/>
+    </Grid>
+</Page>

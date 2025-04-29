@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.AuthPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
+        <Button Click="BackLoginWelcomeButtonClick" AutomationProperties.Name="Pie" CornerRadius="5" Margin="-650,-545,0,0">
+            <FontIcon Glyph="&#xE72B;" />
+        </Button>
+        <TextBlock Text="Авторизация" FontSize="36" Style="{ThemeResource TitleTextBlockStyle}" Margin="10,-70,0,0" />
+        <TextBox x:Name="usernameTextBox" Header="Введите свою почту от аккаунта: " PlaceholderText="veselcraft@gmail.com" MaxLength="30"/>
+        <PasswordBox x:Name="passwordTextBox" Header="Введите свой пароль: " PlaceholderText="qwerty123"  />
+        <Button Content="Авторизоваться" Width="250" Click="LoginButtonClick" />
+        <HyperlinkButton Content="Регистрация" NavigateUri="https://ovk.to/reg" Margin="75,0,0,0"/>
+    </StackPanel>
+</Page>

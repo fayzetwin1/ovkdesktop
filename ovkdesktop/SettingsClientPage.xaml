@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.SettingsClientPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <Image Source="/Assets/Images/openvklogoScaled.png" Height="100" Margin="-1200,-350,0,0"/>
+        <TextBlock x:Name="SettingsClientLabel" Text="Настройки клиента" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" ></TextBlock>
+        <TextBlock x:Name="NameOfClientLabel" Text="OVK Desktop" Margin="245,215,0,0" Style="{ThemeResource SubtitleTextBlockStyle}" FontSize="36" ></TextBlock>
+        <TextBlock x:Name="VersionOfClientLabel" Text="версия: Alpha 0.0.1" Margin="245,260,0,0" Style="{ThemeResource BodyTextBlockStyle}" FontSize="16" Opacity="0.7" ></TextBlock>
+        <TextBlock x:Name="AuthorOfClientLabel" Text="by Fayzetwin :3" Margin="245,285,0,0" Style="{ThemeResource BodyStrongTextBlockStyle}" FontSize="16" Opacity="0.7" ></TextBlock>
+        <Image Source="/Assets/Images/eastermeme.jpeg" Height="200" Margin="-1100,50,0,0"/>
+        <TextBlock Text="Пока что, тут ничего нету..." Margin="345,415,0,0" Style="{ThemeResource SubtitleTextBlockStyle}" FontSize="36" ></TextBlock>
+        <TextBlock Text="но надеюсь, что скоро тут что-то появится... :)" Margin="345,470,0,0" Style="{ThemeResource BodyTextBlockStyle}" FontSize="16" Opacity="0.7" ></TextBlock>
+    </Grid>
+</Page>

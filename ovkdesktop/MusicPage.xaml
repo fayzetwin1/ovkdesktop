@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.MusicPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <TextBlock x:Name="MusicLabel" Text="Музыка" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" ></TextBlock>
+            <TextBlock x:Name="MusicCount" Text="Считаем количество друзей..." Margin="125,175,0,0"></TextBlock>
+            <TextBlock x:Name="ErrorMusicText" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+        </Grid>
+    </Grid>
+</Page>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.ProfilePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="using:ovkdesktop"
+    xmlns:models="using:ovkdesktop.Models"
+    xmlns:converters="using:ovkdesktop.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Page.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- profile user (avatar and other) -->
+        <Grid Grid.Row="0">
+            <PersonPicture Margin="-1200,45,0,0" x:Name="ProfileAvatar" />
+            <TextBlock x:Name="ProfileName" Text="Загрузка..." Margin="250,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42"/>
+            <TextBlock x:Name="PostsCountText" Margin="250,165,0,0" Text="Загрузка постов..." Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}"/>
+            <TextBlock x:Name="ErrorTextBlock" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+            <Button Content="Опубликовать пост" Margin="130,220,0,0" Click="PublishNewPostButton"></Button>
+            <Button Content="Отредактировать профиль" Margin="300,220,0,0"></Button>
+        </Grid>
+
+        <!-- list of posts -->
+        <Grid Grid.Row="1" Margin="110,20,20,20" x:Name="GridPostsMyProfile">
+            <ProgressRing x:Name="LoadingProgressRing" IsActive="True" 
+                        Width="50" Height="50" 
+                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+            <ListView x:Name="PostsListView" ItemsSource="{x:Bind Posts}">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Post">
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+								BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+								BorderThickness="1" CornerRadius="8"
+								Margin="0,5,0,10" Padding="15">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- date of post -->
+                                <TextBlock Grid.Row="0"
+										   Text="{Binding FormattedDate}"
+										   Opacity="0.7" Margin="0,0,0,10"/>
+
+                                <!-- text -->
+                                <TextBlock Grid.Row="1"
+										   Text="{Binding Text}"
+										   TextWrapping="Wrap" Margin="0,0,0,10"
+										   Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+                                <!-- image -->
+                                <Image Grid.Row="2"
+									   Source="{Binding MainImageUrl, TargetNullValue=''}"
+									   Stretch="Uniform" MaxHeight="400"
+									   HorizontalAlignment="Left" Margin="0,0,0,10"
+									   Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                <!-- likes and comments count -->
+                                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15">
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <FontIcon Glyph="&#xE006;" FontSize="16"/>
+                                        <!-- if likes count == null, likes count == 0 -->
+                                        <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <FontIcon Glyph="&#xE8BD;" FontSize="16"/>
+                                        <!-- if comments count == null, comments count == 0 -->
+                                        <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+        <Frame x:Name="ContentProfileFrame">
+            <Frame.ContentTransitions>
+                <TransitionCollection>
+                    <NavigationThemeTransition  />
+                </TransitionCollection>
+            </Frame.ContentTransitions>
+
+         </Frame>
+    </Grid>
+
+</Page>

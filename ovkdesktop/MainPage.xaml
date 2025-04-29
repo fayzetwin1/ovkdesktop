@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <NavigationView x:Name="NavigationMainPage" Height="890"
+                        PaneDisplayMode="LeftCompact"
+                        IsBackButtonVisible="Collapsed"
+                        SelectionChanged="NavigationViewControl_SelectionChanged"
+                        IsSettingsVisible="False"
+                        ItemInvoked="NavigationViewControl_ItemInvoked"
+                        >
+            <NavigationView.MenuItems>
+                <NavigationViewItem Icon="Contact" Content="Профиль" Tag="ProfilePage" x:Name="ProfilePage" />
+                <NavigationViewItem Icon="People" Content="Друзья" Tag="FriendsPage" x:Name="FriendsPage" />
+                <NavigationViewItem Icon="PreviewLink" Content="Посты" Tag="PostsPage" x:Name="PostsPage" />
+                <NavigationViewItem Icon="Audio" Content="Музыка" Tag="MusicPage"  x:Name="MusicPage" />
+            </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="Настройки OVK Desktop" Icon="Setting" x:Name="SettingsClientPage" Tag="SettingsClientPage" />
+            </NavigationView.FooterMenuItems>
+
+            <Frame x:Name="ContentMainFrame"/>
+        </NavigationView>
+
+        
+
+
+
+    </Grid>
+</Page>
