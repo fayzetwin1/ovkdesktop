@@ -37,6 +37,10 @@ namespace ovkdesktop
             [JsonPropertyName("id")]
             public int Id { get; set; }
 
+            [JsonPropertyName("from_id")]
+
+            public int FromID { get; set; }
+
             [JsonPropertyName("date")]
             [JsonConverter(typeof(APIService.DateTimeOffsetConverter))]
             public DateTimeOffset Date { get; set; }
@@ -242,6 +246,10 @@ namespace ovkdesktop
 
                 [JsonPropertyName("photo_200")]
                 public string Photo200 { get; set; }
+
+                [JsonPropertyName("from_id")]
+
+                public string FromID { get; set; }
             }
 
             public class ProfileInfoResponse
@@ -285,6 +293,34 @@ namespace ovkdesktop
                 Debug.WriteLine($"error of load token: {ex.Message}");
                 return null;
             }
+        }
+
+        private async void LoadProfileFromPost(object sender, TappedRoutedEventArgs e)
+        {
+            var anotherPage = new AnotherProfilePage();
+
+
+            // get stackpanel element
+            var panel = (FrameworkElement)sender;
+
+            // get id of creator of post from tag property in stackpanel
+            int profileId = (int)panel.Tag;
+
+            Debug.WriteLine($"Tapped profile ID = {profileId}");
+
+            OVKDataBody token = await LoadTokenAsync();
+            var tokenvalid = token.Token;
+
+
+            if (this.Frame != null)
+            {
+                this.Frame.Navigate(typeof(AnotherProfilePage), profileId);
+            }
+            //anotherPage.LoadAllDataAsync(profileId);
+
+
+
+
         }
 
         private async void LoadNewsPostsAsync()
@@ -347,7 +383,8 @@ namespace ovkdesktop
                             FirstName = user.FirstName,
                             LastName = user.LastName,
                             Nickname = user.Nickname,
-                            Photo200 = user.Photo200
+                            Photo200 = user.Photo200,
+                            FromID = user.FromID
                         };
                     }
                     NewsPosts.Add(post);
@@ -471,7 +508,7 @@ namespace ovkdesktop
 
         public async Task<UserProfile> GetProfileInfoAsync(string token, int userId)
         {
-            var url = $"method/account.getProfileInfo?access_token={token}&user_id={userId}";
+            var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200";
             var response = await httpClient.GetAsync(url);
             response.EnsureSuccessStatusCode();
 
@@ -483,6 +520,8 @@ namespace ovkdesktop
 
             return result?.Response;
         }
+
+      
 
 
         public async Task<Models.NewsPosts.APIResponseNewsPosts> GetNewsPostsAsync(string token,long startFrom = 0)
@@ -535,6 +574,7 @@ namespace ovkdesktop
                 return null;
             }
         }
+
 
         public class DateTimeOffsetConverter : JsonConverter<DateTimeOffset>
         {

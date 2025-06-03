@@ -16,7 +16,7 @@
         <Button Content="Начать общение" Margin="850,50,0,0" FontSize="16" Style="{StaticResource AccentButtonStyle}" Click="WelcomeButtonClick"/>
 
         <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="600,770,0,0"/>
-        <HyperlinkButton Content="Сайт OVK Desktop" NavigateUri="https://google.com" Margin="770,770,0,0"/>
+        <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz" Margin="770,770,0,0"/>
         <TextBlock Text="OVK Desktop, version: 0.0.1 Alpha. Made with love by Fayzetwin :3." Margin="550,850,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"/>
     </Grid>
 </Page>

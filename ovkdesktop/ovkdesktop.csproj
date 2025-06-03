@@ -15,6 +15,7 @@
 	 <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>  
 </PropertyGroup>
   <ItemGroup>
+    <None Remove="AnotherProfilePage.xaml" />
     <None Remove="Assets\Images\openvklogo.png" />
     <None Remove="Assets\Images\openvklogoScaled.png" />
     <None Remove="AuthPage.xaml" />
@@ -44,6 +45,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250401001" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="AnotherProfilePage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="SettingsClientPage.xaml">

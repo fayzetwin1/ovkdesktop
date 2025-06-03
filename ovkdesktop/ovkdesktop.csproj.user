@@ -7,6 +7,9 @@
     <ActiveDebugProfile>ovkdesktop (Unpackaged)</ActiveDebugProfile>
   </PropertyGroup>
   <ItemGroup>
+    <Page Update="AnotherProfilePage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
     <None Update="App.xaml">
       <SubType>Designer</SubType>
     </None>

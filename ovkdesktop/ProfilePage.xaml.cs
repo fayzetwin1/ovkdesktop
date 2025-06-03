@@ -23,19 +23,19 @@ namespace ovkdesktop
         public class APIResponse
         {
             [JsonPropertyName("response")]
-            public WallResponse Response { get; set; }
+            public WallResponseAP Response { get; set; }
         }
 
-        public class WallResponse
+        public class WallResponseAP
         {
             [JsonPropertyName("count")]
             public int Count { get; set; }
 
             [JsonPropertyName("items")]
-            public List<Post> Items { get; set; }
+            public List<PostAP> Items { get; set; }
         }
 
-        public class Post
+        public class PostAP
         {
             [JsonPropertyName("id")]
             public int Id { get; set; }
@@ -71,7 +71,7 @@ namespace ovkdesktop
             [JsonPropertyName("reposts")]
             public Reposts Reposts { get; set; }
 
-            
+
             [JsonIgnore]
             public string MainImageUrl
             {
@@ -111,16 +111,16 @@ namespace ovkdesktop
             public bool HasImage => !string.IsNullOrEmpty(MainImageUrl);
         }
 
-        public class Attachment
+        public class AttachmentAP
         {
             [JsonPropertyName("type")]
             public string Type { get; set; }
 
             [JsonPropertyName("photo")]
-            public Photo Photo { get; set; }
+            public PhotoAP Photo { get; set; }
         }
 
-        public class Photo
+        public class PhotoAP
         {
             [JsonPropertyName("album_id")]
             public int AlbumId { get; set; }
@@ -144,7 +144,7 @@ namespace ovkdesktop
             public bool HasTags { get; set; }
         }
 
-        public class PhotoSize
+        public class PhotoSizeAP
         {
             [JsonPropertyName("url")]
             public string Url { get; set; }
@@ -195,227 +195,134 @@ namespace ovkdesktop
             public int UserReposted { get; set; }
         }
     }
-
     public sealed partial class ProfilePage : Page
     {
-        public ObservableCollection<Models.Post> Posts { get; } = new();
-        private readonly APIService apiService = new();
+        public ObservableCollection<Models.PostAP> Posts { get; } = new();
+        private readonly HttpClient httpClient;
         private string userId;
 
         public ProfilePage()
         {
             this.InitializeComponent();
-            LoadProfileDataAsync();
-        }
-
-        private async void LoadProfileDataAsync()
-        {
-            try
-            {
-                // load token from ovkdata.json
-                OVKDataBody token = await LoadTokenAsync();
-                if (token == null || string.IsNullOrEmpty(token.Token))
-                {
-                    ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
-                    return;
-                }
-
-                // get profile data
-                var profileData = await GetProfileInfoAsync(token.Token);
-                if (profileData == null)
-                {
-                    ShowError("Не удалось загрузить данные профиля.");
-                    return;
-                }
-
-                // load posts in profile
-                await LoadPostsAsync(token.Token);
-            }
-            catch (WebException ex) when (ex.Response is HttpWebResponse response)
-            {
-                HandleWebException(ex, response);
-            }
-            catch (Exception ex)
-            {
-                ShowError($"error from LoadProfileDataAsync function (profilepage.xaml.cs): {ex.Message}");
-                Debug.WriteLine($"exception: {ex}");
-            }
+            httpClient = new HttpClient { BaseAddress = new Uri("https://ovk.to/") };
+            _ = LoadProfileAndPostsAsync();
         }
 
         private async Task<OVKDataBody> LoadTokenAsync()
         {
             try
             {
-                using (FileStream fs = new FileStream("ovkdata.json", FileMode.Open))
-                {
-                    return await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
-                }
+                using var fs = new FileStream("ovkdata.json", FileMode.Open, FileAccess.Read);
+                return await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"error of token loading (maybe, this is a error of json deserialize method) (profilepage.xaml.cs): {ex.Message}");
+                Debug.WriteLine($"Ошибка загрузки токена: {ex.Message}");
                 return null;
             }
         }
 
-        private async Task<JsonDocument> GetProfileInfoAsync(string token)
+        private async Task<Models.UserProfileAP> GetProfileAsync(string token)
         {
             try
             {
-                var url = $"https://ovk.to/method/Account.getProfileInfo?access_token={token}";
-                var request = WebRequest.Create(url);
-                request.Method = "GET";
+                var url = $"method/users.get?fields=photo_200,nickname&access_token={token}&v=5.131";
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
 
-                using var webResponse = request.GetResponse();
-                using var webStream = webResponse.GetResponseStream();
-                using var reader = new StreamReader(webStream);
-                var data = reader.ReadToEnd();
+                var json = await response.Content.ReadAsStringAsync();
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                using var doc = JsonDocument.Parse(json);
 
-                // parse json response
-                using JsonDocument doc = JsonDocument.Parse(data);
-                JsonElement root = doc.RootElement;
-
-                if (root.TryGetProperty("response", out JsonElement response))
+                if (doc.RootElement.TryGetProperty("response", out var arr) && arr.ValueKind == JsonValueKind.Array)
                 {
-                    // get profile data
-                    string avatar = "";
-                    string firstName = "";
-                    string lastName = "";
-                    string nickname = "";
-
-                    if (response.TryGetProperty("photo_200", out JsonElement photo200Element))
-                    {
-                        avatar = photo200Element.GetString();
-                    }
-
-                    if (response.TryGetProperty("first_name", out JsonElement firstNameElement))
-                    {
-                        firstName = firstNameElement.GetString();
-                    }
-
-                    if (response.TryGetProperty("last_name", out JsonElement lastNameElement))
-                    {
-                        lastName = lastNameElement.GetString();
-                    }
-
-                    if (response.TryGetProperty("nickname", out JsonElement nicknameElement))
-                    {
-                        nickname = nicknameElement.GetString();
-                    }
-
-                    if (response.TryGetProperty("id", out JsonElement idElement))
-                    {
-                        userId = idElement.GetInt32().ToString();
-                    }
-
-                    // update interface
-                    ProfileAvatar.ProfilePicture = new BitmapImage(new Uri(avatar));
-                    ProfileName.Text = $"{firstName} {lastName}";
-                    if (!string.IsNullOrEmpty(nickname))
-                    {
-                        ProfileName.Text += $" ({nickname})";
-                    }
-
-                    return doc;
+                    var user = JsonSerializer.Deserialize<Models.UserProfileAP[]>(arr.GetRawText(), opts)?.FirstOrDefault();
+                    return user;
                 }
-                else
-                {
-                    ShowError("Unknown format API Response");
-                    return null;
-                }
+                ShowError("Не удалось получить профиль.");
+                return null;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error of profile loading (ProfilePage.xaml.cs): {ex.Message}");
-                throw;
+                Debug.WriteLine($"Ошибка получения профиля: {ex.Message}");
+                ShowError("Ошибка получения профиля.");
+                return null;
             }
         }
 
-        private async Task LoadPostsAsync(string token)
+        private async Task<Models.WallResponseAP> GetPostsAsync(string token, string ownerId)
         {
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                ShowError("ID пользователя не определен");
+                var url = $"method/wall.get?owner_id={ownerId}&access_token={token}&v=5.131";
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("response", out var obj))
+                {
+                    return JsonSerializer.Deserialize<Models.WallResponseAP>(obj.GetRawText(), opts);
+                }
+                ShowError("Не удалось получить посты.");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка получения постов: {ex.Message}");
+                ShowError("Ошибка получения постов.");
+                return null;
+            }
+        }
+
+        private async Task LoadProfileAndPostsAsync()
+        {
+            var tokenBody = await LoadTokenAsync();
+            if (tokenBody == null || string.IsNullOrEmpty(tokenBody.Token))
+            {
+                ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
                 return;
             }
 
             try
             {
-                LoadingProgressRing.IsActive = true;
-                LoadingProgressRing.Visibility = Visibility.Visible;
-
-                var response = await apiService.GetPostsAsync(userId, token);
-
-                if (response?.Response?.Items != null)
+                var profile = await GetProfileAsync(tokenBody.Token);
+                if (profile == null)
                 {
-                    Posts.Clear();
-                    foreach (var post in response.Response.Items)
-                    {
-                        Posts.Add(post);
-                    }
+                    ShowError("Не удалось загрузить профиль.");
+                    return;
+                }
 
-                    PostsCountText.Text = $"Всего постов: {response.Response.Count}";
-                }
-                else
+                userId = profile.Id.ToString();
+
+                if (!string.IsNullOrEmpty(profile.Photo200))
+                    ProfileAvatar.ProfilePicture = new BitmapImage(new Uri(profile.Photo200));
+                ProfileName.Text = $"{profile.FirstName} {profile.LastName}";
+                if (!string.IsNullOrEmpty(profile.Nickname))
+                    ProfileName.Text += $" ({profile.Nickname})";
+
+                var postsResponse = await GetPostsAsync(tokenBody.Token, userId);
+                if (postsResponse?.Items == null || !postsResponse.Items.Any())
                 {
-                    ShowError("Не удалось загрузить посты");
+                    ShowError("Нет постов для отображения.");
+                    return;
                 }
+
+                Posts.Clear();
+                foreach (var post in postsResponse.Items)
+                    Posts.Add(post);
             }
             catch (Exception ex)
             {
-                ShowError($"error of load posts method (ProfilePage.xaml.cs): {ex.Message}");
-                Debug.WriteLine($"exception: {ex}");
+                Debug.WriteLine($"Ошибка загрузки данных: {ex.Message}");
+                ShowError("Ошибка загрузки данных профиля или постов.");
             }
             finally
             {
                 LoadingProgressRing.IsActive = false;
-                LoadingProgressRing.Visibility = Visibility.Collapsed;
             }
-        }
-
-        private void HandleWebException(WebException ex, HttpWebResponse response)
-        {
-            try
-            {
-                using var stream = response.GetResponseStream();
-                using var reader = new StreamReader(stream);
-                var errorData = reader.ReadToEnd();
-
-                using JsonDocument doc = JsonDocument.Parse(errorData);
-                JsonElement root = doc.RootElement;
-
-                int errorCode = 0;
-                string errorMsg = "";
-                string requestParams = "";
-
-                if (root.TryGetProperty("error_code", out JsonElement errorCodeElement))
-                {
-                    errorCode = errorCodeElement.GetInt32();
-                }
-
-                if (root.TryGetProperty("error_msg", out JsonElement errorMsgElement))
-                {
-                    errorMsg = errorMsgElement.GetString();
-                }
-
-                if (root.TryGetProperty("request_params", out JsonElement requestParamsElement))
-                {
-                    requestParams = string.Join(" ", requestParamsElement);
-                }
-
-                ShowError($"{errorMsg} (Код: {errorCode})");
-            }
-            catch (JsonException jsonEx)
-            {
-                Debug.WriteLine($"error json deserialize (ProfilePage.xaml.cs): {jsonEx.Message}");
-                ShowError("Error of API");
-            }
-        }
-
-        private void ShowError(string message)
-        {
-            ErrorTextBlock.Text = message;
-            ErrorTextBlock.Visibility = Visibility.Visible;
         }
 
         private void PublishNewPostButton(object sender, RoutedEventArgs e)
@@ -423,7 +330,16 @@ namespace ovkdesktop
             ContentProfileFrame.Navigate(typeof(TypeNewPostPage));
             GridPostsMyProfile.Visibility = Visibility.Collapsed;
         }
+
+
+        private void ShowError(string message)
+        {
+            ErrorTextBlock.Text = message;
+            ErrorTextBlock.Visibility = Visibility.Visible;
+        }
     }
+
+
 
     public class APIService
     {
@@ -435,42 +351,7 @@ namespace ovkdesktop
             httpClient.BaseAddress = new Uri("https://ovk.to/");
         }
 
-        public async Task<Models.APIResponse> GetPostsAsync(string ownerId, string token)
-        {
-            try
-            {
-                // create url request
-                string url = $"method/wall.get?owner_id={ownerId}&access_token={token}";
 
-                var response = await httpClient.GetAsync(url);
-                response.EnsureSuccessStatusCode();
-
-                var content = await response.Content.ReadAsStringAsync();
-
-                // create config of deserialize
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-
-                return JsonSerializer.Deserialize<Models.APIResponse>(content, options);
-            }
-            catch (HttpRequestException ex)
-            {
-                Debug.WriteLine($"http error (ProfilePage.xaml.cs): {ex.Message}");
-                return null;
-            }
-            catch (JsonException ex)
-            {
-                Debug.WriteLine($"json error (ProfilePage.xaml.cs): {ex.Message}");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"general error (ProfilePage.xaml.cs): {ex.Message}");
-                return null;
-            }
-        }
 
         public class DateTimeOffsetConverter : JsonConverter<DateTimeOffset>
         {
