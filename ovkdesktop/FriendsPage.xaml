@@ -27,50 +27,51 @@
 			<TextBlock x:Name="ErrorFriendsText" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
 		</Grid>
 
-		<Grid Grid.Row="1" Margin="105,20,0,0">
-			<ProgressRing x:Name="LoadingProgressRingFriends"
+        <Grid Grid.Row="1" Margin="105,20,0,0">
+            <ProgressRing x:Name="LoadingProgressRingFriends"
                           IsActive="True" Width="50" Height="50"
                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-			<ListView x:Name="FriendsListView"
+            <ListView x:Name="FriendsListView"
                       ItemsSource="{x:Bind Friends}"
                       ScrollViewer.VerticalScrollMode="Auto"
                       ScrollViewer.VerticalScrollBarVisibility="Auto">
-				<ListView.ItemTemplate>
-					<DataTemplate x:DataType="models:Friends">
-						<Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Friends">
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                                 BorderThickness="1" CornerRadius="8"
-                                Margin="0,5,0,10" Padding="15">
-							<Grid>
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="Auto"/>
-									<ColumnDefinition Width="*"/>
-									<ColumnDefinition Width="Auto"/>
-								</Grid.ColumnDefinitions>
+                                Margin="0,5,0,10" Padding="15"
+                                RightTapped="FriendItem_RightTapped">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-								<!-- avatar of user -->
-								<PersonPicture ProfilePicture="{Binding Avatar}" Width="65" />
+                                <!-- avatar of user -->
+                                <PersonPicture ProfilePicture="{Binding Avatar}" Width="65" />
 
-								<!-- nickname of friend -->
-								<StackPanel Grid.Column="1" Margin="10,0">
-									<TextBlock Text="{Binding FirstName}" FontWeight="SemiBold" FontSize="16" Margin="5,7,0,0"/>
-									<TextBlock Text="{Binding LastName}" Opacity="0.7" Margin="5,0,0,0"/>
-								</StackPanel>
+                                <!-- nickname of friend -->
+                                <StackPanel Grid.Column="1" Margin="10,0">
+                                    <TextBlock Text="{Binding FirstName}" FontWeight="SemiBold" FontSize="16" Margin="5,7,0,0"/>
+                                    <TextBlock Text="{Binding LastName}" Opacity="0.7" Margin="5,0,0,0"/>
+                                </StackPanel>
 
-								<!-- online status -->
-								<TextBlock Grid.Column="2"
+                                <!-- online status -->
+                                <TextBlock Grid.Column="2"
                                            Text="В сети"
                                            VerticalAlignment="Center"
                                            Visibility="{Binding IsOnline, Converter={StaticResource IntToVisibilityConverter}}"/>
-							</Grid>
-						</Border>
-					</DataTemplate>
-				</ListView.ItemTemplate>
-			</ListView>
-		</Grid>
-		
-		
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
 
-	</Grid>
+
+
+    </Grid>
 </Page>

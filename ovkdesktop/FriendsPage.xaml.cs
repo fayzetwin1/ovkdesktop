@@ -66,6 +66,8 @@ namespace ovkdesktop
         private readonly APIServiceFriends apiService = new();
         private string id;
 
+        private Models.Friends selectedFriend;
+
         public FriendsPage()
         {
             this.InitializeComponent();
@@ -196,6 +198,80 @@ namespace ovkdesktop
             }
         }
 
+
+        private void FriendItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is Models.Friends friend)
+            {
+                selectedFriend = friend;
+
+                var flyout = new MenuFlyout();
+
+                var profileItem = new MenuFlyoutItem { Text = "Профиль" };
+                profileItem.Click += (s, args) => NavigateToProfile(selectedFriend);
+
+                var deleteItem = new MenuFlyoutItem { Text = "Удалить" };
+                deleteItem.Click += async (s, args) => await ShowDeleteConfirmationDialogAsync(selectedFriend);
+
+                flyout.Items.Add(profileItem);
+                flyout.Items.Add(deleteItem);
+
+                // menu in position of out cursor (ONLY FOR WINDOWS!!!! idk if this will work on linux or macOS)
+                flyout.ShowAt(fe, e.GetPosition(fe));
+            }
+        }
+
+        private async Task ShowDeleteConfirmationDialogAsync(Models.Friends friend)
+        {
+            var dialog = new ContentDialog
+            {
+                Title = "Удаление друга",
+                Content = $"Вы действительно хотите удалить {friend.FirstName} {friend.LastName} из друзей?",
+                PrimaryButtonText = "Удалить",
+                CloseButtonText = "Отмена",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = this.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+            if (result == ContentDialogResult.Primary)
+            {
+                await DeleteFriendAsync(friend);
+            }
+        }
+
+        private async Task DeleteFriendAsync(Models.Friends friend)
+        {
+            OVKDataBody token = await LoadTokenAsync();
+            if (token != null && !string.IsNullOrEmpty(token.Token))
+            {
+                bool success = await apiService.DeleteFriendAsync(token.Token, friend.Id);
+                if (success)
+                {
+                    Friends.Remove(friend);
+                }
+                else
+                {
+                    ShowError("Не удалось удалить друга.");
+                }
+            }
+        }
+
+
+
+        private void NavigateToProfile(Models.Friends friend)
+        {
+            if (friend != null)
+            {
+                this.Frame.Navigate(typeof(AnotherProfilePage), friend.Id);
+            }
+        }
+
+
+      
+
+
+
         public class APIServiceFriends
         {
             private readonly System.Net.Http.HttpClient httpClient;
@@ -203,6 +279,33 @@ namespace ovkdesktop
             {
                 httpClient = new System.Net.Http.HttpClient();
                 httpClient.BaseAddress = new Uri("https://ovk.to/");
+            }
+
+
+            public async Task<bool> DeleteFriendAsync(string token, int friendId)
+            {
+                try
+                {
+                    string url = $"method/friends.delete?access_token={token}&user_id={friendId}&v=5.131";
+
+                    var response = await httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    using JsonDocument doc = JsonDocument.Parse(content);
+                    // Ожидается, что ответ содержит "response" со значением 1 при успехе
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement resp) &&
+                        resp.ValueKind == JsonValueKind.Number &&
+                        resp.GetInt32() == 1)
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"exception in DeleteFriendAsync: {ex.Message}");
+                }
+                return false;
             }
 
             public async Task<Models.APIResponseFriends> GetFriendsAsync(string token)
