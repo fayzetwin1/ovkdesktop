@@ -465,6 +465,22 @@ namespace ovkdesktop
             if (token != null && !string.IsNullOrEmpty(token.Token))
                 await LoadNewsPostsListAsync(token.Token);
         }
+
+        private void ShowPostInfo_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.DataContext is Models.NewsPosts post)
+            {
+                var parameters = new PostInfoPage.PostInfoParameters
+                {
+                    PostId = post.Id,
+                    OwnerId = post.FromId // или post.OwnerId, если у вас есть это поле
+                };
+                this.Frame.Navigate(typeof(PostInfoPage), parameters);
+            }
+        }
+
+
+
     }
 
     public class APIServiceNewsPosts

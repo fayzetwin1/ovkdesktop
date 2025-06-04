@@ -225,7 +225,7 @@ namespace ovkdesktop
             public WallResponseData Response { get; set; }
         }
 
-        // data of every wall response
+        // 2) То, что лежит под ключом "response": { "count": 17, "items": [ … ] }
         public class WallResponseData
         {
             [JsonPropertyName("count")]
@@ -235,7 +235,7 @@ namespace ovkdesktop
             public List<WallPost> Items { get; set; }
         }
 
-        // model of 1 post
+        // 3) Модель одного поста (элемент массива items)
         public class WallPost
         {
             [JsonPropertyName("id")]
@@ -244,20 +244,20 @@ namespace ovkdesktop
             [JsonIgnore]
             public UserProfileAP AuthorProfileAP { get; set; }
 
-            // author of post (his id)
+            // Автор поста (ID пользователя)
             [JsonPropertyName("from_id")]
             public int FromId { get; set; }
 
-            // owner of wall
+            // Владелец стены (в ряде случаев совпадает с from_id, но не обязательно)
             [JsonPropertyName("owner_id")]
             public int OwnerId { get; set; }
 
-            // date unixstamp format 
+            // Дата в формате UNIX-секунд → мы будем конвертировать в DateTimeOffset
             [JsonPropertyName("date")]
             [JsonConverter(typeof(UnixDateTimeOffsetConverter))]
             public DateTimeOffset Date { get; set; }
 
-            // convert this unixstamp format (ну а блять, тебе в юникс формате удобнее чекать?))) )
+            // Чтобы сразу видеть красиво:
             [JsonIgnore]
             public string FormattedDate => Date.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
 
@@ -266,6 +266,9 @@ namespace ovkdesktop
 
             [JsonPropertyName("text")]
             public string Text { get; set; }
+
+            // Сразу можно опустить copy_history, can_edit и т. д. — 
+            // если они не нужны в приложении, их не описываем.
 
             [JsonPropertyName("attachments")]
             public List<Attachment> Attachments { get; set; }
@@ -279,9 +282,12 @@ namespace ovkdesktop
             [JsonPropertyName("reposts")]
             public RepostInfo Reposts { get; set; }
 
-            // пусть будет
+            // Поле post_source: пусть будет, если понадобится в будущем
             [JsonPropertyName("post_source")]
             public PostSource Source { get; set; }
+
+            // Далее — поля, которые мы не получаем из JSON напрямую,
+            // а заполняем «после» (связав с профилем автора). Поэтому JsonIgnore:
             [JsonIgnore]
             public UserProfile AuthorProfile { get; set; }
 
@@ -291,6 +297,7 @@ namespace ovkdesktop
             [JsonIgnore]
             public string AuthorAvatarUrl => AuthorProfile?.Photo200;
 
+            // Если нужно получить главное изображение из attachments:
             [JsonIgnore]
             public string MainImageUrl
             {
@@ -301,13 +308,15 @@ namespace ovkdesktop
                     {
                         if (attachment.Type == "photo" && attachment.Photo?.Sizes != null)
                         {
+                            // Сначала ищем «x»
                             var sizeX = attachment.Photo.Sizes.Find(s => s.Type == "x" && !string.IsNullOrEmpty(s.Url));
                             if (sizeX != null) return sizeX.Url;
 
-
+                            // Иначе ищем UPLOADED_MAXRES
                             var sizeMax = attachment.Photo.Sizes.Find(s => s.Type == "UPLOADED_MAXRES" && !string.IsNullOrEmpty(s.Url));
                             if (sizeMax != null) return sizeMax.Url;
 
+                            // Иначе берём первое, у которого Url не пусто
                             var anySize = attachment.Photo.Sizes.Find(s => !string.IsNullOrEmpty(s.Url));
                             if (anySize != null) return anySize.Url;
                         }
@@ -317,9 +326,9 @@ namespace ovkdesktop
             }
         }
 
+        #region Вспомогательные классы к WallPost
 
-
-        // unixstamp to normal time convertor
+        // Конвертер, который берёт целое число (UNIX-секунды) и превращает в DateTimeOffset
         public class UnixDateTimeOffsetConverter : JsonConverter<DateTimeOffset>
         {
             public override DateTimeOffset Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -334,7 +343,7 @@ namespace ovkdesktop
             }
         }
 
-        // comments in post
+        // Класс для комментариев в посте: { "count": 4, "can_post": 1 }
         public class CommentInfo
         {
             [JsonPropertyName("count")]
@@ -344,7 +353,7 @@ namespace ovkdesktop
             public int CanPost { get; set; }
         }
 
-        // likes in post
+        // Класс для лайков в посте: { "count": 0, "user_likes": 0, "can_like": 1, "can_publish": 1 }
         public class LikeInfo
         {
             [JsonPropertyName("count")]
@@ -360,7 +369,7 @@ namespace ovkdesktop
             public int CanPublish { get; set; }
         }
 
-        // reposts in post
+        // Класс для репостов: { "count": 0, "user_reposted": 0 }
         public class RepostInfo
         {
             [JsonPropertyName("count")]
@@ -370,6 +379,7 @@ namespace ovkdesktop
             public int UserReposted { get; set; }
         }
 
+        // Класс для attachments: только фото-часть, как в JSON ([]) или, если есть вложенные фото
         public class Attachment
         {
             [JsonPropertyName("type")]
@@ -377,6 +387,9 @@ namespace ovkdesktop
 
             [JsonPropertyName("photo")]
             public PhotoInfo Photo { get; set; }
+
+            // Если у вас могут быть другие типы вложений (video, link и т. д.), 
+            // их можно добавить по аналогии.
         }
 
         public class PhotoInfo
@@ -392,8 +405,13 @@ namespace ovkdesktop
 
             [JsonPropertyName("url")]
             public string Url { get; set; }
+
+            // Можно добавить width/height, если потребуется:
+            // [JsonPropertyName("width")] public int Width { get; set; }
+            // [JsonPropertyName("height")] public int Height { get; set; }
         }
 
+        // Если вдруг в посте нужен post_source: { "type":"vk" }
         public class PostSource
         {
             [JsonPropertyName("type")]
@@ -417,6 +435,9 @@ namespace ovkdesktop
             [JsonPropertyName("photo_200")]
             public string Photo200 { get; set; }
 
+            //[JsonPropertyName("from_id")]
+
+            //public string FromID { get; set; }
         }
 
         public class UsersGetResponseAP
@@ -425,6 +446,9 @@ namespace ovkdesktop
             public List<UserProfileAP> Response { get; set; }
         }
     }
+    /// <summary>
+    /// An empty page that can be used on its own or navigated to within a Frame.
+    /// </summary>
         public sealed partial class AnotherProfilePage : Page
         {
             
@@ -569,11 +593,30 @@ namespace ovkdesktop
             this.Frame.Navigate(typeof(PostsPage));
         }
 
+        private void ShowPostComments_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.DataContext is ovkdesktop.Models.PostAP post)
+            {
+                var parameters = new PostInfoPage.PostInfoParameters
+                {
+                    PostId = post.Id,
+                    OwnerId = post.OwnerId
+                };
+                this.Frame.Navigate(typeof(PostInfoPage), parameters);
+            }
+        }
+
+
         private void ShowError(string message)
             {
                 ErrorTextBlock.Text = message;
                 ErrorTextBlock.Visibility = Visibility.Visible;
             }
+
+        private void StackPanel_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+
         }
+    }
     #endregion
 }

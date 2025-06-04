@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -29,6 +32,7 @@ namespace ovkdesktop
     {
 
         public static Window MainWindow { get; private set; }
+        public static MainWindow MainWindowInstance { get; private set; }
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
@@ -54,16 +58,29 @@ namespace ovkdesktop
         /// Invoked when the application is launched.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
-        protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+        protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
+
             MainWindow = new MainWindow();
+            Frame rootFrame = MainWindow.Content as Frame ?? new Frame();
+            MainWindow.Content = rootFrame;
+
+            bool isTokenValid = await SessionHelper.IsTokenValidAsync();
+
+            if (isTokenValid)
+            {
+                MainWindow.Activate();
+                rootFrame.Navigate(typeof(MainPage));
+            }
+            else
+                rootFrame.Navigate(typeof(WelcomePage));
+
             MainWindow.ExtendsContentIntoTitleBar = true;
             MainWindow.Activate();
 
-            this.DebugSettings.IsBindingTracingEnabled = true;    // включаем трассировку биндингов
+            this.DebugSettings.IsBindingTracingEnabled = true;    
             this.DebugSettings.BindingFailed += (s, e) =>
             {
-                // Выведем в Output окно подробности по каждой неудачной привязке
                 Debug.WriteLine($"XAML BindingFailed: {e.Message}");
             };
 
@@ -73,4 +90,53 @@ namespace ovkdesktop
 
         private Window? m_window;
     }
-}
+
+    public static class SessionHelper
+    {
+        public static async Task<bool> IsTokenValidAsync()
+        {
+            string token = await GetTokenAsync();
+            if (string.IsNullOrEmpty(token))
+                return false;
+            try
+            {
+                using var httpClient = new HttpClient { BaseAddress = new Uri("https://ovk.to/") };
+                var url = $"method/users.get?access_token={token}&v=5.131";
+                var response = await httpClient.GetAsync(url);
+                var json = await response.Content.ReadAsStringAsync();
+
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("response", out var arr) && arr.ValueKind == JsonValueKind.Array)
+                    return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error while validating token. It may be expired or invalid. More info: {ex.Message}");
+            }
+            return false;
+        }
+
+        public static async Task<string> GetTokenAsync()
+        {
+            try
+            {
+                if (!File.Exists("ovkdata.json"))
+                    return null;
+                using var fs = new FileStream("ovkdata.json", FileMode.Open, FileAccess.Read);
+                var data = await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
+                return data?.Token;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static void RemoveToken()
+        {
+            if (File.Exists("ovkdata.json"))
+                File.Delete("ovkdata.json");
+        }
+
+    }
+    }

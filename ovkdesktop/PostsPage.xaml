@@ -84,7 +84,7 @@
 							   HorizontalAlignment="Left" Margin="0,0,0,10"
 							   Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15">
+                                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15" Tapped="ShowPostInfo_Tapped" DataContext="{Binding}">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <FontIcon Glyph="&#xE006;" FontSize="16"/>
                                         <TextBlock Text="{Binding LikesNews.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>

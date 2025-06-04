@@ -15,6 +15,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using System.Text.Json.Serialization;
 using System.Diagnostics;
 using System.Collections.ObjectModel;
+using Microsoft.UI.Xaml.Input;
 
 namespace ovkdesktop
 {
@@ -313,6 +314,9 @@ namespace ovkdesktop
                 Posts.Clear();
                 foreach (var post in postsResponse.Items)
                     Posts.Add(post);
+
+                // Можно добавить обновление счетчика постов, если нужно:
+                // PostsCountText.Text = $"Всего постов: {postsResponse.Count}";
             }
             catch (Exception ex)
             {
@@ -329,6 +333,19 @@ namespace ovkdesktop
         {
             ContentProfileFrame.Navigate(typeof(TypeNewPostPage));
             GridPostsMyProfile.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowPostComments_Tapped(object sender, TappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.DataContext is ovkdesktop.Models.PostAP post)
+            {
+                var parameters = new PostInfoPage.PostInfoParameters
+                {
+                    PostId = post.Id,
+                    OwnerId = post.OwnerId
+                };
+                this.Frame.Navigate(typeof(PostInfoPage), parameters);
+            }
         }
 
 

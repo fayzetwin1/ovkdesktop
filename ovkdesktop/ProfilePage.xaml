@@ -72,7 +72,7 @@
 									   Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                 <!-- likes and comments count -->
-                                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15">
+                                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15" Tapped="ShowPostComments_Tapped">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <FontIcon Glyph="&#xE006;" FontSize="16"/>
                                         <!-- if likes count == null, likes count == 0 -->

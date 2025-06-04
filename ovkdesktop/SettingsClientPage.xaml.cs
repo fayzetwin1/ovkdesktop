@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using System.Diagnostics;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -27,5 +28,31 @@ namespace ovkdesktop
         {
             this.InitializeComponent();
         }
+
+
+        private void LogoutButton_Click(object sender, RoutedEventArgs e)
+        {
+            SessionHelper.RemoveToken();
+
+            // Получаем путь к исполняемому файлу приложения
+            var exePath = Process.GetCurrentProcess().MainModule.FileName;
+
+            // Запускаем новый процесс
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = exePath,
+                UseShellExecute = true
+            });
+
+            // Завершаем текущее приложение
+            Environment.Exit(0);
+        }
+
+
+        public void ShowWelcomePage()
+        {
+            this.Content = new WelcomePage();
+        }
+
     }
 }
