@@ -46,7 +46,7 @@ namespace ovkdesktop
             }
             else
             {
-                ShowError("Некорректные параметры для страницы поста.");
+                ShowError("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.");
             }
         }
 
@@ -62,7 +62,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostInfoPage] Ошибка загрузки токена: {ex}");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: {ex}");
                 return null;
             }
         }
@@ -74,7 +74,7 @@ namespace ovkdesktop
                 var tokenBody = await LoadTokenAsync();
                 if (tokenBody == null || string.IsNullOrEmpty(tokenBody.Token))
                 {
-                    ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
+                    ShowError("пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.");
                     return;
                 }
 
@@ -83,8 +83,8 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostInfoPage] Ошибка загрузки информации о посте: {ex}");
-                ShowError($"Ошибка загрузки информации о посте: {ex.Message}");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ: {ex}");
+                ShowError($"пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ: {ex.Message}");
             }
         }
 
@@ -94,16 +94,16 @@ namespace ovkdesktop
             {
                 using var httpClient = new HttpClient { BaseAddress = new Uri("https://ovk.to/") };
                 string url = $"method/wall.getComments?owner_id={ownerId}&post_id={postId}&extended=1&access_token={accessToken}&v=5.131";
-                Debug.WriteLine($"[PostInfoPage] Запрос комментариев: {url}");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {url}");
                 var response = await httpClient.GetAsync(url);
-                Debug.WriteLine($"[PostInfoPage] Статус ответа: {response.StatusCode}");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: {response.StatusCode}");
 
                 var json = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[PostInfoPage] Ответ сервера: {json}");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {json}");
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    ShowError($"Ошибка получения комментариев: {response.StatusCode}");
+                    ShowError($"пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {response.StatusCode}");
                     return;
                 }
 
@@ -131,24 +131,24 @@ namespace ovkdesktop
                             }
                             Comments.Add(comment);
                         }
-                        Debug.WriteLine($"[PostInfoPage] Загружено комментариев: {Comments.Count}");
+                        Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {Comments.Count}");
                     }
                     else
                     {
-                        Debug.WriteLine("[PostInfoPage] Нет комментариев в ответе.");
-                        ShowError("Нет комментариев для отображения.");
+                        Debug.WriteLine("[PostInfoPage] пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.");
+                        ShowError("пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine("[PostInfoPage] Нет поля 'response' в JSON.");
-                    ShowError("Ошибка получения комментариев: нет данных.");
+                    Debug.WriteLine("[PostInfoPage] пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 'response' пїЅ JSON.");
+                    ShowError("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostInfoPage] Ошибка получения комментариев: {ex}");
-                ShowError("Ошибка получения комментариев.");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: {ex}");
+                ShowError("пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.");
             }
         }
 
@@ -159,7 +159,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[PostInfoPage] ERROR: {message}");
                 var dialog = new ContentDialog
                 {
-                    Title = "Ошибка",
+                    Title = "пїЅпїЅпїЅпїЅпїЅпїЅ",
                     Content = message,
                     CloseButtonText = "OK",
                     XamlRoot = this.Content.XamlRoot
@@ -168,23 +168,21 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostInfoPage] Ошибка показа ContentDialog: {ex}");
+                Debug.WriteLine($"[PostInfoPage] пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ContentDialog: {ex}");
             }
         }
 
         private void CommentAuthor_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            // Получаем CommentPIP из DataContext
             if (sender is FrameworkElement fe && fe.DataContext is ovkdesktop.Models.CommentPIP comment)
             {
-                // Навигация на профиль комментатора (например, AnotherProfilePage)
                 this.Frame.Navigate(typeof(AnotherProfilePage), comment.FromId);
             }
         }
 
     }
 
-    // Модели для комментариев и профилей
+
 }
 
 namespace ovkdesktop.Models
