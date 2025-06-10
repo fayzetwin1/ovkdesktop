@@ -1079,67 +1079,130 @@ namespace ovkdesktop
 
     public class APIServiceNewsPosts
     {
-        private readonly System.Net.Http.HttpClient httpClient;
+        private HttpClient httpClient;
         private readonly Dictionary<long, (DateTimeOffset CreatedAt, APIResponse<WallResponse<NewsFeedPost>> Response)> cache = new();
+        private string instanceUrl;
 
         public APIServiceNewsPosts()
         {
-            httpClient = new System.Net.Http.HttpClient();
-            httpClient.BaseAddress = new Uri("https://ovk.to/");
+            InitializeHttpClientAsync();
+        }
+        
+        private async void InitializeHttpClientAsync()
+        {
+            try
+            {
+                instanceUrl = await SessionHelper.GetInstanceUrlAsync();
+                httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
+                
+                Debug.WriteLine($"[APIServiceNewsPosts] Initialized with instance URL: {instanceUrl}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[APIServiceNewsPosts] Error initializing: {ex.Message}");
+                
+                // Используем URL по умолчанию в случае ошибки
+                instanceUrl = "https://ovk.to/";
+                httpClient = new HttpClient { BaseAddress = new Uri(instanceUrl) };
+                
+                Debug.WriteLine($"[APIServiceNewsPosts] Fallback to default URL: {instanceUrl}");
+            }
         }
 
         public async Task<Dictionary<int, UserProfile>> GetUsersAsync(string token, IEnumerable<int> userIds)
         {
-            var idsParam = string.Join(",", userIds);
-            var url = $"method/users.get?access_token={token}" +
-                      $"&user_ids={idsParam}" +
-                      $"&fields=screen_name,photo_200";
-
-            var response = await httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            var options = new JsonSerializerOptions
+            try
             {
-                PropertyNameCaseInsensitive = true
-            };
-            options.Converters.Add(new Converters.FlexibleIntConverter());
-            options.Converters.Add(new Models.FlexibleStringJsonConverter());
-            var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
+                // Проверяем, инициализирован ли клиент
+                if (httpClient == null)
+                {
+                    await Task.Run(() => InitializeHttpClientAsync());
+                    await Task.Delay(500); // Даем время на инициализацию
+                }
+                
+                var idsParam = string.Join(",", userIds);
+                // Используем более раннюю версию API для лучшей совместимости
+                var url = $"method/users.get?access_token={token}" +
+                        $"&user_ids={idsParam}" +
+                        $"&fields=screen_name,photo_200&v=5.126";
+                
+                Debug.WriteLine($"[APIServiceNewsPosts] GetUsers URL: {instanceUrl}{url}");
 
-            var usersList = result?.Response;
-            if (usersList != null)
-            {
-                return usersList.ToDictionary(u => u.Id, u => u);
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                options.Converters.Add(new Converters.FlexibleIntConverter());
+                options.Converters.Add(new Models.FlexibleStringJsonConverter());
+                var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
+
+                var usersList = result?.Response;
+                if (usersList != null)
+                {
+                    return usersList.ToDictionary(u => u.Id, u => u);
+                }
+                return new Dictionary<int, UserProfile>();
             }
-            return new Dictionary<int, UserProfile>();
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[APIServiceNewsPosts] Error in GetUsersAsync: {ex.Message}");
+                return new Dictionary<int, UserProfile>();
+            }
         }
 
         public async Task<UserProfile> GetProfileInfoAsync(string token, int userId)
         {
-            var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200";
-            Debug.WriteLine($"[API NewsPosts] URL: {url}");
-            var response = await httpClient.GetAsync(url);
-            Debug.WriteLine($"[API] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            Debug.WriteLine($"[API] Response JSON: {json}");
-            var options = new JsonSerializerOptions
+            try
             {
-                PropertyNameCaseInsensitive = true
-            };
-            options.Converters.Add(new Converters.FlexibleIntConverter());
-            options.Converters.Add(new Models.FlexibleStringJsonConverter());
-            var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
+                // Проверяем, инициализирован ли клиент
+                if (httpClient == null)
+                {
+                    await Task.Run(() => InitializeHttpClientAsync());
+                    await Task.Delay(500); // Даем время на инициализацию
+                }
+                
+                // Используем более раннюю версию API для лучшей совместимости
+                var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200&v=5.126";
+                Debug.WriteLine($"[APIServiceNewsPosts] GetProfileInfo URL: {instanceUrl}{url}");
+                
+                var response = await httpClient.GetAsync(url);
+                Debug.WriteLine($"[APIServiceNewsPosts] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
+                response.EnsureSuccessStatusCode();
 
-            return result?.Response?.FirstOrDefault();
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[APIServiceNewsPosts] Response JSON: {json}");
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                options.Converters.Add(new Converters.FlexibleIntConverter());
+                options.Converters.Add(new Models.FlexibleStringJsonConverter());
+                var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
+
+                return result?.Response?.FirstOrDefault();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[APIServiceNewsPosts] Error in GetProfileInfoAsync: {ex.Message}");
+                return null;
+            }
         }
 
         public async Task<APIResponse<WallResponse<NewsFeedPost>>> GetNewsPostsAsync(string token, long startFrom = 0)
         {
             try
             {
+                // Проверяем, инициализирован ли клиент
+                if (httpClient == null)
+                {
+                    await Task.Run(() => InitializeHttpClientAsync());
+                    await Task.Delay(500); // Даем время на инициализацию
+                }
+                
                 if (cache.TryGetValue(startFrom, out var cachedTuple))
                 {
                     if (DateTimeOffset.UtcNow - cachedTuple.CreatedAt < TimeSpan.FromMinutes(5))
@@ -1148,8 +1211,9 @@ namespace ovkdesktop
                         cache.Remove(startFrom);
                 }
 
-                string url = $"method/newsfeed.getGlobal?access_token={token}&v=5.131";
-                Debug.WriteLine($"[API] GET {url}");
+                // Используем более раннюю версию API для лучшей совместимости
+                string url = $"method/newsfeed.getGlobal?access_token={token}&v=5.126";
+                Debug.WriteLine($"[APIServiceNewsPosts] GET {instanceUrl}{url}");
                 if (startFrom > 0)
                     url += $"&start_from={startFrom}";
 

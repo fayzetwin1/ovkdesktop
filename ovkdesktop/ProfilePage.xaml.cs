@@ -26,14 +26,33 @@ namespace ovkdesktop
     public sealed partial class ProfilePage : Page
     {
         public ObservableCollection<UserWallPost> Posts { get; } = new();
-        private readonly HttpClient httpClient;
+        private HttpClient httpClient;
         private string userId;
+        private string instanceUrl;
 
         public ProfilePage()
         {
             this.InitializeComponent();
-            httpClient = new HttpClient { BaseAddress = new Uri("https://ovk.to/") };
-            _ = LoadProfileAndPostsAsync();
+            _ = InitializeHttpClientAsync();
+        }
+        
+        private async Task InitializeHttpClientAsync()
+        {
+            try
+            {
+                // Получаем URL инстанса из настроек
+                instanceUrl = await SessionHelper.GetInstanceUrlAsync();
+                httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
+                
+                Debug.WriteLine($"[ProfilePage] Initialized with instance URL: {instanceUrl}");
+                
+                await LoadProfileAndPostsAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error initializing: {ex.Message}");
+                ShowError($"Ошибка инициализации: {ex.Message}");
+            }
         }
 
         private async Task<OVKDataBody> LoadTokenAsync()
@@ -45,314 +64,340 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка загрузки токена: {ex.Message}");
+                Debug.WriteLine($"[ProfilePage] Ошибка загрузки токена: {ex.Message}");
                 return null;
             }
         }
 
         private async Task<UserProfile> GetProfileAsync(string token)
+        {
+            try
             {
-                var url = $"method/users.get?fields=photo_200,nickname&access_token={token}&v=5.131";
+                // Используем более раннюю версию API для лучшей совместимости
+                var url = $"method/users.get?fields=photo_200,nickname&access_token={token}&v=5.126";
+                
+                Debug.WriteLine($"[ProfilePage] Getting profile with URL: {instanceUrl}{url}");
+                
                 var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();
-            Debug.WriteLine($"[API] Response JSON: {json}");
-            
-            UserProfile profile = null;
-            
-            try
-            {
-                using (JsonDocument doc = JsonDocument.Parse(json))
+                Debug.WriteLine($"[ProfilePage] Profile response JSON: {json}");
+                
+                UserProfile profile = null;
+                
+                try
                 {
-                    if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
-                        responseElement.ValueKind == JsonValueKind.Array && 
-                        responseElement.GetArrayLength() > 0)
+                    using (JsonDocument doc = JsonDocument.Parse(json))
                     {
-                        JsonElement userElement = responseElement[0];
-                        profile = new UserProfile();
-                        
-                        if (userElement.TryGetProperty("id", out JsonElement idElement))
-                            profile.Id = idElement.GetInt32();
+                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
+                            responseElement.ValueKind == JsonValueKind.Array && 
+                            responseElement.GetArrayLength() > 0)
+                        {
+                            JsonElement userElement = responseElement[0];
+                            profile = new UserProfile();
                             
-                        if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
-                            profile.FirstName = firstNameElement.GetString();
-                            
-                        if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
-                            profile.LastName = lastNameElement.GetString();
-                            
-                        if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
-                            profile.Nickname = nicknameElement.GetString();
-                            
-                        if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
-                            profile.Photo200 = photoElement.GetString();
+                            if (userElement.TryGetProperty("id", out JsonElement idElement))
+                                profile.Id = idElement.GetInt32();
+                                
+                            if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
+                                profile.FirstName = firstNameElement.GetString();
+                                
+                            if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
+                                profile.LastName = lastNameElement.GetString();
+                                
+                            if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
+                                profile.Nickname = nicknameElement.GetString();
+                                
+                            if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
+                                profile.Photo200 = photoElement.GetString();
+                        }
                     }
                 }
+                catch (JsonException ex)
+                {
+                    Debug.WriteLine($"[ProfilePage] JSON error: {ex.Message}");
+                    throw;
+                }
+                
+                return profile;
             }
-            catch (JsonException ex)
+            catch (Exception ex)
             {
-                Debug.WriteLine($"JSON error: {ex.Message}");
-                throw;
+                Debug.WriteLine($"[ProfilePage] Error getting profile: {ex.Message}");
+                ShowError($"Ошибка при загрузке профиля: {ex.Message}");
+                return null;
             }
-            
-            return profile;
         }
 
         private async Task<APIResponse<WallResponse<UserWallPost>>> GetPostsAsync(string token, string ownerId)
+        {
+            try
             {
-                var url = $"method/wall.get?owner_id={ownerId}&access_token={token}&v=5.131";
+                // Используем более раннюю версию API для лучшей совместимости
+                var url = $"method/wall.get?owner_id={ownerId}&access_token={token}&v=5.126";
+                
+                Debug.WriteLine($"[ProfilePage] Getting posts with URL: {instanceUrl}{url}");
+                
                 var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();
-            Debug.WriteLine($"[API] Response JSON: {json}");
+                Debug.WriteLine($"[ProfilePage] Posts response JSON: {json}");
 
-            // Создаем пустой объект для результата
-            var result = new APIResponse<WallResponse<UserWallPost>>
-            {
-                Response = new WallResponse<UserWallPost>
+                // Создаем пустой объект для результата
+                var result = new APIResponse<WallResponse<UserWallPost>>
                 {
-                    Items = new List<UserWallPost>()
-                }
-            };
-
-            try
-            {
-                // Используем JsonDocument для ручного разбора JSON
-                using (JsonDocument doc = JsonDocument.Parse(json))
-                {
-                    if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
+                    Response = new WallResponse<UserWallPost>
                     {
-                        // Получаем count
-                        if (responseElement.TryGetProperty("count", out JsonElement countElement))
-                        {
-                            result.Response.Count = countElement.GetInt32();
-                        }
+                        Items = new List<UserWallPost>()
+                    }
+                };
 
-                        // Обрабатываем элементы
-                        if (responseElement.TryGetProperty("items", out JsonElement itemsElement) && 
-                            itemsElement.ValueKind == JsonValueKind.Array)
+                try
+                {
+                    // Используем JsonDocument для ручного разбора JSON
+                    using (JsonDocument doc = JsonDocument.Parse(json))
+                    {
+                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
                         {
-                            foreach (JsonElement item in itemsElement.EnumerateArray())
+                            // Получаем count
+                            if (responseElement.TryGetProperty("count", out JsonElement countElement))
                             {
-                                var post = new UserWallPost();
+                                result.Response.Count = countElement.GetInt32();
+                            }
 
-                                // Получаем базовые свойства
-                                if (item.TryGetProperty("id", out JsonElement idElement))
-                                    post.Id = idElement.GetInt32();
-
-                                if (item.TryGetProperty("from_id", out JsonElement fromIdElement))
-                                    post.FromId = fromIdElement.GetInt32();
-
-                                if (item.TryGetProperty("owner_id", out JsonElement ownerIdElement))
-                                    post.OwnerId = ownerIdElement.GetInt32();
-
-                                if (item.TryGetProperty("date", out JsonElement dateElement))
-                                    post.Date = dateElement.GetInt64();
-
-                                if (item.TryGetProperty("post_type", out JsonElement postTypeElement))
-                                    post.PostType = postTypeElement.GetString();
-
-                                if (item.TryGetProperty("text", out JsonElement textElement))
-                                    post.Text = textElement.GetString();
-
-                                // Обрабатываем вложения
-                                if (item.TryGetProperty("attachments", out JsonElement attachmentsElement) && 
-                                    attachmentsElement.ValueKind == JsonValueKind.Array)
+                            // Обрабатываем элементы
+                            if (responseElement.TryGetProperty("items", out JsonElement itemsElement) && 
+                                itemsElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (JsonElement item in itemsElement.EnumerateArray())
                                 {
-                                    post.Attachments = new List<Attachment>();
-                                    
-                                    foreach (JsonElement attachmentElement in attachmentsElement.EnumerateArray())
+                                    var post = new UserWallPost();
+
+                                    // Получаем базовые свойства
+                                    if (item.TryGetProperty("id", out JsonElement idElement))
+                                        post.Id = idElement.GetInt32();
+
+                                    if (item.TryGetProperty("from_id", out JsonElement fromIdElement))
+                                        post.FromId = fromIdElement.GetInt32();
+
+                                    if (item.TryGetProperty("owner_id", out JsonElement ownerIdElement))
+                                        post.OwnerId = ownerIdElement.GetInt32();
+
+                                    if (item.TryGetProperty("date", out JsonElement dateElement))
+                                        post.Date = dateElement.GetInt64();
+
+                                    if (item.TryGetProperty("post_type", out JsonElement postTypeElement))
+                                        post.PostType = postTypeElement.GetString();
+
+                                    if (item.TryGetProperty("text", out JsonElement textElement))
+                                        post.Text = textElement.GetString();
+
+                                    // Обрабатываем вложения
+                                    if (item.TryGetProperty("attachments", out JsonElement attachmentsElement) && 
+                                        attachmentsElement.ValueKind == JsonValueKind.Array)
                                     {
-                                        var attachment = new Attachment();
-
-                                        if (attachmentElement.TryGetProperty("type", out JsonElement typeElement))
-                                            attachment.Type = typeElement.GetString();
-
-                                        // Обрабатываем фото
-                                        if (attachment.Type == "photo" && attachmentElement.TryGetProperty("photo", out JsonElement photoElement))
+                                        post.Attachments = new List<Attachment>();
+                                        
+                                        foreach (JsonElement attachmentElement in attachmentsElement.EnumerateArray())
                                         {
-                                            var photo = new Photo();
-                                            
-                                            if (photoElement.TryGetProperty("id", out JsonElement photoIdElement))
-                                                photo.Id = photoIdElement.GetInt32();
+                                            var attachment = new Attachment();
 
-                                            if (photoElement.TryGetProperty("owner_id", out JsonElement photoOwnerIdElement))
-                                                photo.OwnerId = photoOwnerIdElement.GetInt32();
+                                            if (attachmentElement.TryGetProperty("type", out JsonElement typeElement))
+                                                attachment.Type = typeElement.GetString();
 
-                                            if (photoElement.TryGetProperty("text", out JsonElement photoTextElement))
-                                                photo.Text = photoTextElement.GetString();
-
-                                            if (photoElement.TryGetProperty("date", out JsonElement photoDateElement))
-                                                photo.Date = photoDateElement.GetInt64();
-
-                                            // Обрабатываем размеры фото
-                                            if (photoElement.TryGetProperty("sizes", out JsonElement sizesElement) && 
-                                                sizesElement.ValueKind == JsonValueKind.Array)
+                                            // Обрабатываем фото
+                                            if (attachment.Type == "photo" && attachmentElement.TryGetProperty("photo", out JsonElement photoElement))
                                             {
-                                                photo.Sizes = new List<PhotoSize>();
+                                                var photo = new Photo();
                                                 
-                                                foreach (JsonElement sizeElement in sizesElement.EnumerateArray())
+                                                if (photoElement.TryGetProperty("id", out JsonElement photoIdElement))
+                                                    photo.Id = photoIdElement.GetInt32();
+
+                                                if (photoElement.TryGetProperty("owner_id", out JsonElement photoOwnerIdElement))
+                                                    photo.OwnerId = photoOwnerIdElement.GetInt32();
+
+                                                if (photoElement.TryGetProperty("text", out JsonElement photoTextElement))
+                                                    photo.Text = photoTextElement.GetString();
+
+                                                if (photoElement.TryGetProperty("date", out JsonElement photoDateElement))
+                                                    photo.Date = photoDateElement.GetInt64();
+
+                                                // Обрабатываем размеры фото
+                                                if (photoElement.TryGetProperty("sizes", out JsonElement sizesElement) && 
+                                                    sizesElement.ValueKind == JsonValueKind.Array)
                                                 {
-                                                    var size = new PhotoSize();
+                                                    photo.Sizes = new List<PhotoSize>();
                                                     
-                                                    if (sizeElement.TryGetProperty("type", out JsonElement sizeTypeElement))
-                                                        size.Type = sizeTypeElement.GetString();
-                                                        
-                                                    if (sizeElement.TryGetProperty("url", out JsonElement sizeUrlElement))
-                                                        size.Url = sizeUrlElement.GetString();
-                                                        
-                                                    if (sizeElement.TryGetProperty("width", out JsonElement widthElement))
+                                                    foreach (JsonElement sizeElement in sizesElement.EnumerateArray())
                                                     {
-                                                        // Безопасное получение width
-                                                        if (widthElement.ValueKind == JsonValueKind.Number)
-                                                            size.Width = widthElement.GetInt32();
-                                                        else if (widthElement.ValueKind == JsonValueKind.String)
+                                                        var size = new PhotoSize();
+                                                        
+                                                        if (sizeElement.TryGetProperty("type", out JsonElement sizeTypeElement))
+                                                            size.Type = sizeTypeElement.GetString();
+                                                            
+                                                        if (sizeElement.TryGetProperty("url", out JsonElement sizeUrlElement))
+                                                            size.Url = sizeUrlElement.GetString();
+                                                            
+                                                        if (sizeElement.TryGetProperty("width", out JsonElement widthElement))
                                                         {
-                                                            int tempWidth;
-                                                            if (int.TryParse(widthElement.GetString(), out tempWidth))
-                                                                size.Width = tempWidth;
+                                                            // Безопасное получение width
+                                                            if (widthElement.ValueKind == JsonValueKind.Number)
+                                                                size.Width = widthElement.GetInt32();
+                                                            else if (widthElement.ValueKind == JsonValueKind.String)
+                                                            {
+                                                                int tempWidth;
+                                                                if (int.TryParse(widthElement.GetString(), out tempWidth))
+                                                                    size.Width = tempWidth;
+                                                            }
                                                         }
+                                                        
+                                                        if (sizeElement.TryGetProperty("height", out JsonElement heightElement))
+                                                        {
+                                                            // Безопасное получение height
+                                                            if (heightElement.ValueKind == JsonValueKind.Number)
+                                                                size.Height = heightElement.GetInt32();
+                                                            else if (heightElement.ValueKind == JsonValueKind.String)
+                                                            {
+                                                                int tempHeight;
+                                                                if (int.TryParse(heightElement.GetString(), out tempHeight))
+                                                                    size.Height = tempHeight;
+                                                            }
+                                                        }
+                                                        
+                                                        photo.Sizes.Add(size);
                                                     }
+                                                }
+                                                
+                                                attachment.Photo = photo;
+                                            }
+                                            
+                                            // Обрабатываем видео
+                                            if (attachment.Type == "video" && attachmentElement.TryGetProperty("video", out JsonElement videoElement))
+                                            {
+                                                var video = new Video();
+                                                
+                                                if (videoElement.TryGetProperty("id", out JsonElement videoIdElement))
+                                                    video.Id = videoIdElement.GetInt32();
                                                     
-                                                    if (sizeElement.TryGetProperty("height", out JsonElement heightElement))
+                                                if (videoElement.TryGetProperty("owner_id", out JsonElement videoOwnerIdElement))
+                                                    video.OwnerId = videoOwnerIdElement.GetInt32();
+                                                    
+                                                if (videoElement.TryGetProperty("title", out JsonElement videoTitleElement))
+                                                    video.Title = videoTitleElement.GetString();
+                                                    
+                                                if (videoElement.TryGetProperty("description", out JsonElement videoDescElement))
+                                                    video.Description = videoDescElement.GetString();
+                                                    
+                                                if (videoElement.TryGetProperty("duration", out JsonElement videoDurationElement))
+                                                {
+                                                    if (videoDurationElement.ValueKind == JsonValueKind.Number)
+                                                        video.Duration = videoDurationElement.GetInt32();
+                                                }
+                                                
+                                                // Безопасно получаем image
+                                                if (videoElement.TryGetProperty("image", out JsonElement videoImageElement))
+                                                {
+                                                    if (videoImageElement.ValueKind == JsonValueKind.String)
                                                     {
-                                                        // Безопасное получение height
-                                                        if (heightElement.ValueKind == JsonValueKind.Number)
-                                                            size.Height = heightElement.GetInt32();
-                                                        else if (heightElement.ValueKind == JsonValueKind.String)
-                                                        {
-                                                            int tempHeight;
-                                                            if (int.TryParse(heightElement.GetString(), out tempHeight))
-                                                                size.Height = tempHeight;
-                                                        }
+                                                        string imageUrl = videoImageElement.GetString();
+                                                        video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
                                                     }
+                                                    else if (videoImageElement.ValueKind == JsonValueKind.Object)
+                                                    {
+                                                        string imageUrl = videoImageElement.ToString();
+                                                        video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
+                                                    }
+                                                    else if (videoImageElement.ValueKind == JsonValueKind.Number)
+                                                    {
+                                                        string imageUrl = videoImageElement.GetInt64().ToString();
+                                                        video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
+                                                    }
+                                                    else
+                                                        video.Image = new List<PhotoSize>();
+                                                }
+                                                
+                                                if (videoElement.TryGetProperty("player", out JsonElement videoPlayerElement))
+                                                    video.Player = videoPlayerElement.GetString();
+                                                
+                                                attachment.Video = video;
+                                            }
+                                            
+                                            // Обрабатываем документы
+                                            if (attachment.Type == "doc" && attachmentElement.TryGetProperty("doc", out JsonElement docElement))
+                                            {
+                                                var docAttachment = new Doc();
+                                                
+                                                if (docElement.TryGetProperty("id", out JsonElement docIdElement))
+                                                    docAttachment.Id = docIdElement.GetInt32();
                                                     
-                                                    photo.Sizes.Add(size);
-                                                }
+                                                if (docElement.TryGetProperty("owner_id", out JsonElement docOwnerIdElement))
+                                                    docAttachment.OwnerId = docOwnerIdElement.GetInt32();
+                                                    
+                                                if (docElement.TryGetProperty("title", out JsonElement docTitleElement))
+                                                    docAttachment.Title = docTitleElement.GetString();
+                                                    
+                                                if (docElement.TryGetProperty("size", out JsonElement docSizeElement))
+                                                    docAttachment.Size = docSizeElement.GetInt32();
+                                                    
+                                                if (docElement.TryGetProperty("ext", out JsonElement docExtElement))
+                                                    docAttachment.Ext = docExtElement.GetString();
+                                                    
+                                                if (docElement.TryGetProperty("url", out JsonElement docUrlElement))
+                                                    docAttachment.Url = docUrlElement.GetString();
+                                                
+                                                attachment.Doc = docAttachment;
                                             }
                                             
-                                            attachment.Photo = photo;
+                                            post.Attachments.Add(attachment);
                                         }
-                                        
-                                        // Обрабатываем видео
-                                        if (attachment.Type == "video" && attachmentElement.TryGetProperty("video", out JsonElement videoElement))
-                                        {
-                                            var video = new Video();
-                                            
-                                            if (videoElement.TryGetProperty("id", out JsonElement videoIdElement))
-                                                video.Id = videoIdElement.GetInt32();
-                                                
-                                            if (videoElement.TryGetProperty("owner_id", out JsonElement videoOwnerIdElement))
-                                                video.OwnerId = videoOwnerIdElement.GetInt32();
-                                                
-                                            if (videoElement.TryGetProperty("title", out JsonElement videoTitleElement))
-                                                video.Title = videoTitleElement.GetString();
-                                                
-                                            if (videoElement.TryGetProperty("description", out JsonElement videoDescElement))
-                                                video.Description = videoDescElement.GetString();
-                                                
-                                            if (videoElement.TryGetProperty("duration", out JsonElement videoDurationElement))
-                                            {
-                                                if (videoDurationElement.ValueKind == JsonValueKind.Number)
-                                                    video.Duration = videoDurationElement.GetInt32();
-                                            }
-                                            
-                                            // Безопасно получаем image
-                                            if (videoElement.TryGetProperty("image", out JsonElement videoImageElement))
-                                            {
-                                                if (videoImageElement.ValueKind == JsonValueKind.String)
-                                                {
-                                                    string imageUrl = videoImageElement.GetString();
-                                                    video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
-                                                }
-                                                else if (videoImageElement.ValueKind == JsonValueKind.Object)
-                                                {
-                                                    string imageUrl = videoImageElement.ToString();
-                                                    video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
-                                                }
-                                                else if (videoImageElement.ValueKind == JsonValueKind.Number)
-                                                {
-                                                    string imageUrl = videoImageElement.GetInt64().ToString();
-                                                    video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
-                                                }
-                                                else
-                                                    video.Image = new List<PhotoSize>();
-                                            }
-                                            
-                                            if (videoElement.TryGetProperty("player", out JsonElement videoPlayerElement))
-                                                video.Player = videoPlayerElement.GetString();
-                                            
-                                            attachment.Video = video;
-                                        }
-                                        
-                                        // Обрабатываем документы
-                                        if (attachment.Type == "doc" && attachmentElement.TryGetProperty("doc", out JsonElement docElement))
-                                        {
-                                            var docAttachment = new Doc();
-                                            
-                                            if (docElement.TryGetProperty("id", out JsonElement docIdElement))
-                                                docAttachment.Id = docIdElement.GetInt32();
-                                                
-                                            if (docElement.TryGetProperty("owner_id", out JsonElement docOwnerIdElement))
-                                                docAttachment.OwnerId = docOwnerIdElement.GetInt32();
-                                                
-                                            if (docElement.TryGetProperty("title", out JsonElement docTitleElement))
-                                                docAttachment.Title = docTitleElement.GetString();
-                                                
-                                            if (docElement.TryGetProperty("size", out JsonElement docSizeElement))
-                                                docAttachment.Size = docSizeElement.GetInt32();
-                                                
-                                            if (docElement.TryGetProperty("ext", out JsonElement docExtElement))
-                                                docAttachment.Ext = docExtElement.GetString();
-                                                
-                                            if (docElement.TryGetProperty("url", out JsonElement docUrlElement))
-                                                docAttachment.Url = docUrlElement.GetString();
-                                            
-                                            attachment.Doc = docAttachment;
-                                        }
-                                        
-                                        post.Attachments.Add(attachment);
                                     }
+                                    
+                                    // Обрабатываем лайки, комментарии и репосты
+                                    if (item.TryGetProperty("likes", out JsonElement likesElement))
+                                    {
+                                        var likes = new Likes();
+                                        if (likesElement.TryGetProperty("count", out JsonElement likesCountElement))
+                                            likes.Count = likesCountElement.GetInt32();
+                                        post.Likes = likes;
+                                    }
+                                    
+                                    if (item.TryGetProperty("comments", out JsonElement commentsElement))
+                                    {
+                                        var comments = new Comments();
+                                        if (commentsElement.TryGetProperty("count", out JsonElement commentsCountElement))
+                                            comments.Count = commentsCountElement.GetInt32();
+                                        post.Comments = comments;
+                                    }
+                                    
+                                    if (item.TryGetProperty("reposts", out JsonElement repostsElement))
+                                    {
+                                        var reposts = new Reposts();
+                                        if (repostsElement.TryGetProperty("count", out JsonElement repostsCountElement))
+                                            reposts.Count = repostsCountElement.GetInt32();
+                                        post.Reposts = reposts;
+                                    }
+                                    
+                                    result.Response.Items.Add(post);
                                 }
-                                
-                                // Обрабатываем лайки, комментарии и репосты
-                                if (item.TryGetProperty("likes", out JsonElement likesElement))
-                                {
-                                    var likes = new Likes();
-                                    if (likesElement.TryGetProperty("count", out JsonElement likesCountElement))
-                                        likes.Count = likesCountElement.GetInt32();
-                                    post.Likes = likes;
-                                }
-                                
-                                if (item.TryGetProperty("comments", out JsonElement commentsElement))
-                                {
-                                    var comments = new Comments();
-                                    if (commentsElement.TryGetProperty("count", out JsonElement commentsCountElement))
-                                        comments.Count = commentsCountElement.GetInt32();
-                                    post.Comments = comments;
-                                }
-                                
-                                if (item.TryGetProperty("reposts", out JsonElement repostsElement))
-                                {
-                                    var reposts = new Reposts();
-                                    if (repostsElement.TryGetProperty("count", out JsonElement repostsCountElement))
-                                        reposts.Count = repostsCountElement.GetInt32();
-                                    post.Reposts = reposts;
-                                }
-                                
-                                result.Response.Items.Add(post);
                             }
                         }
                     }
+                    
+                    return result;
                 }
-                
-                return result;
+                catch (JsonException ex)
+                {
+                    Debug.WriteLine($"[ProfilePage] JSON error: {ex.Message}");
+                    throw;
+                }
             }
-            catch (JsonException ex)
+            catch (Exception ex)
             {
-                Debug.WriteLine($"JSON error: {ex.Message}");
-                throw;
+                Debug.WriteLine($"[ProfilePage] Error getting posts: {ex.Message}");
+                ShowError($"Ошибка при загрузке постов: {ex.Message}");
+                return null;
             }
         }
 
@@ -395,7 +440,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка загрузки данных: {ex.Message}");
+                Debug.WriteLine($"[ProfilePage] Ошибка загрузки данных: {ex.Message}");
                 ShowError("Ошибка загрузки данных профиля или постов.");
             }
             finally

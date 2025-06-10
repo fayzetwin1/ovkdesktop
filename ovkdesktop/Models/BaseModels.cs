@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.IO;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace ovkdesktop.Models
 {
@@ -438,6 +441,17 @@ namespace ovkdesktop.Models
     {
         [JsonPropertyName("token")]
         public string Token { get; set; }
+        
+        [JsonPropertyName("instance_url")]
+        public string InstanceUrl { get; set; }
+        
+        public OVKDataBody() { }
+        
+        public OVKDataBody(string token, string instanceUrl = "https://ovk.to/")
+        {
+            Token = token;
+            InstanceUrl = instanceUrl;
+        }
     }
 
     public class Video
@@ -855,5 +869,109 @@ namespace ovkdesktop.Models
         public string Photo800 { get; set; }
         [JsonPropertyName("player")]
         public string Player { get; set; }
+    }
+
+    public class AppSettings
+    {
+        [JsonPropertyName("instance_url")]
+        public string InstanceUrl { get; set; } = "https://ovk.to/";
+        
+        [JsonPropertyName("theme")]
+        public string Theme { get; set; } = "Light";
+        
+        [JsonPropertyName("notifications_enabled")]
+        public bool NotificationsEnabled { get; set; } = true;
+        
+        [JsonPropertyName("auto_play_videos")]
+        public bool AutoPlayVideos { get; set; } = false;
+        
+        [JsonPropertyName("cache_images")]
+        public bool CacheImages { get; set; } = true;
+        
+        [JsonPropertyName("language")]
+        public string Language { get; set; } = "ru";
+        
+        [JsonPropertyName("last_login")]
+        public string LastLogin { get; set; } = "";
+
+        [JsonIgnore]
+        private static readonly string SettingsFilePath = "ovkcfg.json";
+        
+        public static async Task<AppSettings> LoadAsync()
+        {
+            try
+            {
+                if (File.Exists(SettingsFilePath))
+                {
+                    using var fs = new FileStream(SettingsFilePath, FileMode.Open, FileAccess.Read);
+                    var settings = await JsonSerializer.DeserializeAsync<AppSettings>(fs);
+                    return settings ?? new AppSettings();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка при загрузке настроек: {ex.Message}");
+            }
+            
+            return new AppSettings();
+        }
+        
+        public async Task SaveAsync()
+        {
+            try
+            {
+                using var fs = new FileStream(SettingsFilePath, FileMode.Create, FileAccess.Write);
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                await JsonSerializer.SerializeAsync(fs, this, options);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Ошибка при сохранении настроек: {ex.Message}");
+            }
+        }
+        
+        public static async Task SaveInstanceUrlAsync(string instanceUrl)
+        {
+            var settings = await LoadAsync();
+            settings.InstanceUrl = instanceUrl;
+            await settings.SaveAsync();
+        }
+        
+        public static async Task<string> GetInstanceUrlAsync()
+        {
+            var settings = await LoadAsync();
+            return settings.InstanceUrl;
+        }
+        
+        public static async Task SaveSettingAsync<T>(string propertyName, T value)
+        {
+            var settings = await LoadAsync();
+            var property = typeof(AppSettings).GetProperty(propertyName);
+            
+            if (property != null && property.CanWrite)
+            {
+                property.SetValue(settings, value);
+                await settings.SaveAsync();
+            }
+            else
+            {
+                Debug.WriteLine($"Ошибка: свойство {propertyName} не найдено или недоступно для записи");
+            }
+        }
+        
+        public static async Task<T> GetSettingAsync<T>(string propertyName, T defaultValue = default)
+        {
+            var settings = await LoadAsync();
+            var property = typeof(AppSettings).GetProperty(propertyName);
+            
+            if (property != null && property.CanRead)
+            {
+                var value = property.GetValue(settings);
+                return value != null ? (T)value : defaultValue;
+            }
+            
+            Debug.WriteLine($"Ошибка: свойство {propertyName} не найдено или недоступно для чтения");
+            return defaultValue;
+        }
     }
 }

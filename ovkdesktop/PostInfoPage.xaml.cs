@@ -29,6 +29,8 @@ namespace ovkdesktop
         private int postId;
         private int ownerId;
         private string accessToken;
+        private HttpClient httpClient;
+        private string instanceUrl;
 
         public PostInfoPage()
         {
@@ -43,11 +45,31 @@ namespace ovkdesktop
                 postId = parameters.PostId;
                 ownerId = parameters.OwnerId;
                 Debug.WriteLine($"[PostInfoPage] Navigated with PostId={postId}, OwnerId={ownerId}");
-                _ = LoadPostInfoAsync();
+                _ = InitializeClientAndLoadAsync();
             }
             else
             {
-                ShowError("������������ ��������� ��� �������� �����.");
+                ShowError("Некорректные параметры для загрузки поста.");
+            }
+        }
+
+        private async Task InitializeClientAndLoadAsync()
+        {
+            try
+            {
+                // Получаем URL инстанса из настроек
+                instanceUrl = await SessionHelper.GetInstanceUrlAsync();
+                httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
+                
+                Debug.WriteLine($"[PostInfoPage] Initialized with instance URL: {instanceUrl}");
+                
+                // Теперь загружаем информацию о посте
+                await LoadPostInfoAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PostInfoPage] Error initializing: {ex.Message}");
+                ShowError($"Ошибка инициализации: {ex.Message}");
             }
         }
 
@@ -63,7 +85,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostInfoPage] ������ �������� ������: {ex}");
+                Debug.WriteLine($"[PostInfoPage] Ошибка загрузки токена: {ex}");
                 return null;
             }
         }
@@ -75,7 +97,7 @@ namespace ovkdesktop
                 var tokenBody = await LoadTokenAsync();
                 if (tokenBody == null || string.IsNullOrEmpty(tokenBody.Token))
                 {
-                    ShowError("����� �� ������. ����������, �������������.");
+                    ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
                     return;
                 }
 
@@ -84,8 +106,8 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostInfoPage] ������ �������� ���������� � �����: {ex}");
-                ShowError($"������ �������� ���������� � �����: {ex.Message}");
+                Debug.WriteLine($"[PostInfoPage] Ошибка загрузки информации о посте: {ex}");
+                ShowError($"Ошибка загрузки информации о посте: {ex.Message}");
             }
         }
 
@@ -93,18 +115,19 @@ namespace ovkdesktop
         {
             try
             {
-                using var httpClient = new HttpClient { BaseAddress = new Uri("https://ovk.to/") };
-                string url = $"method/wall.getComments?owner_id={ownerId}&post_id={postId}&extended=1&access_token={accessToken}&v=5.131";
-                Debug.WriteLine($"[PostInfoPage] ������ ������������: {url}");
+                // Используем более раннюю версию API для лучшей совместимости
+                string url = $"method/wall.getComments?owner_id={ownerId}&post_id={postId}&extended=1&access_token={accessToken}&v=5.126";
+                Debug.WriteLine($"[PostInfoPage] Запрос комментариев: {instanceUrl}{url}");
+                
                 var response = await httpClient.GetAsync(url);
-                Debug.WriteLine($"[PostInfoPage] ������ ������: {response.StatusCode}");
+                Debug.WriteLine($"[PostInfoPage] Статус ответа: {response.StatusCode}");
 
                 var json = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[PostInfoPage] ����� �������: {json}");
+                Debug.WriteLine($"[PostInfoPage] Текст ответа: {json}");
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    ShowError($"������ ��������� ������������: {response.StatusCode}");
+                    ShowError($"Ошибка получения комментариев: {response.StatusCode}");
                     return;
                 }
 

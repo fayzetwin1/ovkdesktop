@@ -81,7 +81,7 @@ namespace ovkdesktop
                 OVKDataBody token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("“ÓÍÂÌ ÌÂ Ì‡È‰ÂÌ. œÓÊ‡ÎÛÈÒÚ‡, ‡‚ÚÓËÁÛÈÚÂÒ¸.");
+                    ShowError("ÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ. ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ, ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ.");
                     return;
                 }
 
@@ -137,11 +137,11 @@ namespace ovkdesktop
                         Friends.Add(friend);
                     }
 
-                    FriendsCount.Text = $"¬ÒÂ„Ó ‰ÛÁÂÈ: {response.Response.Count}";
+                    FriendsCount.Text = $"ÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ: {response.Response.Count}";
                 }
                 else
                 {
-                    ShowError("ÕÂ Û‰‡ÎÓÒ¸ Á‡„ÛÁËÚ¸ ÒÔËÒÓÍ ‰ÛÁÂÈ.");
+                    ShowError("ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ.");
                 }
 
 
@@ -189,12 +189,12 @@ namespace ovkdesktop
                     requestParams = string.Join(" ", requestParamsElement);
                 }
 
-                ShowError($"{errorMsg} ( Ó‰: {errorCode})");
+                ShowError($"{errorMsg} (ÔøΩÔøΩÔøΩ: {errorCode})");
             }
             catch (JsonException jsonEx)
             {
                 Debug.WriteLine($"exception: {jsonEx.Message}");
-                ShowError("Œ¯Ë·Í‡ API");
+                ShowError("ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ API");
             }
         }
 
@@ -207,10 +207,10 @@ namespace ovkdesktop
 
                 var flyout = new MenuFlyout();
 
-                var profileItem = new MenuFlyoutItem { Text = "œÓÙËÎ¸" };
+                var profileItem = new MenuFlyoutItem { Text = "ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ" };
                 profileItem.Click += (s, args) => NavigateToProfile(selectedFriend);
 
-                var deleteItem = new MenuFlyoutItem { Text = "”‰‡ÎËÚ¸" };
+                var deleteItem = new MenuFlyoutItem { Text = "ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ" };
                 deleteItem.Click += async (s, args) => await ShowDeleteConfirmationDialogAsync(selectedFriend);
 
                 flyout.Items.Add(profileItem);
@@ -225,10 +225,10 @@ namespace ovkdesktop
         {
             var dialog = new ContentDialog
             {
-                Title = "”‰‡ÎÂÌËÂ ‰Û„‡",
-                Content = $"¬˚ ‰ÂÈÒÚ‚ËÚÂÎ¸ÌÓ ıÓÚËÚÂ Û‰‡ÎËÚ¸ {friend.FirstName} {friend.LastName} ËÁ ‰ÛÁÂÈ?",
-                PrimaryButtonText = "”‰‡ÎËÚ¸",
-                CloseButtonText = "ŒÚÏÂÌ‡",
+                Title = "ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩ",
+                Content = $"ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ {friend.FirstName} {friend.LastName} ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ?",
+                PrimaryButtonText = "ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ",
+                CloseButtonText = "ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ",
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = this.XamlRoot
             };
@@ -252,7 +252,7 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    ShowError("ÕÂ Û‰‡ÎÓÒ¸ Û‰‡ÎËÚ¸ ‰Û„‡.");
+                    ShowError("ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩ.");
                 }
             }
         }
@@ -274,11 +274,33 @@ namespace ovkdesktop
 
         public class APIServiceFriends
         {
-            private readonly System.Net.Http.HttpClient httpClient;
+            private HttpClient httpClient;
+            private string instanceUrl;
+            
             public APIServiceFriends()
             {
-                httpClient = new System.Net.Http.HttpClient();
-                httpClient.BaseAddress = new Uri("https://ovk.to/");
+                InitializeHttpClientAsync();
+            }
+            
+            private async void InitializeHttpClientAsync()
+            {
+                try
+                {
+                    instanceUrl = await SessionHelper.GetInstanceUrlAsync();
+                    httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
+                    
+                    Debug.WriteLine($"[APIServiceFriends] Initialized with instance URL: {instanceUrl}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[APIServiceFriends] Error initializing: {ex.Message}");
+                    
+                    // –ò—Å–ø–æ–ª—å–∑—É–µ–º URL –ø–æ —É–º–æ–ª—á–∞–Ω–∏—é –≤ —Å–ª—É—á–∞–µ –æ—à–∏–±–∫–∏
+                    instanceUrl = "https://ovk.to/";
+                    httpClient = new HttpClient { BaseAddress = new Uri(instanceUrl) };
+                    
+                    Debug.WriteLine($"[APIServiceFriends] Fallback to default URL: {instanceUrl}");
+                }
             }
 
 
@@ -286,14 +308,23 @@ namespace ovkdesktop
             {
                 try
                 {
-                    string url = $"method/friends.delete?access_token={token}&user_id={friendId}&v=5.131";
+                    // –ü—Ä–æ–≤–µ—Ä—è–µ–º, –∏–Ω–∏—Ü–∏–∞–ª–∏–∑–∏—Ä–æ–≤–∞–Ω –ª–∏ –∫–ª–∏–µ–Ω—Ç
+                    if (httpClient == null)
+                    {
+                        await Task.Run(() => InitializeHttpClientAsync());
+                        await Task.Delay(500); // –î–∞–µ–º –≤—Ä–µ–º—è –Ω–∞ –∏–Ω–∏—Ü–∏–∞–ª–∏–∑–∞—Ü–∏—é
+                    }
+                    
+                    // –ò—Å–ø–æ–ª—å–∑—É–µ–º –±–æ–ª–µ–µ —Ä–∞–Ω–Ω—é—é –≤–µ—Ä—Å–∏—é API –¥–ª—è –ª—É—á—à–µ–π —Å–æ–≤–º–µ—Å—Ç–∏–º–æ—Å—Ç–∏
+                    string url = $"method/friends.delete?access_token={token}&user_id={friendId}&v=5.126";
+                    Debug.WriteLine($"[APIServiceFriends] DeleteFriend URL: {instanceUrl}{url}");
 
                     var response = await httpClient.GetAsync(url);
                     response.EnsureSuccessStatusCode();
 
                     var content = await response.Content.ReadAsStringAsync();
                     using JsonDocument doc = JsonDocument.Parse(content);
-                    // ŒÊË‰‡ÂÚÒˇ, ˜ÚÓ ÓÚ‚ÂÚ ÒÓ‰ÂÊËÚ "response" ÒÓ ÁÌ‡˜ÂÌËÂÏ 1 ÔË ÛÒÔÂıÂ
+                    // –ü—Ä–æ–≤–µ—Ä—è–µ–º, —á—Ç–æ –æ—Ç–≤–µ—Ç —Å–æ–¥–µ—Ä–∂–∏—Ç "response" —Å–æ –∑–Ω–∞—á–µ–Ω–∏–µ–º 1 –∏–ª–∏ —É—Å–ø–µ—Ö
                     if (doc.RootElement.TryGetProperty("response", out JsonElement resp) &&
                         resp.ValueKind == JsonValueKind.Number &&
                         resp.GetInt32() == 1)
@@ -303,7 +334,7 @@ namespace ovkdesktop
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"exception in DeleteFriendAsync: {ex.Message}");
+                    Debug.WriteLine($"[APIServiceFriends] Exception in DeleteFriendAsync: {ex.Message}");
                 }
                 return false;
             }
@@ -312,7 +343,16 @@ namespace ovkdesktop
             {
                 try
                 {
-                    string url = $"method/friends.get?access_token={token}&fields=photo_200&v=5.131";
+                    // –ü—Ä–æ–≤–µ—Ä—è–µ–º, –∏–Ω–∏—Ü–∏–∞–ª–∏–∑–∏—Ä–æ–≤–∞–Ω –ª–∏ –∫–ª–∏–µ–Ω—Ç
+                    if (httpClient == null)
+                    {
+                        await Task.Run(() => InitializeHttpClientAsync());
+                        await Task.Delay(500); // –î–∞–µ–º –≤—Ä–µ–º—è –Ω–∞ –∏–Ω–∏—Ü–∏–∞–ª–∏–∑–∞—Ü–∏—é
+                    }
+                    
+                    // –ò—Å–ø–æ–ª—å–∑—É–µ–º –±–æ–ª–µ–µ —Ä–∞–Ω–Ω—é—é –≤–µ—Ä—Å–∏—é API –¥–ª—è –ª—É—á—à–µ–π —Å–æ–≤–º–µ—Å—Ç–∏–º–æ—Å—Ç–∏
+                    string url = $"method/friends.get?access_token={token}&fields=photo_200&v=5.126";
+                    Debug.WriteLine($"[APIServiceFriends] GetFriends URL: {instanceUrl}{url}");
 
                     var response = await httpClient.GetAsync(url);
                     response.EnsureSuccessStatusCode();
@@ -327,17 +367,17 @@ namespace ovkdesktop
                 }
                 catch (HttpRequestException ex)
                 {
-                    Debug.WriteLine($"exception: {ex.Message}");
+                    Debug.WriteLine($"[APIServiceFriends] HTTP exception: {ex.Message}");
                     return null;
                 }
                 catch (JsonException ex)
                 {
-                    Debug.WriteLine($"exception: {ex.Message}");
+                    Debug.WriteLine($"[APIServiceFriends] JSON exception: {ex.Message}");
                     return null;
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"exception: {ex.Message}");
+                    Debug.WriteLine($"[APIServiceFriends] General exception: {ex.Message}");
                     return null;
                 }
             }

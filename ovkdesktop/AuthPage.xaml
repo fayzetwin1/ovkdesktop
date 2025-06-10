@@ -17,6 +17,6 @@
         <TextBox x:Name="usernameTextBox" Header="Введите свою почту от аккаунта: " PlaceholderText="veselcraft@gmail.com" MaxLength="30"/>
         <PasswordBox x:Name="passwordTextBox" Header="Введите свой пароль: " PlaceholderText="qwerty123"  />
         <Button Content="Авторизоваться" Width="250" Click="LoginButtonClick" />
-        <HyperlinkButton Content="Регистрация" NavigateUri="https://ovk.to/reg" Margin="75,0,0,0"/>
+        <HyperlinkButton x:Name="registrationLink" Content="Регистрация" Click="RegistrationLink_Click" Margin="75,0,0,0"/>
     </StackPanel>
 </Page>

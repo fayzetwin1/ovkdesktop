@@ -19,6 +19,7 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using ovkdesktop.Models;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -40,9 +41,6 @@ namespace ovkdesktop
         public App()
         {
             this.InitializeComponent();
-
-            
-
             this.UnhandledException += OnAppUnhandledException;
         }
 
@@ -50,7 +48,7 @@ namespace ovkdesktop
         {
             Debug.WriteLine($"XAML UnhandledException: {e.Exception.Message}");
             Debug.WriteLine(e.Exception.StackTrace);
-            // e.Handled = true; // если хочешь поглотить ошибку
+            // e.Handled = true; // if you want to handle the error
         }
         
 
@@ -83,60 +81,8 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"XAML BindingFailed: {e.Message}");
             };
-
-            //m_window = new MainWindow();
-            //m_window.Activate();
         }
 
         private Window? m_window;
     }
-
-    public static class SessionHelper
-    {
-        public static async Task<bool> IsTokenValidAsync()
-        {
-            string token = await GetTokenAsync();
-            if (string.IsNullOrEmpty(token))
-                return false;
-            try
-            {
-                using var httpClient = new HttpClient { BaseAddress = new Uri("https://ovk.to/") };
-                var url = $"method/users.get?access_token={token}&v=5.131";
-                var response = await httpClient.GetAsync(url);
-                var json = await response.Content.ReadAsStringAsync();
-
-                using var doc = JsonDocument.Parse(json);
-                if (doc.RootElement.TryGetProperty("response", out var arr) && arr.ValueKind == JsonValueKind.Array)
-                    return true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error while validating token. It may be expired or invalid. More info: {ex.Message}");
-            }
-            return false;
-        }
-
-        public static async Task<string> GetTokenAsync()
-        {
-            try
-            {
-                if (!File.Exists("ovkdata.json"))
-                    return null;
-                using var fs = new FileStream("ovkdata.json", FileMode.Open, FileAccess.Read);
-                var data = await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
-                return data?.Token;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        public static void RemoveToken()
-        {
-            if (File.Exists("ovkdata.json"))
-                File.Delete("ovkdata.json");
-        }
-
-    }
-    }
+}
