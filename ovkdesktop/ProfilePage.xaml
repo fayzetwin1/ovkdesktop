@@ -14,6 +14,7 @@
     <Page.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -40,13 +41,15 @@
 
             <ListView x:Name="PostsListView" ItemsSource="{x:Bind Posts}">
                 <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="models:PostAP">
+                    <DataTemplate x:DataType="models:UserWallPost">
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
 								BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
 								BorderThickness="1" CornerRadius="8"
 								Margin="0,5,0,10" Padding="15">
                             <Grid>
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -62,26 +65,74 @@
                                 <TextBlock Grid.Row="1"
 										   Text="{Binding Text}"
 										   TextWrapping="Wrap" Margin="0,0,0,10"
-										   Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                           Foreground="{ThemeResource TextFillColorPrimary}"/>
 
                                 <!-- image -->
                                 <Image Grid.Row="2"
-									   Source="{Binding MainImageUrl, TargetNullValue=''}"
+									   Source="{Binding MainImageUrl}"
 									   Stretch="Uniform" MaxHeight="400"
 									   HorizontalAlignment="Left" Margin="0,0,0,10"
 									   Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
+                                <!-- video -->
+                                <Grid Grid.Row="3" 
+                                      Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
+                                      Margin="0,0,0,10">
+                                    <MediaPlayerElement 
+                                        Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                                        MaxHeight="400" 
+                                        HorizontalAlignment="Left"
+                                        AreTransportControlsEnabled="True"/>
+                                </Grid>
+
+                                <!-- gif -->
+                                <Image Grid.Row="4"
+                                       Source="{Binding GifUrl}"
+                                       Stretch="Uniform" MaxHeight="400"
+                                       HorizontalAlignment="Left" Margin="0,0,0,10"
+                                       Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                <!-- repost -->
+                                <Border Grid.Row="5" 
+                                        Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="4"
+                                        Padding="10" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding RepostOwnerText}" 
+                                                   Opacity="0.7" Margin="0,0,0,5"/>
+                                        <TextBlock Text="{Binding Repost.Text}" 
+                                                   TextWrapping="Wrap" Margin="0,0,0,5"
+                                                   Foreground="{ThemeResource TextFillColorPrimary}"/>
+                                        <Image Source="{Binding Repost.MainImageUrl}"
+                                               Stretch="Uniform" MaxHeight="300"
+                                               HorizontalAlignment="Left"
+                                               Visibility="{Binding Repost.HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <Image Source="{Binding Repost.GifUrl}"
+                                               Stretch="Uniform" MaxHeight="300"
+                                               HorizontalAlignment="Left"
+                                               Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <Grid Visibility="{Binding Repost.HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
+                                              Margin="0,5,0,0">
+                                            <MediaPlayerElement 
+                                                Source="{Binding Repost.MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                                                MaxHeight="300" 
+                                                HorizontalAlignment="Left"
+                                                AreTransportControlsEnabled="True"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- likes and comments count -->
-                                <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="15" Tapped="ShowPostComments_Tapped">
+                                <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15" Tapped="ShowPostComments_Tapped">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <FontIcon Glyph="&#xE006;" FontSize="16"/>
-                                        <!-- if likes count == null, likes count == 0 -->
                                         <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <FontIcon Glyph="&#xE8BD;" FontSize="16"/>
-                                        <!-- if comments count == null, comments count == 0 -->
                                         <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -97,8 +148,6 @@
                     <NavigationThemeTransition  />
                 </TransitionCollection>
             </Frame.ContentTransitions>
-
-         </Frame>
+        </Frame>
     </Grid>
-
 </Page>
