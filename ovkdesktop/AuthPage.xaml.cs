@@ -132,8 +132,8 @@ namespace ovkdesktop
                 }
                 catch (JsonException jsonEx)
                 {
-                    Debug.WriteLine($"[AuthPage] Ошибка разбора JSON: {jsonEx.Message}");
-                    Debug.WriteLine($"[AuthPage] Данные ошибки: {errorData}");
+                    Debug.WriteLine($"[AuthPage] JSON parsing error: {jsonEx.Message}");
+                    Debug.WriteLine($"[AuthPage] error data: {errorData}");
                     
                     ContentDialog errorDialog = new ContentDialog
                     {
@@ -161,12 +161,12 @@ namespace ovkdesktop
 
                 await errorWeb.ShowAsync();
 
-                Debug.WriteLine($"[AuthPage] Ошибка сетевого подключения: {ex.Message}");
-                Debug.WriteLine($"[AuthPage] Статус: {ex.Status}");
+                Debug.WriteLine($"[AuthPage] network error: {ex.Message}");
+                Debug.WriteLine($"[AuthPage] status: {ex.Status}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AuthPage] Общая ошибка: {ex.Message}");
+                Debug.WriteLine($"[AuthPage] general error: {ex.Message}");
                 Debug.WriteLine($"[AuthPage] Stack trace: {ex.StackTrace}");
                 
                 ContentDialog errorDialog = new ContentDialog

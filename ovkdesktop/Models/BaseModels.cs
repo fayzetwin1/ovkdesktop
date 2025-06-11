@@ -437,6 +437,39 @@ namespace ovkdesktop.Models
         public List<UserProfile> Response { get; set; }
     }
 
+    public class GroupProfile
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("screen_name")]
+        public string ScreenName { get; set; }
+
+        [JsonPropertyName("photo_50")]
+        public string Photo50 { get; set; }
+        
+        [JsonPropertyName("photo_100")]
+        public string Photo100 { get; set; }
+        
+        [JsonPropertyName("photo_200")]
+        public string Photo200 { get; set; }
+        
+        [JsonPropertyName("photo_max")]
+        public string PhotoMax { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("members_count")]
+        public int MembersCount { get; set; }
+
+        [JsonPropertyName("site")]
+        public string Site { get; set; }
+    }
+
     public class OVKDataBody
     {
         [JsonPropertyName("token")]
@@ -700,6 +733,35 @@ namespace ovkdesktop.Models
                     return size.Url;
             }
 
+            return Sizes.FirstOrDefault(s => !string.IsNullOrEmpty(s.Url))?.Url;
+        }
+        
+        // Метод для получения URL самого большого фото
+        public string GetLargestPhotoUrl()
+        {
+            if (Sizes == null || !Sizes.Any())
+                return null;
+                
+            // Сначала проверяем наличие фото по приоритетным типам
+            var priorityTypes = new[] { "w", "z", "y", "x", "m", "s" };
+            
+            foreach (var type in priorityTypes)
+            {
+                var size = Sizes.FirstOrDefault(s => s.Type == type);
+                if (size != null && !string.IsNullOrEmpty(size.Url))
+                    return size.Url;
+            }
+            
+            // Если не нашли по типам, ищем самое большое по размеру
+            var largestSize = Sizes
+                .Where(s => s.Width > 0 && s.Height > 0 && !string.IsNullOrEmpty(s.Url))
+                .OrderByDescending(s => s.Width * s.Height)
+                .FirstOrDefault();
+                
+            if (largestSize != null)
+                return largestSize.Url;
+                
+            // Возвращаем первый доступный URL, если ничего не нашли
             return Sizes.FirstOrDefault(s => !string.IsNullOrEmpty(s.Url))?.Url;
         }
     }

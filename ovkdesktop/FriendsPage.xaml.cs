@@ -81,7 +81,7 @@ namespace ovkdesktop
                 OVKDataBody token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("����� �� ������. ����������, �������������.");
+                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
                     return;
                 }
 
@@ -137,11 +137,12 @@ namespace ovkdesktop
                         Friends.Add(friend);
                     }
 
-                    FriendsCount.Text = $"����� ������: {response.Response.Count}";
+                    int count = response.Response.Count;
+                    FriendsCount.Text = $"Всего друзей: {count}";
                 }
                 else
                 {
-                    ShowError("�� ������� ��������� ������ ������.");
+                    ShowError("Не удалось загрузить список друзей.");
                 }
 
 
@@ -189,12 +190,12 @@ namespace ovkdesktop
                     requestParams = string.Join(" ", requestParamsElement);
                 }
 
-                ShowError($"{errorMsg} (���: {errorCode})");
+                ShowError($"{errorMsg} (код: {errorCode})");
             }
             catch (JsonException jsonEx)
             {
                 Debug.WriteLine($"exception: {jsonEx.Message}");
-                ShowError("������ API");
+                ShowError("Ошибка при обработке ответа от API");
             }
         }
 
@@ -207,10 +208,10 @@ namespace ovkdesktop
 
                 var flyout = new MenuFlyout();
 
-                var profileItem = new MenuFlyoutItem { Text = "�������" };
+                var profileItem = new MenuFlyoutItem { Text = "Профиль" };
                 profileItem.Click += (s, args) => NavigateToProfile(selectedFriend);
 
-                var deleteItem = new MenuFlyoutItem { Text = "�������" };
+                var deleteItem = new MenuFlyoutItem { Text = "Удалить" };
                 deleteItem.Click += async (s, args) => await ShowDeleteConfirmationDialogAsync(selectedFriend);
 
                 flyout.Items.Add(profileItem);
@@ -225,10 +226,10 @@ namespace ovkdesktop
         {
             var dialog = new ContentDialog
             {
-                Title = "�������� �����",
-                Content = $"�� ������������� ������ ������� {friend.FirstName} {friend.LastName} �� ������?",
-                PrimaryButtonText = "�������",
-                CloseButtonText = "������",
+                Title = "Удалить друга",
+                Content = $"Вы уверены, что хотите удалить {friend.FirstName} {friend.LastName} из списка друзей?",
+                PrimaryButtonText = "Удалить",
+                CloseButtonText = "Отмена",
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = this.XamlRoot
             };
@@ -252,7 +253,7 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    ShowError("�� ������� ������� �����.");
+                    ShowError("Не удалось удалить друга.");
                 }
             }
         }
@@ -295,7 +296,7 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine($"[APIServiceFriends] Error initializing: {ex.Message}");
                     
-                    // Используем URL по умолчанию в случае ошибки
+                    // use default URL in case of error
                     instanceUrl = "https://ovk.to/";
                     httpClient = new HttpClient { BaseAddress = new Uri(instanceUrl) };
                     
@@ -308,14 +309,14 @@ namespace ovkdesktop
             {
                 try
                 {
-                    // Проверяем, инициализирован ли клиент
+                    // check if client is initialized
                     if (httpClient == null)
                     {
                         await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // Даем время на инициализацию
+                        await Task.Delay(500); // give time to initialize
                     }
                     
-                    // Используем более раннюю версию API для лучшей совместимости
+                    // use older version of API for better compatibility
                     string url = $"method/friends.delete?access_token={token}&user_id={friendId}&v=5.126";
                     Debug.WriteLine($"[APIServiceFriends] DeleteFriend URL: {instanceUrl}{url}");
 
@@ -324,7 +325,7 @@ namespace ovkdesktop
 
                     var content = await response.Content.ReadAsStringAsync();
                     using JsonDocument doc = JsonDocument.Parse(content);
-                    // Проверяем, что ответ содержит "response" со значением 1 или успех
+                    // check if response contains "response" with value 1 or success
                     if (doc.RootElement.TryGetProperty("response", out JsonElement resp) &&
                         resp.ValueKind == JsonValueKind.Number &&
                         resp.GetInt32() == 1)
@@ -343,14 +344,14 @@ namespace ovkdesktop
             {
                 try
                 {
-                    // Проверяем, инициализирован ли клиент
+                    // check if client is initialized
                     if (httpClient == null)
                     {
                         await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // Даем время на инициализацию
+                        await Task.Delay(500); // give time to initialize
                     }
                     
-                    // Используем более раннюю версию API для лучшей совместимости
+                    // use older version of API for better compatibility
                     string url = $"method/friends.get?access_token={token}&fields=photo_200&v=5.126";
                     Debug.WriteLine($"[APIServiceFriends] GetFriends URL: {instanceUrl}{url}");
 

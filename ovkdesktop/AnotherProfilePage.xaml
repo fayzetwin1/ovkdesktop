@@ -15,6 +15,7 @@
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
+        <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -23,33 +24,70 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- profile user (avatar and other) -->
-        <Grid Grid.Row="0">
-            <Button Click="BackPostsClick" AutomationProperties.Name="Pie" CornerRadius="5" Margin="-650,-545,0,0">
+        <!-- Header with back button -->
+        <Grid Grid.Row="0" Margin="20,10,20,0">
+            <Button Click="BackPostsClick" AutomationProperties.Name="Back" 
+                   CornerRadius="5" Margin="0,0,0,0" HorizontalAlignment="Left">
                 <FontIcon Glyph="&#xE72B;" />
             </Button>
 
-            <PersonPicture Margin="-1200,100,0,0" x:Name="ProfileAvatar" />
-            <TextBlock x:Name="ProfileName" Text="Загрузка..." Margin="250,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42"/>
-            <TextBlock x:Name="PostsCountText" Margin="250,165,0,0" Text="Загрузка постов..." Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}"/>
-            <TextBlock x:Name="ErrorTextBlock" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+            <TextBlock x:Name="ErrorText" Foreground="Red" Visibility="Collapsed" 
+                      TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <!-- list of posts -->
-        <Grid Grid.Row="1" Margin="110,20,20,20" x:Name="GridPostsMyProfile">
-            <ProgressRing x:Name="LoadingProgressRing" IsActive="True" 
-                    Width="50" Height="50" 
-                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- Profile information -->
+        <ScrollViewer Grid.Row="1" Margin="0,10,0,0">
+            <StackPanel Margin="20,0,20,20">
+                <!-- Profile header with avatar and name -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-            <ListView x:Name="PostsListView" ItemsSource="{x:Bind Posts}">
+                    <!-- Avatar -->
+                    <Border Grid.Column="0" Width="150" Height="150" CornerRadius="70" Margin="50,25,20,0">
+                        <Border.Background>
+                            <ImageBrush x:Name="ProfileImage" Stretch="UniformToFill"/>
+                        </Border.Background>
+                    </Border>
+
+                    <!-- Name and info -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock x:Name="ProfileNameTextBlock" Text="Загрузка..." 
+                                  Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" Margin="10,20,20,0"/>
+                        <TextBlock x:Name="ProfileNicknameTextBlock" Text="@username" 
+                                  Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}" 
+                                  Visibility="Collapsed" Margin="10,0,20,0" FontSize="16"/>
+                        <TextBlock x:Name="ProfileStatusTextBlock" Text="Статус" 
+                                  TextWrapping="Wrap" Margin="10,10,0,0" FontSize="16" 
+                                  Visibility="Collapsed"/>
+                        <TextBlock x:Name="ProfileInfoTextBlock" Text="Дополнительная информация" 
+                                  Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}" 
+                                  Visibility="Collapsed" Margin="10,10,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Posts section -->
+                <TextBlock Text="Записи на стене" Style="{ThemeResource SubtitleTextBlockStyle}" 
+                          Margin="60,10,0,10"/>
+                
+                <TextBlock x:Name="NoPostsTextBlock" Text="Нет записей" 
+                          Visibility="Collapsed" Opacity="0.7" Margin="10,10,0,0"/>
+
+                <!-- Posts list -->
+                <ListView x:Name="PostsListView" ItemsSource="{x:Bind Posts}" 
+                         Visibility="Collapsed" Padding="0" 
+                         SelectionMode="None" IsItemClickEnabled="False">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:UserWallPost">
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
 							BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
 							BorderThickness="1" CornerRadius="8"
-							Margin="0,5,0,10" Padding="15">
+                                    Margin="50,5,0,10" Padding="15">
                             <Grid>
                                 <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -127,29 +165,37 @@
                                 </Border>
 
                                 <!-- likes and comments count -->
-                                <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15" Tapped="ShowPostComments_Tapped">
+                                    <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15" Margin="0,5,0,0">
+                                        <!-- Кнопка лайка -->
+                                        <Button Tag="{Binding}" Click="LikeButton_Click" 
+                                               Background="Transparent" BorderThickness="0" Padding="5,2">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <FontIcon Glyph="&#xE006;" FontSize="16"/>
-                                        <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="❤" />
+                                                <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" 
+                                                          Foreground="{Binding Likes.UserLikes, Converter={StaticResource LikeButtonColorConverter}, FallbackValue=Black}"/>
                                     </StackPanel>
+                                        </Button>
 
+                                        <!-- Кнопка комментариев -->
+                                        <Button Tag="{Binding}" Tapped="ShowPostComments_Tapped" 
+                                               Background="Transparent" BorderThickness="0" Padding="5,2">
                                     <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <FontIcon Glyph="&#xE8BD;" FontSize="16"/>
+                                        <TextBlock Text="💬" />
                                         <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
                                     </StackPanel>
+                                        </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
-        </Grid>
-        <Frame x:Name="ContentProfileFrame">
-            <Frame.ContentTransitions>
-                <TransitionCollection>
-                    <NavigationThemeTransition  />
-                </TransitionCollection>
-            </Frame.ContentTransitions>
-        </Frame>
+                
+                <!-- Loading indicator -->
+                <ProgressRing x:Name="LoadingProgressRing" IsActive="True" 
+                             Width="50" Height="50" 
+                             HorizontalAlignment="Center" Margin="0,20,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

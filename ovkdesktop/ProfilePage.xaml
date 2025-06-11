@@ -15,6 +15,7 @@
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
+        <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -125,16 +126,25 @@
                                 </Border>
 
                                 <!-- likes and comments count -->
-                                <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15" Tapped="ShowPostComments_Tapped">
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <FontIcon Glyph="&#xE006;" FontSize="16"/>
-                                        <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15">
+                                    <!-- Кнопка лайка -->
+                                    <Button Tag="{Binding}" Click="LikeButton_Click" 
+                                            Background="Transparent" BorderThickness="0" Padding="5,2">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="❤" />
+                                            <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" 
+                                                       Foreground="{Binding Likes.UserLikes, Converter={StaticResource LikeButtonColorConverter}, FallbackValue=Black}"/>
+                                        </StackPanel>
+                                    </Button>
 
-                                    <StackPanel Orientation="Horizontal" Spacing="5">
-                                        <FontIcon Glyph="&#xE8BD;" FontSize="16"/>
-                                        <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
-                                    </StackPanel>
+                                    <!-- Кнопка комментариев -->
+                                    <Button Tag="{Binding}" Tapped="ShowPostComments_Tapped" 
+                                            Background="Transparent" BorderThickness="0" Padding="5,2">
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="💬" />
+                                            <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </Grid>
                         </Border>

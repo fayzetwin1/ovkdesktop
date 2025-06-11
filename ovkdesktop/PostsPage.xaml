@@ -16,33 +16,34 @@
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0">
-            <TextBlock x:Name="NewsPostsLabel" Text="Новости" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" ></TextBlock>
-            <TextBlock x:Name="ErrorNewsPostsText" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+            <TextBlock x:Name="NewsPostsLabel" Text="Новости" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" HorizontalAlignment="Left"></TextBlock>
+            <TextBlock x:Name="ErrorNewsPostsText" Margin="125,60,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap" HorizontalAlignment="Left"/>
             <Button x:Name="LoadMoreNewsPageButton"
                 Content="Загрузить ещё..."
                 Click="LoadMoreButton"
                 Visibility="Collapsed"
-                HorizontalAlignment="Center"
-                Margin="0,10"/>
+                HorizontalAlignment="Left"
+                Margin="25,-65,0,0"/>
 
             <!-- Отладочный TextBlock -->
             <TextBlock x:Name="DebugInfoText" 
-                       Margin="125,150,0,0" 
+                       Margin="125,60,0,0" 
                        Foreground="Blue" 
                        TextWrapping="Wrap"
                        MaxWidth="600"
-                       MaxHeight="200"
+                       MaxHeight="100"
+                       HorizontalAlignment="Left"
                        VerticalAlignment="Top"/>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="100,20,20,20" x:Name="GridNewsPosts">
+        <Grid Grid.Row="1" Margin="105,10,20,20" x:Name="GridNewsPosts">
             <ProgressRing x:Name="LoadingProgressRingNewsPosts" IsActive="True" 
                 Width="50" Height="50" 
                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
             <!-- Заменяем ListView на ScrollViewer с StackPanel для ручного добавления элементов -->
             <ScrollViewer>
-                <StackPanel x:Name="PostsContainer" Margin="0,0,0,20"/>
+                <StackPanel x:Name="PostsContainer" Margin="15,0,0,20" HorizontalAlignment="Left"/>
             </ScrollViewer>
         </Grid>
     </Grid>

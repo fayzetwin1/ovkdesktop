@@ -15,6 +15,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Text="Информация о посте"
@@ -39,7 +40,33 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+                
+                <!-- Панель для кнопки "Загрузить еще" и индикатора загрузки -->
+                <Grid Margin="105,10,0,10">
+                    <Button x:Name="LoadMoreButton" 
+                            Content="Загрузить еще комментарии" 
+                            HorizontalAlignment="Center" 
+                            Click="LoadMoreButton_Click" 
+                            Visibility="Collapsed" />
+                    <ProgressRing x:Name="LoadingProgressRing" 
+                                 IsActive="False" 
+                                 Width="20" 
+                                 Height="20" 
+                                 Margin="10,0,0,0"
+                                 HorizontalAlignment="Center" />
+                </Grid>
             </StackPanel>
         </ScrollViewer>
+        
+        <!-- Панель добавления комментария -->
+        <Grid Grid.Row="2" Margin="105,10,20,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBox x:Name="CommentTextBox" PlaceholderText="Напишите комментарий..." TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" MaxHeight="100" Margin="0,0,10,0"/>
+            <Button x:Name="SendCommentButton" Content="Отправить" Grid.Column="1" Click="SendCommentButton_Click"/>
+        </Grid>
     </Grid>
 </Page>

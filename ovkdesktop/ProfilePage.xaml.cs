@@ -64,7 +64,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ProfilePage] Ошибка загрузки токена: {ex.Message}");
+                Debug.WriteLine($"[ProfilePage] error in loading token: {ex.Message}");
                 return null;
             }
         }
@@ -73,7 +73,7 @@ namespace ovkdesktop
         {
             try
             {
-                // Используем более раннюю версию API для лучшей совместимости
+                // use older version of API for better compatibility
                 var url = $"method/users.get?fields=photo_200,nickname&access_token={token}&v=5.126";
                 
                 Debug.WriteLine($"[ProfilePage] Getting profile with URL: {instanceUrl}{url}");
@@ -125,7 +125,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProfilePage] Error getting profile: {ex.Message}");
-                ShowError($"Ошибка при загрузке профиля: {ex.Message}");
+                ShowError($"error in loading profile: {ex.Message}");
                 return null;
             }
         }
@@ -134,7 +134,7 @@ namespace ovkdesktop
         {
             try
             {
-                // Используем более раннюю версию API для лучшей совместимости
+                // use older version of API for better compatibility
                 var url = $"method/wall.get?owner_id={ownerId}&access_token={token}&v=5.126";
                 
                 Debug.WriteLine($"[ProfilePage] Getting posts with URL: {instanceUrl}{url}");
@@ -145,7 +145,7 @@ namespace ovkdesktop
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[ProfilePage] Posts response JSON: {json}");
 
-                // Создаем пустой объект для результата
+                // create empty object for result
                 var result = new APIResponse<WallResponse<UserWallPost>>
                 {
                     Response = new WallResponse<UserWallPost>
@@ -156,18 +156,18 @@ namespace ovkdesktop
 
                 try
                 {
-                    // Используем JsonDocument для ручного разбора JSON
+                    // use JsonDocument for manual JSON parsing
                     using (JsonDocument doc = JsonDocument.Parse(json))
                     {
                         if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
                         {
-                            // Получаем count
+                            // get count
                             if (responseElement.TryGetProperty("count", out JsonElement countElement))
                             {
                                 result.Response.Count = countElement.GetInt32();
                             }
 
-                            // Обрабатываем элементы
+                            // process items
                             if (responseElement.TryGetProperty("items", out JsonElement itemsElement) && 
                                 itemsElement.ValueKind == JsonValueKind.Array)
                             {
@@ -175,7 +175,7 @@ namespace ovkdesktop
                                 {
                                     var post = new UserWallPost();
 
-                                    // Получаем базовые свойства
+                                    // get basic properties
                                     if (item.TryGetProperty("id", out JsonElement idElement))
                                         post.Id = idElement.GetInt32();
 
@@ -194,7 +194,7 @@ namespace ovkdesktop
                                     if (item.TryGetProperty("text", out JsonElement textElement))
                                         post.Text = textElement.GetString();
 
-                                    // Обрабатываем вложения
+                                    // process attachments
                                     if (item.TryGetProperty("attachments", out JsonElement attachmentsElement) && 
                                         attachmentsElement.ValueKind == JsonValueKind.Array)
                                     {
@@ -207,7 +207,7 @@ namespace ovkdesktop
                                             if (attachmentElement.TryGetProperty("type", out JsonElement typeElement))
                                                 attachment.Type = typeElement.GetString();
 
-                                            // Обрабатываем фото
+                                            // process photos
                                             if (attachment.Type == "photo" && attachmentElement.TryGetProperty("photo", out JsonElement photoElement))
                                             {
                                                 var photo = new Photo();
@@ -224,7 +224,7 @@ namespace ovkdesktop
                                                 if (photoElement.TryGetProperty("date", out JsonElement photoDateElement))
                                                     photo.Date = photoDateElement.GetInt64();
 
-                                                // Обрабатываем размеры фото
+                                                // process sizes of photo
                                                 if (photoElement.TryGetProperty("sizes", out JsonElement sizesElement) && 
                                                     sizesElement.ValueKind == JsonValueKind.Array)
                                                 {
@@ -242,7 +242,7 @@ namespace ovkdesktop
                                                             
                                                         if (sizeElement.TryGetProperty("width", out JsonElement widthElement))
                                                         {
-                                                            // Безопасное получение width
+                                                            // safe getting width
                                                             if (widthElement.ValueKind == JsonValueKind.Number)
                                                                 size.Width = widthElement.GetInt32();
                                                             else if (widthElement.ValueKind == JsonValueKind.String)
@@ -255,7 +255,7 @@ namespace ovkdesktop
                                                         
                                                         if (sizeElement.TryGetProperty("height", out JsonElement heightElement))
                                                         {
-                                                            // Безопасное получение height
+                                                            // safe getting height
                                                             if (heightElement.ValueKind == JsonValueKind.Number)
                                                                 size.Height = heightElement.GetInt32();
                                                             else if (heightElement.ValueKind == JsonValueKind.String)
@@ -273,7 +273,7 @@ namespace ovkdesktop
                                                 attachment.Photo = photo;
                                             }
                                             
-                                            // Обрабатываем видео
+                                            // process videos
                                             if (attachment.Type == "video" && attachmentElement.TryGetProperty("video", out JsonElement videoElement))
                                             {
                                                 var video = new Video();
@@ -296,7 +296,7 @@ namespace ovkdesktop
                                                         video.Duration = videoDurationElement.GetInt32();
                                                 }
                                                 
-                                                // Безопасно получаем image
+                                                // safe getting image
                                                 if (videoElement.TryGetProperty("image", out JsonElement videoImageElement))
                                                 {
                                                     if (videoImageElement.ValueKind == JsonValueKind.String)
@@ -324,7 +324,7 @@ namespace ovkdesktop
                                                 attachment.Video = video;
                                             }
                                             
-                                            // Обрабатываем документы
+                                            // process documents
                                             if (attachment.Type == "doc" && attachmentElement.TryGetProperty("doc", out JsonElement docElement))
                                             {
                                                 var docAttachment = new Doc();
@@ -354,44 +354,57 @@ namespace ovkdesktop
                                         }
                                     }
                                     
-                                    // Обрабатываем лайки, комментарии и репосты
+                                    // process likes
                                     if (item.TryGetProperty("likes", out JsonElement likesElement))
                                     {
-                                        var likes = new Likes();
+                                        post.Likes = new Likes();
+                                        
                                         if (likesElement.TryGetProperty("count", out JsonElement likesCountElement))
-                                            likes.Count = likesCountElement.GetInt32();
-                                        post.Likes = likes;
+                                            post.Likes.Count = likesCountElement.GetInt32();
+                                            
+                                        if (likesElement.TryGetProperty("user_likes", out JsonElement userLikesElement))
+                                            post.Likes.UserLikes = userLikesElement.GetInt32();
+                                            
+                                        if (likesElement.TryGetProperty("can_like", out JsonElement canLikeElement))
+                                            post.Likes.CanLike = canLikeElement.GetInt32();
+                                            
+                                        if (likesElement.TryGetProperty("can_publish", out JsonElement canPublishElement))
+                                            post.Likes.CanPublish = canPublishElement.GetInt32();
                                     }
-                                    
+                                    else
+                                    {
+                                        // if likes not received from server, initialize empty object
+                                        post.Likes = new Likes { Count = 0, UserLikes = 0 };
+                                    }
+
+                                    // process comments
                                     if (item.TryGetProperty("comments", out JsonElement commentsElement))
                                     {
-                                        var comments = new Comments();
+                                        post.Comments = new Comments();
+                                        
                                         if (commentsElement.TryGetProperty("count", out JsonElement commentsCountElement))
-                                            comments.Count = commentsCountElement.GetInt32();
-                                        post.Comments = comments;
+                                            post.Comments.Count = commentsCountElement.GetInt32();
                                     }
-                                    
-                                    if (item.TryGetProperty("reposts", out JsonElement repostsElement))
+                                    else
                                     {
-                                        var reposts = new Reposts();
-                                        if (repostsElement.TryGetProperty("count", out JsonElement repostsCountElement))
-                                            reposts.Count = repostsCountElement.GetInt32();
-                                        post.Reposts = reposts;
+                                        // if comments not received from server, initialize empty object
+                                        post.Comments = new Comments { Count = 0 };
                                     }
-                                    
+
+                                    // add post to result
                                     result.Response.Items.Add(post);
                                 }
                             }
                         }
                     }
-                    
-                    return result;
                 }
                 catch (JsonException ex)
                 {
                     Debug.WriteLine($"[ProfilePage] JSON error: {ex.Message}");
                     throw;
                 }
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -403,48 +416,60 @@ namespace ovkdesktop
 
         private async Task LoadProfileAndPostsAsync()
         {
-            var tokenBody = await LoadTokenAsync();
-            if (tokenBody == null || string.IsNullOrEmpty(tokenBody.Token))
-            {
-                ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
-                return;
-            }
-
             try
             {
-                var profile = await GetProfileAsync(tokenBody.Token);
+                // Получаем токен
+                OVKDataBody token = await LoadTokenAsync();
+                if (token == null || string.IsNullOrEmpty(token.Token))
+                {
+                    ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
+                    return;
+                }
+                
+                // Получаем информацию о профиле
+                var profile = await GetProfileAsync(token.Token);
                 if (profile == null)
                 {
-                    ShowError("Не удалось загрузить профиль.");
+                    ShowError("Не удалось загрузить информацию о профиле.");
                     return;
                 }
-
+                
+                // Сохраняем ID пользователя
                 userId = profile.Id.ToString();
-
-                if (!string.IsNullOrEmpty(profile.Photo200))
-                    ProfileAvatar.ProfilePicture = new BitmapImage(new Uri(profile.Photo200));
+                
+                // Устанавливаем имя и аватарку
                 ProfileName.Text = $"{profile.FirstName} {profile.LastName}";
-                if (!string.IsNullOrEmpty(profile.Nickname))
-                    ProfileName.Text += $" ({profile.Nickname})";
-
-                var postsResponse = await GetPostsAsync(tokenBody.Token, userId);
-                if (postsResponse?.Response?.Items == null || !postsResponse.Response.Items.Any())
+                if (!string.IsNullOrEmpty(profile.Photo200))
                 {
-                    ShowError("Нет постов для отображения.");
+                    ProfileAvatar.ProfilePicture = new BitmapImage(new Uri(profile.Photo200));
+                }
+                
+                // Получаем посты
+                var postsResponse = await GetPostsAsync(token.Token, userId);
+                if (postsResponse == null || postsResponse.Response == null || postsResponse.Response.Items == null)
+                {
+                    ShowError("Не удалось загрузить посты.");
                     return;
                 }
-
+                
+                // Очищаем коллекцию и добавляем новые посты
                 Posts.Clear();
                 foreach (var post in postsResponse.Response.Items)
                     Posts.Add(post);
+                
+                // Обновляем статус лайков для всех постов
+                await UpdateLikesStatusAsync();
+                
+                // Обновляем текст с количеством постов
+                PostsCountText.Text = $"Записей: {postsResponse.Response.Count}";
+                
+                // Скрываем индикатор загрузки
+                LoadingProgressRing.IsActive = false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ProfilePage] Ошибка загрузки данных: {ex.Message}");
-                ShowError("Ошибка загрузки данных профиля или постов.");
-            }
-            finally
-            {
+                Debug.WriteLine($"[ProfilePage] Error loading profile and posts: {ex.Message}");
+                ShowError($"Ошибка при загрузке профиля и постов: {ex.Message}");
                 LoadingProgressRing.IsActive = false;
             }
         }
@@ -481,7 +506,7 @@ namespace ovkdesktop
                 object dataContext = null;
                 object tag = null;
                 
-                // Получаем DataContext и Tag в зависимости от типа отправителя
+                // get DataContext and Tag depending on the type of sender
                 if (sender is Button button)
                 {
                     dataContext = button.DataContext;
@@ -494,63 +519,63 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    Debug.WriteLine("[Video] Неизвестный тип отправителя");
+                    Debug.WriteLine("[Video] unknown type of sender");
                     return;
                 }
                 
                 string videoUrl = null;
                 UserWallPost post = null;
                 
-                // Проверяем Tag
+                // check Tag
                 if (tag is UserWallPost tagPost)
                 {
                     post = tagPost;
                 }
-                // Проверяем DataContext
+                // check DataContext
                 else if (dataContext is UserWallPost contextPost)
                 {
                     post = contextPost;
                 }
                 
-                // Получаем URL видео
+                // get URL of video
                 if (post != null && post.MainVideo != null)
                 {
                     videoUrl = post.MainVideo.Player;
-                    Debug.WriteLine($"[Video] Получен URL видео: {videoUrl ?? "null"}");
+                    Debug.WriteLine($"[Video] received URL of video: {videoUrl ?? "null"}");
                 }
                 
-                // Проверяем URL и открываем его
+                // check URL and open it
                 if (!string.IsNullOrEmpty(videoUrl))
                 {
                     try
                     {
-                        Debug.WriteLine($"[Video] Открываем URL: {videoUrl}");
+                        Debug.WriteLine($"[Video] opening URL: {videoUrl}");
                         _ = Windows.System.Launcher.LaunchUriAsync(new Uri(videoUrl));
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[Video] Ошибка при открытии видео: {ex.Message}");
+                        Debug.WriteLine($"[Video] error in opening video: {ex.Message}");
                         Debug.WriteLine($"[Video] Stack trace: {ex.StackTrace}");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine("[Video] URL видео не найден");
+                    Debug.WriteLine("[Video] URL of video not found");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Video] Общая ошибка в PlayVideo_Click: {ex.Message}");
+                Debug.WriteLine($"[Video] general error in PlayVideo_Click: {ex.Message}");
                 Debug.WriteLine($"[Video] Stack trace: {ex.StackTrace}");
             }
         }
         
-        // Метод для создания текстового блока с форматированными ссылками
+            // method for creating text block with formatted links
         private FrameworkElement CreateFormattedTextWithLinks(string text)
         {
             try
             {
-                // Если текст не содержит ссылок, возвращаем обычный TextBlock
+                // if text does not contain links, return regular TextBlock
                 if (!ContainsUrl(text))
                 {
                     return new TextBlock
@@ -563,20 +588,20 @@ namespace ovkdesktop
                     };
                 }
                 
-                // Создаем контейнер для текста и ссылок
+                // create container for text and links
                 var panel = new StackPanel
                 {
                     Margin = new Thickness(0, 10, 0, 10)
                 };
                 
-                // Разбиваем текст на части, выделяя ссылки
+                // split text into parts, highlighting links
                 var parts = SplitTextWithUrls(text);
                 
                 foreach (var part in parts)
                 {
                     if (IsUrl(part))
                     {
-                        // Создаем кликабельную ссылку
+                        // create clickable link
                         var link = new HyperlinkButton
                         {
                             Content = part,
@@ -586,7 +611,7 @@ namespace ovkdesktop
                             FontSize = 14
                         };
                         
-                        // Добавляем обработчик для открытия в браузере
+                        // add handler for opening in browser
                         link.Click += (sender, e) => 
                         {
                             try
@@ -595,7 +620,7 @@ namespace ovkdesktop
                             }
                             catch (Exception ex)
                             {
-                                Debug.WriteLine($"Ошибка при открытии ссылки: {ex.Message}");
+                                Debug.WriteLine($"error in opening link: {ex.Message}");
                             }
                         };
                         
@@ -603,7 +628,7 @@ namespace ovkdesktop
                     }
                     else
                     {
-                        // Создаем обычный текст
+                        // create regular text
                         var textBlock = new TextBlock
                         {
                             Text = part,
@@ -620,8 +645,8 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка при форматировании текста: {ex.Message}");
-                // В случае ошибки возвращаем обычный TextBlock
+                Debug.WriteLine($"error in formatting text: {ex.Message}");
+                // in case of error, return regular TextBlock
                 return new TextBlock
                 {
                     Text = text,
@@ -633,21 +658,21 @@ namespace ovkdesktop
             }
         }
         
-        // Метод для проверки, содержит ли текст URL
+        // method for checking if text contains URL
         private bool ContainsUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
             return text.Contains("http://") || text.Contains("https://");
         }
         
-        // Метод для проверки, является ли текст URL
+        // method for checking if text is URL
         private bool IsUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
             return text.StartsWith("http://") || text.StartsWith("https://");
         }
         
-        // Метод для разбиения текста на части, выделяя URL
+        // method for splitting text into parts, highlighting URLs
         private List<string> SplitTextWithUrls(string text)
         {
             var result = new List<string>();
@@ -655,37 +680,37 @@ namespace ovkdesktop
             if (string.IsNullOrEmpty(text))
                 return result;
                 
-            // Простая регулярная обработка для выделения URL
+            // simple regular processing for highlighting URLs
             int startIndex = 0;
             while (startIndex < text.Length)
             {
-                // Ищем начало URL
+                // find start of URL
                 int httpIndex = text.IndexOf("http", startIndex);
                 
                 if (httpIndex == -1)
                 {
-                    // Если больше нет URL, добавляем оставшийся текст
+                    // if there are no more URLs, add remaining text
                     result.Add(text.Substring(startIndex));
                     break;
                 }
                 
-                // Добавляем текст до URL
+                // add text before URL
                 if (httpIndex > startIndex)
                 {
                     result.Add(text.Substring(startIndex, httpIndex - startIndex));
                 }
                 
-                // Ищем конец URL (пробел, перенос строки или конец текста)
+                // find end of URL (space, line break or end of text)
                 int endIndex = text.IndexOfAny(new[] { ' ', '\n', '\r', '\t' }, httpIndex);
                 if (endIndex == -1)
                 {
-                    // URL до конца текста
+                    // URL to the end of text
                     result.Add(text.Substring(httpIndex));
                     break;
                 }
                 else
                 {
-                    // Добавляем URL
+                    // add URL
                     result.Add(text.Substring(httpIndex, endIndex - httpIndex));
                     startIndex = endIndex;
                 }
@@ -694,7 +719,7 @@ namespace ovkdesktop
             return result;
         }
         
-        // Метод для проверки, является ли URL ссылкой на YouTube
+        // method for checking if URL is YouTube link
         private bool IsYouTubeUrl(string url)
         {
             if (string.IsNullOrEmpty(url)) return false;
@@ -704,15 +729,15 @@ namespace ovkdesktop
                    url.Contains("youtube-nocookie.com");
         }
         
-        // Метод для добавления WebView2 для YouTube
+        // method for adding WebView2 for YouTube
         private void AddYouTubePlayer(StackPanel container, string videoUrl)
         {
             try
             {
-                // Создаем кнопку для открытия в браузере как запасной вариант
+                // create button for opening in browser as a backup option
                 var youtubeButton = new HyperlinkButton
                 {
-                    Content = "Открыть видео YouTube в браузере",
+                    Content = "open YouTube video in browser",
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
@@ -725,11 +750,11 @@ namespace ovkdesktop
                     }
                     catch (Exception innerEx)
                     {
-                        Debug.WriteLine($"Ошибка при открытии YouTube: {innerEx.Message}");
+                        Debug.WriteLine($"error in opening YouTube: {innerEx.Message}");
                     }
                 };
                 
-                // Добавляем текстовую метку
+                // add text label
                 var youtubeLabel = new TextBlock
                 {
                     Text = "Видео с YouTube",
@@ -740,7 +765,7 @@ namespace ovkdesktop
                 container.Children.Add(youtubeLabel);
                 container.Children.Add(youtubeButton);
                 
-                // Создаем контейнер для WebView2
+                // create container for WebView2
                 var webViewContainer = new Grid
                 {
                     Height = 300,
@@ -749,7 +774,7 @@ namespace ovkdesktop
                     Margin = new Thickness(0, 5, 0, 5)
                 };
                 
-                // Создаем WebView2 согласно примеру
+                // create WebView2 according to example
                 var webView = new WebView2
                 {
                     Source = new Uri(videoUrl),
@@ -759,21 +784,21 @@ namespace ovkdesktop
                     MinWidth = 400
                 };
                 
-                // Добавляем элемент в контейнер
+                // add element to container
                 webViewContainer.Children.Add(webView);
                 container.Children.Add(webViewContainer);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка при создании WebView2 для YouTube: {ex.Message}");
+                Debug.WriteLine($"error in creating WebView2 for YouTube: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 
                 try
                 {
-                    // В случае ошибки добавляем кнопку для открытия в браузере
+                    // in case of error, add a button to open in browser
                     var youtubeButton = new HyperlinkButton
                     {
-                        Content = "Открыть видео YouTube в браузере",
+                        Content = "open YouTube video in browser",
                         NavigateUri = new Uri(videoUrl)
                     };
                     
@@ -785,7 +810,7 @@ namespace ovkdesktop
                         }
                         catch (Exception innerEx)
                         {
-                            Debug.WriteLine($"Ошибка при открытии YouTube: {innerEx.Message}");
+                            Debug.WriteLine($"error in opening YouTube: {innerEx.Message}");
                         }
                     };
                     
@@ -793,20 +818,20 @@ namespace ovkdesktop
                 }
                 catch (Exception innerEx)
                 {
-                    Debug.WriteLine($"Критическая ошибка при добавлении кнопки YouTube: {innerEx.Message}");
+                    Debug.WriteLine($"critical error in adding YouTube button: {innerEx.Message}");
                 }
             }
         }
         
-        // Метод для добавления MediaPlayerElement
+        // method for adding MediaPlayerElement
         private void AddMediaPlayer(StackPanel container, string videoUrl)
         {
             try
             {
-                // Создаем кнопку для открытия видео в браузере как запасной вариант
+                // create a button to open video in browser as a backup option
                 var videoButton = new HyperlinkButton
                 {
-                    Content = "Открыть видео в браузере",
+                    Content = "open video in browser",
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
@@ -819,11 +844,11 @@ namespace ovkdesktop
                     }
                     catch (Exception innerEx)
                     {
-                        Debug.WriteLine($"Ошибка при открытии видео: {innerEx.Message}");
+                        Debug.WriteLine($"error in opening video: {innerEx.Message}");
                     }
                 };
                 
-                // Добавляем текстовую метку
+                // add text label
                 var videoLabel = new TextBlock
                 {
                     Text = "Видео",
@@ -834,7 +859,7 @@ namespace ovkdesktop
                 container.Children.Add(videoLabel);
                 container.Children.Add(videoButton);
                 
-                // Создаем контейнер для видео с фиксированной высотой
+                // create container for video with fixed height
                 var videoContainer = new Grid
                 {
                     Height = 300,
@@ -843,7 +868,7 @@ namespace ovkdesktop
                     Margin = new Thickness(0, 5, 0, 5)
                 };
                 
-                // Создаем MediaPlayerElement
+                // create MediaPlayerElement
                 var mediaPlayer = new MediaPlayerElement
                 {
                     AreTransportControlsEnabled = true,
@@ -851,23 +876,23 @@ namespace ovkdesktop
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
                 
-                // Создаем MediaPlayer и устанавливаем источник
+                // create
                 var player = new Windows.Media.Playback.MediaPlayer();
                 player.Source = Windows.Media.Core.MediaSource.CreateFromUri(new Uri(videoUrl));
                 mediaPlayer.SetMediaPlayer(player);
                 
-                // Добавляем элемент в контейнер
+                // add element to container
                 videoContainer.Children.Add(mediaPlayer);
                 container.Children.Add(videoContainer);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка при создании MediaPlayerElement: {ex.Message}");
+                Debug.WriteLine($"error in creating MediaPlayerElement: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
                 
                 try
                 {
-                    // В случае ошибки добавляем кнопку для открытия в браузере
+                    // in case of error, add a button to open in browser
                     var videoButton = new HyperlinkButton
                     {
                         Content = "Открыть видео в браузере",
@@ -882,7 +907,7 @@ namespace ovkdesktop
                         }
                         catch (Exception innerEx)
                         {
-                            Debug.WriteLine($"Ошибка при открытии видео: {innerEx.Message}");
+                            Debug.WriteLine($"error in opening video in browser: {innerEx.Message}");
                         }
                     };
                     
@@ -890,8 +915,229 @@ namespace ovkdesktop
                 }
                 catch (Exception innerEx)
                 {
-                    Debug.WriteLine($"Критическая ошибка при добавлении кнопки видео: {innerEx.Message}");
+                    Debug.WriteLine($"critical error in adding video button: {innerEx.Message}");
+                    Debug.WriteLine($"Stack trace: {innerEx.StackTrace}");
                 }
+            }
+        }
+
+        // method for liking object (post, comment, etc.)
+        private async Task<bool> LikeItemAsync(string token, string type, int ownerId, int itemId)
+        {
+            try
+            {
+                // check if client is initialized
+                if (httpClient == null)
+                {
+                    await Task.Run(() => InitializeHttpClientAsync());
+                    await Task.Delay(500); // give time to initialize
+                }
+                
+                // form URL for API request likes.add
+                var url = $"method/likes.add?access_token={token}" +
+                        $"&type={type}" +
+                        $"&owner_id={ownerId}" +
+                        $"&item_id={itemId}" +
+                        $"&v=5.126";
+                
+                Debug.WriteLine($"[ProfilePage] Like URL: {instanceUrl}{url}");
+
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[ProfilePage] Like response: {json}");
+                
+                // check response
+                using JsonDocument doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
+                {
+                    // API returns number of likes
+                    if (responseElement.TryGetProperty("likes", out JsonElement likesElement))
+                    {
+                        int likes = likesElement.GetInt32();
+                        Debug.WriteLine($"[ProfilePage] number of likes after like: {likes}");
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] error in LikeItemAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        // method for removing like from object
+        private async Task<bool> UnlikeItemAsync(string token, string type, int ownerId, int itemId)
+        {
+            try
+            {
+                // check if client is initialized
+                if (httpClient == null)
+                {
+                    await Task.Run(() => InitializeHttpClientAsync());
+                    await Task.Delay(500); // give time to initialize
+                }
+                
+                // form URL for API request likes.delete
+                var url = $"method/likes.delete?access_token={token}" +
+                        $"&type={type}" +
+                        $"&owner_id={ownerId}" +
+                        $"&item_id={itemId}" +
+                        $"&v=5.126";
+                
+                Debug.WriteLine($"[ProfilePage] Unlike URL: {instanceUrl}{url}");
+
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[ProfilePage] Unlike response: {json}");
+                
+                // check response
+                using JsonDocument doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
+                {
+                    // API returns number of likes
+                    if (responseElement.TryGetProperty("likes", out JsonElement likesElement))
+                    {
+                        int likes = likesElement.GetInt32();
+                        Debug.WriteLine($"[ProfilePage] number of likes after unlike: {likes}");
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] error in UnlikeItemAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        // method for liking post
+        private async void LikeButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var button = sender as Button;
+                if (button?.Tag is UserWallPost post)
+                {
+                    // disable button during request processing
+                    button.IsEnabled = false;
+                    
+                    // check if post has Likes object
+                    if (post.Likes == null)
+                    {
+                        post.Likes = new Models.Likes { Count = 0, UserLikes = 0 };
+                    }
+                    
+                    // determine if like should be added or removed
+                    bool isLiked = post.Likes.UserLikes > 0;
+                    int newLikesCount = -1;
+                    
+                    try
+                    {
+                        if (isLiked)
+                        {
+                            // remove like
+                            newLikesCount = await SessionHelper.DeleteLikeAsync("post", post.OwnerId, post.Id);
+                            if (newLikesCount >= 0)
+                            {
+                                post.Likes.Count = newLikesCount;
+                                post.Likes.UserLikes = 0;
+                            }
+                        }
+                        else
+                        {
+                            // add like
+                            newLikesCount = await SessionHelper.AddLikeAsync("post", post.OwnerId, post.Id);
+                            if (newLikesCount >= 0)
+                            {
+                                post.Likes.Count = newLikesCount;
+                                post.Likes.UserLikes = 1;
+                            }
+                        }
+                    }
+                    catch (Exception apiEx)
+                    {
+                        Debug.WriteLine($"[ProfilePage] API error in LikeButton_Click: {apiEx.Message}");
+                        ShowError($"API error in processing like: {apiEx.Message}");
+                        button.IsEnabled = true;
+                        return;
+                    }
+                    
+                    // update UI
+                    if (newLikesCount >= 0)
+                    {
+                        try
+                        {
+                            // find StackPanel inside button
+                            var stackPanel = button.Content as StackPanel;
+                            if (stackPanel != null && stackPanel.Children.Count >= 2)
+                            {
+                                // second TextBlock contains number of likes
+                                var likesCountTextBlock = stackPanel.Children[1] as TextBlock;
+                                if (likesCountTextBlock != null)
+                                {
+                                    // update number of likes
+                                    likesCountTextBlock.Text = post.Likes.Count.ToString();
+                                    
+                                    // always use color depending on the current theme, regardless of the like state
+                                    var theme = ((FrameworkElement)this.Content).ActualTheme;
+                                    likesCountTextBlock.Foreground = new SolidColorBrush(
+                                        theme == ElementTheme.Dark ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black
+                                    );
+                                }
+                            }
+                        }
+                        catch (Exception uiEx)
+                        {
+                            Debug.WriteLine($"[ProfilePage] UI update error: {uiEx.Message}");
+                        }
+                    }
+                    
+                    // enable button again
+                    button.IsEnabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] error in LikeButton_Click: {ex.Message}");
+                ShowError($"error in processing like: {ex.Message}");
+            }
+        }
+
+        // method for updating likes status for all posts
+        private async Task UpdateLikesStatusAsync()
+        {
+            try
+            {
+                foreach (var post in Posts)
+                {
+                    // check if user liked this post
+                    bool isLiked = await SessionHelper.IsLikedAsync("post", post.OwnerId, post.Id);
+                    
+                    // update like status in post object
+                    if (post.Likes == null)
+                    {
+                        post.Likes = new Likes { Count = 0, UserLikes = isLiked ? 1 : 0 };
+                    }
+                    else
+                    {
+                        post.Likes.UserLikes = isLiked ? 1 : 0;
+                    }
+                    
+                    Debug.WriteLine($"[ProfilePage] Post {post.Id} liked status: {isLiked}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error updating likes status: {ex.Message}");
             }
         }
     }
