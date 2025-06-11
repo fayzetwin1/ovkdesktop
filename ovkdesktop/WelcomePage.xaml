@@ -19,7 +19,7 @@
 
         <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="600,770,0,0"/>
         <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz" Margin="770,770,0,0"/>
-        <TextBlock Text="OVK Desktop, version: 0.5 Beta. Made with love by Fayzetwin :3." Margin="550,850,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"/>
+        <TextBlock Text="OVK Desktop, version: 0.6 Beta. Made with love by Fayzetwin :3." Margin="550,850,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"/>
         
         
         
