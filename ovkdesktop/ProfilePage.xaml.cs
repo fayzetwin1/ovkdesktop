@@ -350,6 +350,39 @@ namespace ovkdesktop
                                                 attachment.Doc = docAttachment;
                                             }
                                             
+                                            // process audio
+                                            if (attachment.Type == "audio" && attachmentElement.TryGetProperty("audio", out JsonElement audioElement))
+                                            {
+                                                var audio = new Audio();
+                                                
+                                                if (audioElement.TryGetProperty("id", out JsonElement audioIdElement))
+                                                    audio.Id = audioIdElement.GetInt32();
+                                                    
+                                                if (audioElement.TryGetProperty("owner_id", out JsonElement audioOwnerIdElement))
+                                                    audio.OwnerId = audioOwnerIdElement.GetInt32();
+                                                    
+                                                if (audioElement.TryGetProperty("artist", out JsonElement audioArtistElement))
+                                                    audio.Artist = audioArtistElement.GetString();
+                                                    
+                                                if (audioElement.TryGetProperty("title", out JsonElement audioTitleElement))
+                                                    audio.Title = audioTitleElement.GetString();
+                                                    
+                                                if (audioElement.TryGetProperty("duration", out JsonElement audioDurationElement))
+                                                    audio.Duration = audioDurationElement.GetInt32();
+                                                    
+                                                if (audioElement.TryGetProperty("url", out JsonElement audioUrlElement))
+                                                    audio.Url = audioUrlElement.GetString();
+                                                    
+                                                if (audioElement.TryGetProperty("date", out JsonElement audioDateElement))
+                                                    audio.Date = audioDateElement.GetInt64();
+                                                
+                                                if (audioElement.TryGetProperty("added", out JsonElement audioAddedElement))
+                                                    audio.IsAdded = audioAddedElement.GetBoolean();
+                                                
+                                                Debug.WriteLine($"[ProfilePage] Processed audio attachment: {audio.Artist} - {audio.Title}");
+                                                attachment.Audio = audio;
+                                            }
+                                            
                                             post.Attachments.Add(attachment);
                                         }
                                     }
@@ -1133,11 +1166,209 @@ namespace ovkdesktop
                     }
                     
                     Debug.WriteLine($"[ProfilePage] Post {post.Id} liked status: {isLiked}");
+                    
+                    // Проверяем статус лайков для аудио в посте
+                    if (post.HasAudio)
+                    {
+                        await UpdateAudioLikesStatusAsync(post.Audios);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProfilePage] Error updating likes status: {ex.Message}");
+            }
+        }
+        
+        // Метод для обновления статуса лайков аудио
+        private async Task UpdateAudioLikesStatusAsync(List<Models.Audio> audios)
+        {
+            try
+            {
+                if (audios == null || audios.Count == 0)
+                {
+                    return;
+                }
+                
+                Debug.WriteLine($"[ProfilePage] Updating like status for {audios.Count} audio tracks");
+                
+                foreach (var audio in audios)
+                {
+                    // Проверяем статус лайка для аудио
+                    bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
+                    
+                    // Обновляем статус в объекте аудио
+                    audio.IsAdded = isLiked;
+                    
+                    Debug.WriteLine($"[ProfilePage] Audio {audio.Id} liked status: {isLiked}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error updating audio likes status: {ex.Message}");
+            }
+        }
+
+        // Метод для добавления аудио в пост
+        private void AddAudioContent(StackPanel container, UserWallPost post)
+        {
+            try
+            {
+                if (post == null || !post.HasAudio)
+                {
+                    Debug.WriteLine("[ProfilePage] No audio attachments in post");
+                    return;
+                }
+                
+                // Добавляем заголовок для аудио
+                if (post.Audios.Count > 0)
+                {
+                    var audioLabel = new TextBlock
+                    {
+                        Text = "Аудиозаписи",
+                        FontWeight = FontWeights.Bold,
+                        Margin = new Thickness(0, 10, 0, 5)
+                    };
+                    container.Children.Add(audioLabel);
+                    
+                    // Создаем отдельный контейнер для аудио
+                    var audioContainer = new StackPanel
+                    {
+                        Margin = new Thickness(0, 0, 0, 10)
+                    };
+                    
+                    // Добавляем каждое аудио
+                    foreach (var audio in post.Audios)
+                    {
+                        // Создаем элемент для аудио
+                        var audioItem = CreateAudioElement(audio);
+                        audioContainer.Children.Add(audioItem);
+                    }
+                    
+                    container.Children.Add(audioContainer);
+                    Debug.WriteLine($"[ProfilePage] Added {post.Audios.Count} audio tracks to post");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error adding audio content: {ex.Message}");
+            }
+        }
+        
+        // Метод для создания элемента аудио
+        private UIElement CreateAudioElement(Models.Audio audio)
+        {
+            try
+            {
+                // Создаем Grid для аудио
+                var grid = new Grid
+                {
+                    Margin = new Thickness(0, 5, 0, 5),
+                    Height = 60,
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
+                };
+                
+                // Добавляем колонки
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                
+                // Кнопка воспроизведения
+                var playButton = new Button
+                {
+                    Width = 40,
+                    Height = 40,
+                    Padding = new Thickness(0),
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                    Content = new FontIcon
+                    {
+                        Glyph = "\uE768",
+                        FontSize = 16
+                    },
+                    Tag = audio
+                };
+                playButton.Click += PlayAudio_Click;
+                Grid.SetColumn(playButton, 0);
+                grid.Children.Add(playButton);
+                
+                // Информация о треке
+                var infoPanel = new StackPanel
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(5, 0, 0, 0)
+                };
+                
+                var titleText = new TextBlock
+                {
+                    Text = audio.Title,
+                    TextWrapping = TextWrapping.NoWrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    FontWeight = FontWeights.SemiBold
+                };
+                infoPanel.Children.Add(titleText);
+                
+                var artistText = new TextBlock
+                {
+                    Text = audio.Artist,
+                    TextWrapping = TextWrapping.NoWrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Opacity = 0.8,
+                    FontSize = 12
+                };
+                infoPanel.Children.Add(artistText);
+                
+                Grid.SetColumn(infoPanel, 1);
+                grid.Children.Add(infoPanel);
+                
+                // Длительность
+                var durationText = new TextBlock
+                {
+                    Text = audio.FormattedDuration,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0),
+                    Opacity = 0.8,
+                    FontSize = 12
+                };
+                Grid.SetColumn(durationText, 2);
+                grid.Children.Add(durationText);
+                
+                return grid;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error creating audio element: {ex.Message}");
+                return new TextBlock { Text = $"{audio.Artist} - {audio.Title}" };
+            }
+        }
+        
+        // Обработчик нажатия на кнопку воспроизведения аудио
+        private void PlayAudio_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is Button button && button.Tag is Models.Audio audio)
+                {
+                    Debug.WriteLine($"[ProfilePage] Playing audio: {audio.Artist} - {audio.Title}");
+                    
+                    // Получаем сервис аудиоплеера из App
+                    var audioService = App.AudioService;
+                    if (audioService != null)
+                    {
+                        // Создаем плейлист из одного трека и воспроизводим
+                        var playlist = new System.Collections.ObjectModel.ObservableCollection<Models.Audio> { audio };
+                        audioService.SetPlaylist(playlist, 0);
+                        
+                        Debug.WriteLine("[ProfilePage] Audio playback started");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[ProfilePage] AudioService is not available");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error playing audio: {ex.Message}");
             }
         }
     }

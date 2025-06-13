@@ -34,17 +34,15 @@ namespace ovkdesktop
         {
             SessionHelper.RemoveToken();
 
-            // Получаем путь к исполняемому файлу приложения
             var exePath = Process.GetCurrentProcess().MainModule.FileName;
 
-            // Запускаем новый процесс
             Process.Start(new ProcessStartInfo
             {
                 FileName = exePath,
                 UseShellExecute = true
             });
 
-            // Завершаем текущее приложение
+            // exit the application
             Environment.Exit(0);
         }
 

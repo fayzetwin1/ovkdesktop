@@ -5,6 +5,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActiveDebugProfile>ovkdesktop (Unpackaged)</ActiveDebugProfile>
+    <_LastSelectedProfileId>C:\Users\fayzetwin\Source\Repos\ovkdesktop\ovkdesktop\Properties\PublishProfiles\win-arm64.pubxml</_LastSelectedProfileId>
   </PropertyGroup>
   <ItemGroup>
     <Page Update="AnotherProfilePage.xaml">

@@ -17,7 +17,7 @@
   <Properties>
     <DisplayName>ovkdesktop</DisplayName>
     <PublisherDisplayName>fayzetwin</PublisherDisplayName>
-    <Logo>Assets\StoreLogo.png</Logo>
+    <Logo>Assets\StoreLogo\StoreLogo.ico</Logo>
   </Properties>
 
   <Dependencies>
@@ -34,13 +34,20 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="ovkdesktop"
-        Description="ovkdesktop"
+        DisplayName="OpenVK Desktop"
+        Description="Десктоп-клиент для социальной сети OpenVK"
         BackgroundColor="transparent"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
-        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+        Square150x150Logo="Assets\Square150x150Logo\Square150x150Logo.ico"
+        Square44x44Logo="Assets\Square44x44Logo\Square44x44Logo.ico">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo\Wide310x150Logo.ico" />
+        <uap:SplashScreen Image="Assets\SplashScreen\SplashScreen.ico" />
+        <uap:LockScreen BadgeLogo="Assets\BadgeLogo\BadgeLogo.ico" Notification="badge"/>
+        <uap:InitialRotationPreference>
+          <uap:Rotation Preference="landscape"/>
+          <uap:Rotation Preference="portrait"/>
+          <uap:Rotation Preference="landscapeFlipped"/>
+          <uap:Rotation Preference="portraitFlipped"/>
+        </uap:InitialRotationPreference>
       </uap:VisualElements>
     </Application>
   </Applications>

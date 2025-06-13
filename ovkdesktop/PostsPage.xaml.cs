@@ -916,6 +916,11 @@ namespace ovkdesktop
                                 {
                                     hasVideo = true;
                                 }
+                                else if (attachment.Type == "audio" && attachment.Audio != null)
+                                {
+                                    // Аудио будет обрабатываться отдельно после всех вложений
+                                    Debug.WriteLine($"[UI] Found audio attachment: {attachment.Audio.Artist} - {attachment.Audio.Title}");
+                                }
                             }
                             catch (Exception attachEx)
                             {
@@ -935,6 +940,19 @@ namespace ovkdesktop
             {
                                 Debug.WriteLine($"[UI] Ошибка при добавлении кнопки видео: {ex.Message}");
                             }
+                            }
+                        }
+                        
+                        // Добавляем аудио, если они есть в посте
+                        if (post.HasAudio)
+                        {
+                            try
+                            {
+                                AddAudioContent(attachmentsPanel, post);
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"[UI] Ошибка при добавлении аудио: {ex.Message}");
                             }
                         }
                         
@@ -1233,7 +1251,7 @@ namespace ovkdesktop
                     
                     var videoButton = new HyperlinkButton
                     {
-                        Content = "Open video in browser",
+                        Content = "Открыть видео в браузере",
                         Tag = post
                     };
                     videoButton.Click += PlayVideo_Click;
@@ -1348,7 +1366,7 @@ namespace ovkdesktop
                 // create button to open video in browser as backup variant
                 var videoButton = new HyperlinkButton
                 {
-                    Content = "Open video in browser",
+                    Content = "Открыть видео в браузере",
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
@@ -1454,6 +1472,169 @@ namespace ovkdesktop
                 {
                     yield return childOfChild;
                 }
+            }
+        }
+
+        // Метод для добавления аудио в пост
+        private void AddAudioContent(StackPanel container, NewsFeedPost post)
+        {
+            try
+            {
+                if (post == null || !post.HasAudio)
+                {
+                    Debug.WriteLine("[PostsPage] No audio attachments in post");
+                    return;
+                }
+                
+                // Добавляем заголовок для аудио
+                if (post.Audios.Count > 0)
+                {
+                    var audioLabel = new TextBlock
+                    {
+                        Text = "Аудиозаписи",
+                        FontWeight = FontWeights.Bold,
+                        Margin = new Thickness(0, 10, 0, 5)
+                    };
+                    container.Children.Add(audioLabel);
+                    
+                    // Создаем отдельный контейнер для аудио
+                    var audioContainer = new StackPanel
+                    {
+                        Margin = new Thickness(0, 0, 0, 10)
+                    };
+                    
+                    // Добавляем каждое аудио
+                    foreach (var audio in post.Audios)
+                    {
+                        // Создаем элемент для аудио
+                        var audioItem = CreateAudioElement(audio);
+                        audioContainer.Children.Add(audioItem);
+                    }
+                    
+                    container.Children.Add(audioContainer);
+                    Debug.WriteLine($"[PostsPage] Added {post.Audios.Count} audio tracks to post");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PostsPage] Error adding audio content: {ex.Message}");
+            }
+        }
+        
+        // Метод для создания элемента аудио
+        private UIElement CreateAudioElement(Models.Audio audio)
+        {
+            try
+            {
+                // Создаем Grid для аудио
+                var grid = new Grid
+                {
+                    Margin = new Thickness(0, 5, 0, 5),
+                    Height = 60,
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
+                };
+                
+                // Добавляем колонки
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                
+                // Кнопка воспроизведения
+                var playButton = new Button
+                {
+                    Width = 40,
+                    Height = 40,
+                    Padding = new Thickness(0),
+                    Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
+                    Content = new FontIcon
+                    {
+                        Glyph = "\uE768",
+                        FontSize = 16
+                    },
+                    Tag = audio
+                };
+                playButton.Click += PlayAudio_Click;
+                Grid.SetColumn(playButton, 0);
+                grid.Children.Add(playButton);
+                
+                // Информация о треке
+                var infoPanel = new StackPanel
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(5, 0, 0, 0)
+                };
+                
+                var titleText = new TextBlock
+                {
+                    Text = audio.Title,
+                    TextWrapping = TextWrapping.NoWrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    FontWeight = FontWeights.SemiBold
+                };
+                infoPanel.Children.Add(titleText);
+                
+                var artistText = new TextBlock
+                {
+                    Text = audio.Artist,
+                    TextWrapping = TextWrapping.NoWrap,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Opacity = 0.8,
+                    FontSize = 12
+                };
+                infoPanel.Children.Add(artistText);
+                
+                Grid.SetColumn(infoPanel, 1);
+                grid.Children.Add(infoPanel);
+                
+                // Длительность
+                var durationText = new TextBlock
+                {
+                    Text = audio.FormattedDuration,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(10, 0, 0, 0),
+                    Opacity = 0.8,
+                    FontSize = 12
+                };
+                Grid.SetColumn(durationText, 2);
+                grid.Children.Add(durationText);
+                
+                return grid;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PostsPage] Error creating audio element: {ex.Message}");
+                return new TextBlock { Text = $"{audio.Artist} - {audio.Title}" };
+            }
+        }
+        
+        // Обработчик нажатия на кнопку воспроизведения аудио
+        private void PlayAudio_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is Button button && button.Tag is Models.Audio audio)
+                {
+                    Debug.WriteLine($"[PostsPage] Playing audio: {audio.Artist} - {audio.Title}");
+                    
+                    // Получаем сервис аудиоплеера из App
+                    var audioService = App.AudioService;
+                    if (audioService != null)
+                    {
+                        // Создаем плейлист из одного трека и воспроизводим
+                        var playlist = new ObservableCollection<Models.Audio> { audio };
+                        audioService.SetPlaylist(playlist, 0);
+                        
+                        Debug.WriteLine("[PostsPage] Audio playback started");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[PostsPage] AudioService is not available");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PostsPage] Error playing audio: {ex.Message}");
             }
         }
     }

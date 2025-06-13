@@ -196,7 +196,7 @@ namespace ovkdesktop
         }
         
         /// <summary>
-        /// Проверяет, поставил ли текущий пользователь лайк указанному объекту
+        /// Проверяет, поставил ли текущий пользователь лайк объекту
         /// </summary>
         /// <param name="type">Тип объекта (post, comment, video, photo, note)</param>
         /// <param name="ownerId">ID владельца объекта</param>
@@ -234,6 +234,47 @@ namespace ovkdesktop
                 
                 Debug.WriteLine($"[SessionHelper] IsLikedAsync URL: {instanceUrl}{url}");
                 
+                // Особая обработка для аудио, так как API может не поддерживать лайки для аудио
+                if (type == "audio")
+                {
+                    try
+                    {
+                        var audioResponse = await httpClient.GetAsync(url);
+                        if (!audioResponse.IsSuccessStatusCode)
+                        {
+                            // Если сервер вернул ошибку для аудио, просто логируем и возвращаем текущее состояние
+                            // вместо false, чтобы избежать удаления треков из коллекции
+                            Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio failed with status: {audioResponse.StatusCode}");
+                            
+                            // Для аудио возвращаем true, чтобы избежать удаления из коллекции
+                            // Это временное решение, пока API не будет полностью поддерживать лайки для аудио
+                            return true;
+                        }
+                        
+                        var audioJson = await audioResponse.Content.ReadAsStringAsync();
+                        Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio response: {audioJson}");
+                        
+                        using JsonDocument doc = JsonDocument.Parse(audioJson);
+                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) &&
+                            responseElement.TryGetProperty("liked", out JsonElement likedElement))
+                        {
+                            int liked = likedElement.GetInt32();
+                            Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio result: {liked}");
+                            return liked == 1;
+                        }
+                        
+                        // Если не удалось получить статус лайка, возвращаем true для безопасности
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio error: {ex.Message}");
+                        // Для аудио возвращаем true, чтобы избежать удаления из коллекции
+                        return true;
+                    }
+                }
+                
+                // Стандартная обработка для других типов объектов
                 HttpResponseMessage response;
                 string json;
                 
@@ -675,6 +716,40 @@ namespace ovkdesktop
                 Debug.WriteLine($"[SessionHelper] AddLikeAsync error: {ex.Message}");
                 return -1;
             }
+        }
+
+        public static void ClearToken()
+        {
+            try
+            {
+                if (File.Exists("ovkdata.json"))
+                {
+                    File.Delete("ovkdata.json");
+                    Debug.WriteLine("[SessionHelper] Token file deleted");
+                }
+                
+                // Сбрасываем кеш ID пользователя
+                ClearUserIdCache();
+                
+                Debug.WriteLine("[SessionHelper] Token cleared");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SessionHelper] Error clearing token: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Получает ID текущего пользователя из кэша или из API
+        /// </summary>
+        /// <returns>ID пользователя или 0 в случае ошибки</returns>
+        public static async Task<int> GetUserIdAsync()
+        {
+            // используем существующий метод
+            int userId = await GetCurrentUserIdAsync();
+            
+            // конвертируем -1 в 0 для совместимости с API OpenVK
+            return userId > 0 ? userId : 0;
         }
     }
 } 

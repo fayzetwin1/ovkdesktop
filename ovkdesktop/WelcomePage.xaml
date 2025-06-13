@@ -10,20 +10,48 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Image Source="/Assets/Images/openvklogoScaled.png" Height="250" Margin="0,0,870,0"/>
-        <Button Content="Выбрать инстанс..." Margin="20,-710,100,100" Click="AnotherInstance_Click"></Button>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         
-        <TextBlock Text="Добро пожаловать в OVK Desktop!" Margin="850,340,0,0" FontSize="28" Style="{ThemeResource TitleTextBlockStyle}"/>
-        <TextBlock Text="Данное приложение является десктоп-клиентом соцсети под названием OpenVK." Margin="850,395,0,0" FontSize="14" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
-        <Button Content="Начать общение" Margin="850,50,0,0" FontSize="16" Style="{StaticResource AccentButtonStyle}" Click="WelcomeButtonClick"/>
-
-        <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="600,770,0,0"/>
-        <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz" Margin="770,770,0,0"/>
-        <TextBlock Text="OVK Desktop, version: 0.7 Beta. Made with love by Fayzetwin :3." Margin="550,850,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"/>
+        <Grid Grid.Row="0">
+            <Button Content="Выбрать инстанс..." Margin="20,20,0,0" HorizontalAlignment="Left" Click="AnotherInstance_Click"/>
+        </Grid>
         
+        <Grid Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Логотип по центру -->
+            <Image Grid.Row="0" Source="/Assets/Images/openvklogoScaled.png" Height="250" 
+                   HorizontalAlignment="Center" Margin="0,0,0,20"/>
+            
+            <!-- Текст и кнопка по центру -->
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" MaxWidth="600">
+                <TextBlock Text="Добро пожаловать в OpenVK Desktop!" 
+                           FontSize="28" Style="{ThemeResource TitleTextBlockStyle}"
+                           TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                <TextBlock Text="Данное приложение является десктоп-клиентом соцсети под названием OpenVK и прочих подобных ему инстансов." 
+                           Margin="0,10,0,20" FontSize="14" Style="{ThemeResource BodyStrongTextBlockStyle}"
+                           TextWrapping="Wrap" TextAlignment="Center"/>
+                <Button Content="Начать общение" FontSize="16" 
+                        Style="{StaticResource AccentButtonStyle}" Click="WelcomeButtonClick"
+                        HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
         
-        
+        <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,20,0,20">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="0,0,20,0"/>
+                <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz"/>
+            </StackPanel>
+            <TextBlock Text="OVK Desktop, version: 0.8 Pre-release. Made with love by Fayzetwin :3." 
+                       Margin="0,10,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
     </Grid>
-    
-    
 </Page>

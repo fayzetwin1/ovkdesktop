@@ -24,31 +24,67 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- profile user (avatar and other) -->
-        <Grid Grid.Row="0">
-            <PersonPicture Margin="-1200,45,0,0" x:Name="ProfileAvatar" />
-            <TextBlock x:Name="ProfileName" Text="Загрузка..." Margin="250,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42"/>
-            <TextBlock x:Name="PostsCountText" Margin="250,165,0,0" Text="Загрузка постов..." Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}"/>
-            <TextBlock x:Name="ErrorTextBlock" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
-            <Button Content="Опубликовать пост" Margin="130,220,0,0" Click="PublishNewPostButton"></Button>
-            <Button Content="Отредактировать профиль" Margin="300,220,0,0"></Button>
+        <!-- Профиль пользователя (аватар и информация) -->
+        <Grid Grid.Row="0" Margin="125,105,20,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Аватар пользователя -->
+            <PersonPicture Grid.Column="0" 
+                          x:Name="ProfileAvatar" 
+                          Width="120" Height="120"
+                          VerticalAlignment="Top"/>
+            
+            <!-- Информация о пользователе -->
+            <StackPanel Grid.Column="1" Margin="20,0,0,0">
+                <TextBlock x:Name="ProfileName" 
+                          Text="Загрузка..." 
+                          Style="{ThemeResource TitleLargeTextBlockStyle}" 
+                          FontSize="32"/>
+                
+                <TextBlock x:Name="PostsCountText" 
+                          Text="Загрузка постов..." 
+                          Opacity="0.7" 
+                          Style="{ThemeResource BodyTextBlockStyle}"
+                          Margin="0,5,0,15"/>
+                
+                <TextBlock x:Name="ErrorTextBlock" 
+                          Foreground="Red" 
+                          Visibility="Collapsed" 
+                          TextWrapping="Wrap"
+                          Margin="0,0,0,10"/>
+                
+                <!-- Кнопки действий -->
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button Content="Опубликовать пост" Click="PublishNewPostButton"/>
+                    <Button Content="Отредактировать профиль"/>
+                </StackPanel>
+            </StackPanel>
         </Grid>
 
-        <!-- list of posts -->
+        <!-- Список постов -->
         <Grid Grid.Row="1" Margin="110,20,20,20" x:Name="GridPostsMyProfile">
-            <ProgressRing x:Name="LoadingProgressRing" IsActive="True" 
-                        Width="50" Height="50" 
-                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <ProgressRing x:Name="LoadingProgressRing" 
+                         IsActive="True" 
+                         Width="50" Height="50" 
+                         HorizontalAlignment="Center" 
+                         VerticalAlignment="Center"/>
 
-            <ListView x:Name="PostsListView" ItemsSource="{x:Bind Posts}">
+            <ListView x:Name="PostsListView" 
+                     ItemsSource="{x:Bind Posts}"
+                     HorizontalAlignment="Stretch">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:UserWallPost">
                         <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-								BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-								BorderThickness="1" CornerRadius="8"
-								Margin="0,5,0,10" Padding="15">
-                            <Grid>
+                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                               BorderThickness="1" CornerRadius="8"
+                               Margin="0,5,0,10" Padding="15"
+                               HorizontalAlignment="Stretch">
+                            <Grid HorizontalAlignment="Stretch">
                                 <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -57,49 +93,91 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- date of post -->
+                                <!-- Дата поста -->
                                 <TextBlock Grid.Row="0"
-										   Text="{Binding FormattedDate}"
-										   Opacity="0.7" Margin="0,0,0,10"/>
+                                          Text="{Binding FormattedDate}"
+                                          Opacity="0.7" Margin="0,0,0,10"/>
 
-                                <!-- text -->
+                                <!-- Текст поста -->
                                 <TextBlock Grid.Row="1"
-										   Text="{Binding Text}"
-										   TextWrapping="Wrap" Margin="0,0,0,10"
-                                           Foreground="{ThemeResource TextFillColorPrimary}"/>
+                                          Text="{Binding Text}"
+                                          TextWrapping="Wrap" Margin="0,0,0,10"
+                                          Foreground="{ThemeResource TextFillColorPrimary}"/>
 
-                                <!-- image -->
+                                <!-- Изображение -->
                                 <Image Grid.Row="2"
-									   Source="{Binding MainImageUrl}"
-									   Stretch="Uniform" MaxHeight="400"
-									   HorizontalAlignment="Left" Margin="0,0,0,10"
-									   Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                      Source="{Binding MainImageUrl}"
+                                      Stretch="Uniform" MaxHeight="400"
+                                      HorizontalAlignment="Left" Margin="0,0,0,10"
+                                      Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <!-- video -->
+                                <!-- Видео -->
                                 <Grid Grid.Row="3" 
-                                      Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                      Margin="0,0,0,10">
+                                     Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
+                                     Margin="0,0,0,10"
+                                     HorizontalAlignment="Left">
                                     <MediaPlayerElement 
                                         Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                         MaxHeight="400" 
-                                        HorizontalAlignment="Left"
                                         AreTransportControlsEnabled="True"/>
                                 </Grid>
 
-                                <!-- gif -->
+                                <!-- GIF -->
                                 <Image Grid.Row="4"
-                                       Source="{Binding GifUrl}"
-                                       Stretch="Uniform" MaxHeight="400"
-                                       HorizontalAlignment="Left" Margin="0,0,0,10"
-                                       Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                      Source="{Binding GifUrl}"
+                                      Stretch="Uniform" MaxHeight="400"
+                                      HorizontalAlignment="Left" Margin="0,0,0,10"
+                                      Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <!-- repost -->
-                                <Border Grid.Row="5" 
-                                        Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1" CornerRadius="4"
-                                        Padding="10" Margin="0,0,0,10">
+                                <!-- Аудио -->
+                                <ItemsControl Grid.Row="5"
+                                             ItemsSource="{Binding Audios}"
+                                             Visibility="{Binding HasAudio, Converter={StaticResource BoolToVisibilityConverter}}"
+                                             Margin="0,0,0,10"
+                                             HorizontalAlignment="Stretch">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Audio">
+                                            <Grid Height="60" Margin="0,5" HorizontalAlignment="Stretch">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="40"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                
+                                                <!-- Кнопка воспроизведения -->
+                                                <Button Grid.Column="0" Width="40" Height="40" 
+                                                        Padding="0" Background="Transparent"
+                                                        Tag="{Binding}" Click="PlayAudio_Click">
+                                                    <FontIcon Glyph="&#xE768;" FontSize="16"/>
+                                                </Button>
+                                                
+                                                <!-- Информация о треке -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
+                                                    <TextBlock Text="{Binding Title}" 
+                                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                               FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Artist}" 
+                                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                               Opacity="0.8" FontSize="12"/>
+                                                </StackPanel>
+                                                
+                                                <!-- Длительность -->
+                                                <TextBlock Grid.Column="2" Text="{Binding FormattedDuration}" 
+                                                           VerticalAlignment="Center" Margin="10,0,0,0"
+                                                           Opacity="0.8" FontSize="12"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Репост -->
+                                <Border Grid.Row="6" 
+                                       Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                       BorderThickness="1" CornerRadius="4"
+                                       Padding="10" Margin="0,0,0,10"
+                                       HorizontalAlignment="Stretch">
                                     <StackPanel>
                                         <TextBlock Text="{Binding RepostOwnerText}" 
                                                    Opacity="0.7" Margin="0,0,0,5"/>
@@ -115,18 +193,18 @@
                                                HorizontalAlignment="Left"
                                                Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         <Grid Visibility="{Binding Repost.HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                              Margin="0,5,0,0">
+                                              Margin="0,5,0,0"
+                                              HorizontalAlignment="Left">
                                             <MediaPlayerElement 
                                                 Source="{Binding Repost.MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                                 MaxHeight="300" 
-                                                HorizontalAlignment="Left"
                                                 AreTransportControlsEnabled="True"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
 
-                                <!-- likes and comments count -->
-                                <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15">
+                                <!-- Лайки и комментарии -->
+                                <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="15" Margin="0,10,0,0">
                                     <!-- Кнопка лайка -->
                                     <Button Tag="{Binding}" Click="LikeButton_Click" 
                                             Background="Transparent" BorderThickness="0" Padding="5,2">
@@ -152,10 +230,12 @@
                 </ListView.ItemTemplate>
             </ListView>
         </Grid>
-        <Frame x:Name="ContentProfileFrame">
+        
+        <!-- Фрейм для навигации -->
+        <Frame x:Name="ContentProfileFrame" Grid.RowSpan="2">
             <Frame.ContentTransitions>
                 <TransitionCollection>
-                    <NavigationThemeTransition  />
+                    <NavigationThemeTransition />
                 </TransitionCollection>
             </Frame.ContentTransitions>
         </Frame>

@@ -132,8 +132,48 @@
                                        HorizontalAlignment="Left" Margin="0,0,0,10"
                                        Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
+                                <!-- audio -->
+                                <ItemsControl Grid.Row="5"
+                                              ItemsSource="{Binding Audios}"
+                                              Visibility="{Binding HasAudio, Converter={StaticResource BoolToVisibilityConverter}}"
+                                              Margin="0,0,0,10">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Audio">
+                                            <Grid Height="60" Margin="0,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="40"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                
+                                                <!-- Кнопка воспроизведения -->
+                                                <Button Grid.Column="0" Width="40" Height="40" 
+                                                        Padding="0" Background="Transparent"
+                                                        Tag="{Binding}" Click="PlayAudio_Click">
+                                                    <FontIcon Glyph="&#xE768;" FontSize="16"/>
+                                                </Button>
+                                                
+                                                <!-- Информация о треке -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
+                                                    <TextBlock Text="{Binding Title}" 
+                                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                               FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding Artist}" 
+                                                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                               Opacity="0.8" FontSize="12"/>
+                                                </StackPanel>
+                                                
+                                                <!-- Длительность -->
+                                                <TextBlock Grid.Column="2" Text="{Binding FormattedDuration}" 
+                                                           VerticalAlignment="Center" Margin="10,0,0,0"
+                                                           Opacity="0.8" FontSize="12"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
                                 <!-- repost -->
-                                <Border Grid.Row="5" 
+                                <Border Grid.Row="6" 
                                         Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -165,7 +205,7 @@
                                 </Border>
 
                                 <!-- likes and comments count -->
-                                    <StackPanel Grid.Row="6" Orientation="Horizontal" Spacing="15" Margin="0,5,0,0">
+                                    <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="15" Margin="0,5,0,0">
                                         <!-- Кнопка лайка -->
                                         <Button Tag="{Binding}" Click="LikeButton_Click" 
                                                Background="Transparent" BorderThickness="0" Padding="5,2">

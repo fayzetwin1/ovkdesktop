@@ -31,56 +31,81 @@ namespace ovkdesktop
     /// </summary>
     public partial class App : Application
     {
-
+        // service for playing audio
+        public static AudioPlayerService AudioService { get; private set; }
+        
+        // main window of the application
         public static Window MainWindow { get; private set; }
-        public static MainWindow MainWindowInstance { get; private set; }
+        public static MainWindow MainWindowInstance { get; internal set; }
+        
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
         public App()
         {
-            this.InitializeComponent();
-            this.UnhandledException += OnAppUnhandledException;
-        }
-
-        private void OnAppUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-        {
-            Debug.WriteLine($"XAML UnhandledException: {e.Exception.Message}");
-            Debug.WriteLine(e.Exception.StackTrace);
-            // e.Handled = true; // if you want to handle the error
+            InitializeComponent();
+            
+            // processing unhandled exceptions
+            UnhandledException += App_UnhandledException;
+            
+            // initialize the global audio player service
+            AudioService = new AudioPlayerService();
+            
+            Debug.WriteLine("[App] Initialized");
         }
         
-
+        // handler of unhandled exceptions
+        private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+        {
+            // log the exception
+            Debug.WriteLine($"[App] Unhandled exception: {e.Message}");
+            Debug.WriteLine($"[App] Exception details: {e.Exception}");
+            
+            // prevent the application from closing
+            e.Handled = true;
+        }
+        
         /// <summary>
         /// Invoked when the application is launched.
         /// </summary>
         /// <param name="args">Details about the launch request and process.</param>
         protected override async void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-
-            MainWindow = new MainWindow();
-            Frame rootFrame = MainWindow.Content as Frame ?? new Frame();
-            MainWindow.Content = rootFrame;
-
-            bool isTokenValid = await SessionHelper.IsTokenValidAsync();
-
-            if (isTokenValid)
+            try
             {
+                // create the main window
+                MainWindow = new MainWindow();
+                MainWindowInstance = MainWindow as MainWindow;
+                
+                Frame rootFrame = MainWindow.Content as Frame ?? new Frame();
+                MainWindow.Content = rootFrame;
+
+                bool isTokenValid = await SessionHelper.IsTokenValidAsync();
+
+                if (isTokenValid)
+                {
+                    MainWindow.Activate();
+                    rootFrame.Navigate(typeof(MainPage));
+                }
+                else
+                    rootFrame.Navigate(typeof(WelcomePage));
+
+                MainWindow.ExtendsContentIntoTitleBar = true;
                 MainWindow.Activate();
-                rootFrame.Navigate(typeof(MainPage));
+
+                this.DebugSettings.IsBindingTracingEnabled = true;    
+                this.DebugSettings.BindingFailed += (s, e) =>
+                {
+                    Debug.WriteLine($"XAML BindingFailed: {e.Message}");
+                };
+
+                Debug.WriteLine("[App] Main window activated");
             }
-            else
-                rootFrame.Navigate(typeof(WelcomePage));
-
-            MainWindow.ExtendsContentIntoTitleBar = true;
-            MainWindow.Activate();
-
-            this.DebugSettings.IsBindingTracingEnabled = true;    
-            this.DebugSettings.BindingFailed += (s, e) =>
+            catch (Exception ex)
             {
-                Debug.WriteLine($"XAML BindingFailed: {e.Message}");
-            };
+                Debug.WriteLine($"[App] Error in OnLaunched: {ex.Message}");
+            }
         }
 
         private Window? m_window;

@@ -9,31 +9,38 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Grid>
-        <NavigationView x:Name="NavigationMainPage" Height="890"
-                        PaneDisplayMode="LeftCompact"
-                        IsBackButtonVisible="Collapsed"
-                        SelectionChanged="NavigationViewControl_SelectionChanged"
-                        IsSettingsVisible="False"
-                        ItemInvoked="NavigationViewControl_ItemInvoked"
-                        >
-            <NavigationView.MenuItems>
-                <NavigationViewItem Icon="Contact" Content="Профиль" Tag="ProfilePage" x:Name="ProfilePage" />
-                <NavigationViewItem Icon="People" Content="Друзья" Tag="FriendsPage" x:Name="FriendsPage" />
-                <NavigationViewItem Icon="PreviewLink" Content="Посты" Tag="PostsPage" x:Name="PostsPage" />
-                <NavigationViewItem Icon="Audio" Content="Музыка" Tag="MusicPage"  x:Name="MusicPage" />
-            </NavigationView.MenuItems>
-
-            <NavigationView.FooterMenuItems>
-                <NavigationViewItem Content="Настройки OVK Desktop" Icon="Setting" x:Name="SettingsClientPage" Tag="SettingsClientPage" />
-            </NavigationView.FooterMenuItems>
-
-            <Frame x:Name="ContentMainFrame"/>
-        </NavigationView>
-
+    <Grid x:Name="RootGrid" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         
-
-
-
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+            <NavigationView x:Name="NavView"
+                            IsSettingsVisible="False"
+                            IsBackButtonVisible="Collapsed"
+                            HorizontalAlignment="Stretch"
+                            ItemInvoked="NavView_ItemInvoked">
+                <NavigationView.MenuItems>
+                    <NavigationViewItem x:Name="NewsItem" Content="Новости" Icon="Message" Tag="news"/>
+                    <NavigationViewItem x:Name="ProfileItem" Content="Профиль" Icon="Contact" Tag="profile"/>
+                    <NavigationViewItem x:Name="MusicItem" Content="Музыка" Icon="MusicInfo" Tag="music"/>
+                    <NavigationViewItem x:Name="FriendsItem" Content="Друзья" Icon="People" Tag="friends"/>
+                    <NavigationViewItem x:Name="SettingsItem" Content="Настройки" Icon="Setting" Tag="settings"/>
+                </NavigationView.MenuItems>
+                <Frame x:Name="ContentFrame" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+            </NavigationView>
+        </Grid>
+        
+        <!-- Контейнер для мини-плеера -->
+        <ContentControl Grid.Row="1" 
+                x:Name="MiniPlayerContainer" 
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" 
+                BorderThickness="0,1,0,0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch">
+            <!-- Содержимое будет добавлено программно -->
+        </ContentControl>
     </Grid>
 </Page>

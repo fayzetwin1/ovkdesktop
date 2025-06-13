@@ -7,22 +7,13 @@ using Microsoft.UI;
 namespace ovkdesktop.Converters
 {
     /// <summary>
-    /// Конвертер для изменения цвета кнопки лайка в зависимости от значения UserLikes
+    /// converter for the color of the likes text, always returns the color depending on the theme
     /// </summary>
     public class IntToColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is int intValue)
-            {
-                // Если UserLikes > 0, то пост лайкнут пользователем
-                if (intValue > 0)
-                {
-                    return new SolidColorBrush(Microsoft.UI.Colors.Red);
-                }
-            }
-            
-            // Определяем цвет в зависимости от темы
+            // determine the color depending on the theme
             var requestedTheme = Application.Current.RequestedTheme;
             if (requestedTheme == ApplicationTheme.Dark)
             {

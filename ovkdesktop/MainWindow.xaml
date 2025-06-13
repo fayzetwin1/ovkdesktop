@@ -9,7 +9,16 @@
     mc:Ignorable="d"
     Title="ovkdesktop">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Frame x:Name="ContentFrame" />
+    <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
+        <!-- Основной контент -->
+        <Frame x:Name="ContentFrame" Grid.Row="0" />
+        
+        <!-- Миниплеер будет добавляться в этот контейнер динамически -->
+        <Grid x:Name="MiniPlayerContainer" Grid.Row="1" HorizontalAlignment="Stretch" />
     </Grid>
 </Window>

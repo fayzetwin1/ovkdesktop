@@ -12,8 +12,21 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
     <WindowsPackageType>None</WindowsPackageType>
-	 <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>  
-</PropertyGroup>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EventSourceSupport>false</EventSourceSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <DebuggerSupport>false</DebuggerSupport>
+    <SatelliteResourceLanguages>ru;en</SatelliteResourceLanguages>
+  </PropertyGroup>
   <ItemGroup>
     <None Remove="AnotherProfilePage.xaml" />
     <None Remove="Assets\Images\openvklogo.png" />
@@ -29,6 +42,15 @@
     <None Remove="SettingsPage.xaml" />
     <None Remove="TypeNewPostPage.xaml" />
     <None Remove="WelcomePage.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="iconapp.ico" />
+    <Content Include="Assets\BadgeLogo\BadgeLogo.ico" />
+    <Content Include="Assets\SplashScreen\SplashScreen.ico" />
+    <Content Include="Assets\Square150x150Logo\Square150x150Logo.ico" />
+    <Content Include="Assets\Square44x44Logo\Square44x44Logo.ico" />
+    <Content Include="Assets\StoreLogo\StoreLogo.ico" />
+    <Content Include="Assets\Wide310x150Logo\Wide310x150Logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -47,6 +69,7 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250401001" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <ItemGroup>
     <Page Update="PostInfoPage.xaml">
@@ -109,6 +132,14 @@
     </Page>
   </ItemGroup>
 
+  <!-- Исключение ненужных локализаций WinUI -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="Microsoft.Windows.SDK.NET" />
+    <TrimmerRootAssembly Include="Microsoft.Windows.AppLifecycle" />
+    <TrimmerRootAssembly Include="Microsoft.WinUI" />
+    <TrimmerRootAssembly Include="Microsoft.Windows.AppNotifications" />
+  </ItemGroup>
+
   <!--
     Defining the "HasPackageAndPublishMenuAddedByProject" property here allows the Solution
     Explorer "Package and Publish" context menu entry to be enabled for this project even if
@@ -124,5 +155,16 @@
     <PublishReadyToRun Condition="'$(Configuration)' != 'Debug'">True</PublishReadyToRun>
     <PublishTrimmed Condition="'$(Configuration)' == 'Debug'">False</PublishTrimmed>
     <PublishTrimmed Condition="'$(Configuration)' != 'Debug'">True</PublishTrimmed>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <ApplicationIcon>iconapp.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <Optimize>True</Optimize>
   </PropertyGroup>
 </Project>

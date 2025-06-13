@@ -9,15 +9,85 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <Grid>
-        <Image Source="/Assets/Images/openvklogoScaled.png" Height="100" Margin="-1200,-350,0,0"/>
-        <TextBlock x:Name="SettingsClientLabel" Text="Настройки клиента" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" ></TextBlock>
-        <TextBlock x:Name="NameOfClientLabel" Text="OVK Desktop" Margin="245,215,0,0" Style="{ThemeResource SubtitleTextBlockStyle}" FontSize="36" ></TextBlock>
-        <TextBlock x:Name="VersionOfClientLabel" Text="версия: Beta 0.7" Margin="245,260,0,0" Style="{ThemeResource BodyTextBlockStyle}" FontSize="16" Opacity="0.7" ></TextBlock>
-        <TextBlock x:Name="AuthorOfClientLabel" Text="by Fayzetwin :3" Margin="245,285,0,0" Style="{ThemeResource BodyStrongTextBlockStyle}" FontSize="16" Opacity="0.7" ></TextBlock>
-        <Image Source="/Assets/Images/eastermeme.jpeg" Height="200" Margin="-1100,50,0,0"/>
-        <TextBlock Text="Пока что, тут ничего нету..." Margin="345,415,0,0" Style="{ThemeResource SubtitleTextBlockStyle}" FontSize="36" ></TextBlock>
-        <TextBlock Text="но надеюсь, что скоро тут что-то появится... :)" Margin="345,470,0,0" Style="{ThemeResource BodyTextBlockStyle}" FontSize="16" Opacity="0.7" ></TextBlock>
-        <Button Content="Выйти из аккаунта" Margin="115,370,0,0" Click="LogoutButton_Click"></Button>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- header -->
+            <RowDefinition Height="Auto"/> <!-- info about client -->
+            <RowDefinition Height="Auto"/> <!-- image and logout -->
+            <RowDefinition Height="*"/> <!-- info -->
+        </Grid.RowDefinitions>
+        
+
+        <TextBlock Grid.Row="0"
+                  x:Name="SettingsClientLabel" 
+                  Text="Настройки клиента" 
+                  Style="{ThemeResource TitleLargeTextBlockStyle}" 
+                  FontSize="42"
+                  Margin="125,105,0,30"/>
+        
+
+        <StackPanel Grid.Row="1" Margin="125,10,0,20">
+            <TextBlock x:Name="NameOfClientLabel" 
+                      Text="OpenVK Desktop" 
+                      Style="{ThemeResource SubtitleTextBlockStyle}" 
+                      FontSize="36"
+                      Margin="125,0,0,5"/>
+            
+            <TextBlock x:Name="VersionOfClientLabel" 
+                      Text="версия: Pre-release 0.8" 
+                      Style="{ThemeResource BodyTextBlockStyle}" 
+                      FontSize="16" 
+                      Opacity="0.7"
+                      Margin="125,0,0,5"/>
+            
+            <TextBlock x:Name="AuthorOfClientLabel" 
+                      Text="by Fayzetwin :3" 
+                      Style="{ThemeResource BodyStrongTextBlockStyle}" 
+                      FontSize="16" 
+                      Opacity="0.7" Margin="125,0,0,5"/>
+
+            <Image Source="/Assets/Images/openvklogoScaled.png" 
+              Height="100" 
+              HorizontalAlignment="Left"
+                   Margin="0,-100,0,5"/>
+        </StackPanel>
+        
+        <Grid Grid.Row="2" Margin="125,10,0,30">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <StackPanel Grid.Column="0" Spacing="20">
+
+                <Image Source="/Assets/Images/eastermeme.jpeg" 
+                      Height="200" 
+                      HorizontalAlignment="Left"/>
+            </StackPanel>
+
+            <TextBlock Text="Пока что, тут ничего нету..." 
+               Style="{ThemeResource SubtitleTextBlockStyle}" 
+               FontSize="28"
+               TextWrapping="Wrap"
+               HorizontalAlignment="Center"
+                       Margin="225,50,0,10"/>
+
+            <TextBlock Text="но надеюсь, что скоро тут что-то появится... :)" 
+               Style="{ThemeResource BodyTextBlockStyle}" 
+               FontSize="16" 
+               Opacity="0.7"
+               TextWrapping="Wrap"
+               HorizontalAlignment="Center"
+               Margin="220,95,0,10"/>
+
+            <Button 
+               Content="Выйти из аккаунта" 
+               Click="LogoutButton_Click"
+               VerticalAlignment="Top"
+               HorizontalAlignment="Left"
+               Margin="320,150,0,10"/>
+        </Grid>
+        
+
     </Grid>
 </Page>

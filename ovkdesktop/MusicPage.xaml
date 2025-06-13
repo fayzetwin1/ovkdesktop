@@ -6,8 +6,58 @@
     xmlns:local="using:ovkdesktop"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:converters="using:ovkdesktop.Converters"
+    xmlns:models="using:ovkdesktop.Models"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.Resources>
+        <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:BoolToSymbolConverter x:Key="BoolToSymbolConverter"/>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
+        <converters:SecondsToTimeStringConverter x:Key="SecondsToTimeStringConverter"/>
+        
+        <!-- template for displaying audio record -->
+        <DataTemplate x:Key="AudioItemTemplate" x:DataType="models:Audio">
+            <Grid Margin="0,5" Height="60" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- cover of track -->
+                <Border Grid.Column="0" Width="50" Height="50" Margin="0,0,10,0" 
+                        CornerRadius="4" Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}">
+                    <Image Source="{x:Bind ThumbUrl, Mode=OneWay, Converter={StaticResource StringToImageSourceConverter}}" Stretch="UniformToFill"/>
+                </Border>
+                
+                <!-- information about track -->
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Title, Mode=OneWay}" 
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" 
+                               Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                    <TextBlock Text="{x:Bind Artist, Mode=OneWay}" 
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" 
+                               Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8"/>
+                </StackPanel>
+                
+                <!-- duration of track -->
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0" 
+                           Text="{x:Bind Duration, Mode=OneWay, Converter={StaticResource TimeSpanToStringConverter}}" 
+                           Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8"/>
+                
+                <!-- button to add to favorites -->
+                <Button Grid.Column="3" Width="40" Height="40" Padding="0" Background="Transparent"
+                        Click="FavoriteButton_Click" ToolTipService.ToolTip="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToSymbolConverter}, ConverterParameter='Убрать из избранного|Добавить в избранное'}">
+                    <FontIcon Glyph="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToSymbolConverter}, ConverterParameter='&#xEB52;|&#xE00B;'}" 
+                              FontSize="16" Foreground="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToSymbolConverter}, ConverterParameter='#E91E63|#808080'}" />
+                </Button>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -15,10 +65,119 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <TextBlock x:Name="MusicLabel" Text="Музыка" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" ></TextBlock>
-            <TextBlock x:Name="MusicCount" Text="Считаем количество друзей..." Margin="125,175,0,0"></TextBlock>
-            <TextBlock x:Name="ErrorMusicText" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+        <Grid Grid.Row="0" Margin="125,105,20,20" CornerRadius="8" Padding="15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            
+            <TextBlock Text="Музыка" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" VerticalAlignment="Center"/>
+            
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                <Button x:Name="RefreshButton" Click="RefreshButton_Click" CornerRadius="4">
+                    <FontIcon Glyph="&#xE72C;"/>
+                </Button>
+            </StackPanel>
+        </Grid>
+        
+        <Grid Grid.Row="1" Margin="125,0,20,20" CornerRadius="10">
+            <Pivot x:Name="AudioPivot" SelectionChanged="AudioPivot_SelectionChanged" 
+                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8">
+                <PivotItem Header="Мои аудиозаписи">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock x:Name="MyAudioHeader" Grid.Row="0" Text="Мои аудиозаписи" 
+                                   Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,10,0,10"/>
+                        
+                        <ListView x:Name="MyAudioListView" Grid.Row="1" 
+                                  ItemsSource="{x:Bind _myAudioCollection}" 
+                                  ItemTemplate="{StaticResource AudioItemTemplate}"
+                                  IsItemClickEnabled="True"
+                                  ItemClick="PlayAudio"
+                                  SelectionMode="Single"
+                                  Margin="0,0,0,10"
+                                  Background="Transparent"/>
+                        
+                        <ProgressRing x:Name="MyAudioLoadingRing" IsActive="False" 
+                                      Width="50" Height="50" 
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"
+                                      Grid.RowSpan="2"/>
+                    </Grid>
+                </PivotItem>
+                
+                <PivotItem Header="Популярные">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" Text="Популярные аудиозаписи" 
+                                   Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,10,0,10"/>
+                        
+                        <ListView x:Name="PopularAudioListView" Grid.Row="1" 
+                                  ItemsSource="{x:Bind _popularAudioCollection}" 
+                                  ItemTemplate="{StaticResource AudioItemTemplate}"
+                                  IsItemClickEnabled="True"
+                                  ItemClick="PlayAudio"
+                                  SelectionMode="Single"
+                                  Margin="0,0,0,10"
+                                  Background="Transparent"/>
+                        
+                        <ProgressRing x:Name="PopularLoadingRing" IsActive="False" 
+                                      Width="50" Height="50" 
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"
+                                      Grid.RowSpan="2"/>
+                    </Grid>
+                </PivotItem>
+                
+                <PivotItem Header="Поиск">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" Text="Поиск музыки" 
+                                   Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,10,0,10"/>
+                        
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+                            <AutoSuggestBox x:Name="SearchBoxInTab" Width="300" PlaceholderText="Введите название или исполнителя..." 
+                                            CornerRadius="4"/>
+                            <Button x:Name="SearchButtonInTab" CornerRadius="4">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE721;"/>
+                                    <TextBlock Text="Найти"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        
+                        <ListView x:Name="RecommendedAudioListView" Grid.Row="2" 
+                                  ItemsSource="{x:Bind _recommendedAudioCollection}" 
+                                  ItemTemplate="{StaticResource AudioItemTemplate}"
+                                  IsItemClickEnabled="True"
+                                  ItemClick="PlayAudio"
+                                  SelectionMode="Single"
+                                  Margin="0,0,0,10"
+                                  Background="Transparent"/>
+                        
+                        <ProgressRing x:Name="SearchLoadingRing" IsActive="False" 
+                                      Width="50" Height="50" 
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"
+                                      Grid.RowSpan="3"/>
+                    </Grid>
+                </PivotItem>
+            </Pivot>
+            
+            <ProgressRing x:Name="LoadingProgressRing" IsActive="False" 
+                          Width="50" Height="50" 
+                          VerticalAlignment="Center" HorizontalAlignment="Center"
+                          Visibility="Collapsed"/>
         </Grid>
     </Grid>
 </Page>

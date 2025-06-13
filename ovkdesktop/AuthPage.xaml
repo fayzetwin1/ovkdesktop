@@ -9,14 +9,53 @@
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
-        <Button Click="BackLoginWelcomeButtonClick" AutomationProperties.Name="Pie" CornerRadius="5" Margin="-650,-545,0,0">
-            <FontIcon Glyph="&#xE72B;" />
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <Button Grid.Row="0" Click="BackLoginWelcomeButtonClick" 
+                AutomationProperties.Name="Back" CornerRadius="5" 
+                Margin="20,20,0,0" HorizontalAlignment="Left">
+            <FontIcon Glyph="&#xE72B;"/>
         </Button>
-        <TextBlock Text="Авторизация" FontSize="36" Style="{ThemeResource TitleTextBlockStyle}" Margin="10,-70,0,0" />
-        <TextBox x:Name="usernameTextBox" Header="Введите свою почту от аккаунта: " PlaceholderText="veselcraft@gmail.com" MaxLength="30"/>
-        <PasswordBox x:Name="passwordTextBox" Header="Введите свой пароль: " PlaceholderText="qwerty123"  />
-        <Button Content="Авторизоваться" Width="250" Click="LoginButtonClick" />
-        <HyperlinkButton x:Name="registrationLink" Content="Регистрация" Click="RegistrationLink_Click" Margin="75,0,0,0"/>
-    </StackPanel>
+
+        <StackPanel Grid.Row="1" 
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center" 
+                    Spacing="20"
+                    MaxWidth="450"
+                    Margin="20,0,20,0">
+            
+            <TextBlock Text="Авторизация" 
+                       FontSize="36" 
+                       Style="{ThemeResource TitleTextBlockStyle}" 
+                       HorizontalAlignment="Center"
+                       TextWrapping="Wrap"/>
+            
+            <TextBox x:Name="usernameTextBox" 
+                     Header="Введите свою почту от аккаунта:" 
+                     PlaceholderText="veselcraft@gmail.com" 
+                     MaxLength="30"
+                     Width="250"
+                     HorizontalAlignment="Stretch"/>
+            
+            <PasswordBox x:Name="passwordTextBox" 
+                         Header="Введите свой пароль:" 
+                         PlaceholderText="qwerty123"
+                         Width="250"
+                         HorizontalAlignment="Stretch"/>
+            
+            <Button Content="Авторизоваться" 
+                    Width="250" 
+                    Click="LoginButtonClick"
+                    HorizontalAlignment="Center"/>
+            
+            <HyperlinkButton x:Name="registrationLink" 
+                             Content="Регистрация" 
+                             Click="RegistrationLink_Click"
+                             HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
 </Page>

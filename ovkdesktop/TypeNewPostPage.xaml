@@ -15,13 +15,28 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <TextBlock x:Name="NewPostMPLabel" Text="Новый пост" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" ></TextBlock>
-            <TextBlock x:Name="ErrorTextBlock" Margin="250,190,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
+        <!-- Заголовок страницы -->
+        <Grid Grid.Row="0" Margin="125,105,20,0">
+            <TextBlock x:Name="NewPostMPLabel" Text="Новый пост" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" />
+            <TextBlock x:Name="ErrorTextBlock" Margin="0,60,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="120,40,40,50">
-            <DropDownButton AnimatedIcon.State="Add" Content="Добавить" Margin="0,-420,0,0" x:Name="MediaAddNewPostButton">
+        <!-- Основное содержимое -->
+        <Grid Grid.Row="1" Margin="125,25,20,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Кнопка добавления медиа -->
+            <DropDownButton Grid.Row="0" 
+                           AnimatedIcon.State="Add" 
+                           Content="Добавить" 
+                           HorizontalAlignment="Left"
+                           Margin="0,0,0,10"
+                           x:Name="MediaAddNewPostButton">
                 <DropDownButton.Flyout>
                     <MenuFlyout Placement="Bottom">
                         <MenuFlyoutItem Text="Фото" Click="UploadPhotoButton">
@@ -43,25 +58,45 @@
                 </DropDownButton.Flyout>
             </DropDownButton>
 
-            <TextBox AutomationProperties.Name="multi-line TextBox" x:Name="NewPostTextBox"
-                TextWrapping="Wrap" AcceptsReturn="True" IsSpellCheckEnabled="True"
-                Width="700" MinHeight="300" MaxHeight="300" Margin="-670,-40,0,0" />
+            <!-- Поле для ввода текста -->
+            <TextBox Grid.Row="1" 
+                    AutomationProperties.Name="multi-line TextBox" 
+                    x:Name="NewPostTextBox"
+                    TextWrapping="Wrap" 
+                    AcceptsReturn="True" 
+                    IsSpellCheckEnabled="True"
+                    MinHeight="200"
+                    MaxHeight="400"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Margin="0,0,0,10" />
 
-            <Image x:Name="SelectedImagePreview" 
-               MaxHeight="300" 
-               Stretch="Uniform"
-               Margin="0,10,0,0"/>
+            <!-- Предпросмотр изображения -->
+            <Image Grid.Row="2"
+                  x:Name="SelectedImagePreview" 
+                  MaxHeight="300" 
+                  Stretch="Uniform"
+                  HorizontalAlignment="Left"
+                  Margin="0,10,0,10"/>
 
-            <Button Content="Опубликовать" Margin="0,380,0,0" Click="PublishNewPostButton"/>
-            <Button Content="Отмена" Margin="140,380,0,0"/>
+            <!-- Кнопки действий -->
+            <StackPanel Grid.Row="3" 
+                       Orientation="Horizontal" 
+                       HorizontalAlignment="Left" 
+                       Spacing="10"
+                       Margin="0,10,0,0">
+                <Button Content="Опубликовать" Click="PublishNewPostButton"/>
+                <Button Content="Отмена"/>
+            </StackPanel>
         </Grid>
-        <Frame x:Name="ContentNewPostFrame">
+        
+        <!-- Фрейм для навигации -->
+        <Frame x:Name="ContentNewPostFrame" Grid.RowSpan="2">
             <Frame.ContentTransitions>
                 <TransitionCollection>
-                    <NavigationThemeTransition  />
+                    <NavigationThemeTransition />
                 </TransitionCollection>
             </Frame.ContentTransitions>
-
         </Frame>
     </Grid>
 </Page>

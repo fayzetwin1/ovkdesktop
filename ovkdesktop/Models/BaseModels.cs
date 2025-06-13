@@ -6,6 +6,8 @@ using System.Text.Json;
 using System.IO;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Reflection;
+using Newtonsoft.Json.Linq;
 
 namespace ovkdesktop.Models
 {
@@ -93,10 +95,15 @@ namespace ovkdesktop.Models
         public Doc MainDoc => Attachments?.FirstOrDefault(a => a.Type == "doc")?.Doc;
 
         [JsonIgnore]
-        public string GifUrl => GetGifUrl();
+        public Audio MainAudio => Attachments?.FirstOrDefault(a => a.Type == "audio")?.Audio;
 
         [JsonIgnore]
-        public bool HasGif => !string.IsNullOrEmpty(GifUrl);
+        public List<Audio> Audios => Attachments?.Where(a => a.Type == "audio" && a.Audio != null)
+                                              .Select(a => a.Audio)
+                                              .ToList() ?? new List<Audio>();
+
+        [JsonIgnore]
+        public bool HasAudio => Audios.Count > 0;
 
         [JsonIgnore]
         public bool HasVideo => MainVideo != null;
@@ -106,6 +113,12 @@ namespace ovkdesktop.Models
 
         [JsonIgnore]
         public bool HasImage => !string.IsNullOrEmpty(MainImageUrl);
+
+        [JsonIgnore]
+        public bool HasGif => !string.IsNullOrEmpty(GifUrl);
+
+        [JsonIgnore]
+        public string GifUrl => GetGifUrl();
 
         private string GetGifUrl()
         {
@@ -867,9 +880,15 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("doc")]
         public Doc Doc { get; set; }
+        
+        [JsonPropertyName("audio")]
+        public Audio Audio { get; set; }
 
         [JsonIgnore]
         public bool IsGif => Type == "doc" && Doc?.Ext == "gif";
+        
+        [JsonIgnore]
+        public bool IsAudio => Type == "audio" && Audio != null;
     }
 
     public class Likes
@@ -912,6 +931,183 @@ namespace ovkdesktop.Models
     {
         [JsonPropertyName("count")]
         public int Count { get; set; }
+    }
+
+    public class Audio
+    {
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("owner_id")]
+        public int OwnerId { get; set; }
+
+        [JsonPropertyName("artist")]
+        [JsonConverter(typeof(FlexibleStringJsonConverter))]
+        public string Artist { get; set; }
+
+        [JsonPropertyName("title")]
+        [JsonConverter(typeof(FlexibleStringJsonConverter))]
+        public string Title { get; set; }
+
+        [JsonPropertyName("duration")]
+        public int Duration { get; set; }
+
+        [JsonPropertyName("url")]
+        [JsonConverter(typeof(FlexibleStringJsonConverter))]
+        public string Url { get; set; }
+
+        [JsonPropertyName("date")]
+        public long Date { get; set; }
+
+        [JsonPropertyName("album_id")]
+        public int? AlbumId { get; set; }
+
+        [JsonPropertyName("lyrics_id")]
+        public int? LyricsId { get; set; }
+
+        [JsonPropertyName("genre_id")]
+        public int? GenreId { get; set; }
+
+        [JsonPropertyName("is_hq")]
+        public bool IsHq { get; set; }
+
+        [JsonPropertyName("access_key")]
+        [JsonConverter(typeof(FlexibleStringJsonConverter))]
+        public string AccessKey { get; set; }
+
+        [JsonIgnore]
+        public string FormattedDuration
+        {
+            get
+            {
+                TimeSpan time = TimeSpan.FromSeconds(Duration);
+                return time.Minutes + ":" + time.Seconds.ToString("00");
+            }
+        }
+
+        [JsonIgnore]
+        public string FullTitle => $"{Artist} - {Title}";
+
+        [JsonPropertyName("added")]
+        public bool IsAdded { get; set; }
+        
+        [JsonIgnore]
+        public string ThumbUrl { get; set; } = "ms-appx:///Assets/DefaultCover.png";
+        
+        // Статический метод безопасного преобразования объекта к типу Audio
+        public static Audio SafeCast(object obj)
+        {
+            try
+            {
+                if (obj == null)
+                {
+                    Debug.WriteLine("[Audio.SafeCast] ERROR: Source object is null");
+                    return null;
+                }
+                
+                Debug.WriteLine($"[Audio.SafeCast] Attempting to cast object of type {obj.GetType().FullName}");
+                
+                // Если объект уже является Audio, то просто возвращаем его
+                if (obj is Audio audio)
+                {
+                    Debug.WriteLine("[Audio.SafeCast] Object is already an Audio instance");
+                    return audio;
+                }
+                
+                // Создаем новый экземпляр Audio
+                Audio result = new Audio();
+                
+                // Копируем свойства с помощью reflection
+                PropertyInfo[] sourceProperties = obj.GetType().GetProperties();
+                
+                foreach (PropertyInfo sourceProp in sourceProperties)
+                {
+                    try
+                    {
+                        // Ищем соответствующее свойство в Audio
+                        PropertyInfo targetProp = typeof(Audio).GetProperty(sourceProp.Name);
+                        
+                        if (targetProp != null && targetProp.CanWrite)
+                        {
+                            object value = sourceProp.GetValue(obj);
+                            
+                            // Преобразуем тип, если необходимо
+                            if (value != null && targetProp.PropertyType != value.GetType())
+                            {
+                                try
+                                {
+                                    value = Convert.ChangeType(value, targetProp.PropertyType);
+                                }
+                                catch (Exception convEx)
+                                {
+                                    Debug.WriteLine($"[Audio.SafeCast] Error converting {sourceProp.Name}: {convEx.Message}");
+                                }
+                            }
+                            
+                            targetProp.SetValue(result, value);
+                            Debug.WriteLine($"[Audio.SafeCast] Copied property {sourceProp.Name}: {value ?? "null"}");
+                        }
+                    }
+                    catch (Exception propEx)
+                    {
+                        Debug.WriteLine($"[Audio.SafeCast] Error copying property {sourceProp.Name}: {propEx.Message}");
+                    }
+                }
+                
+                Debug.WriteLine($"[Audio.SafeCast] Successfully converted to Audio: {result.Artist} - {result.Title}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Audio.SafeCast] Error casting object: {ex.GetType().FullName}: {ex.Message}");
+                Debug.WriteLine($"[Audio.SafeCast] Stack trace: {ex.StackTrace}");
+                return null;
+            }
+        }
+        
+        // Метод для создания Audio из JToken
+        public static Audio FromJToken(JToken token)
+        {
+            try
+            {
+                if (token == null)
+                {
+                    Debug.WriteLine("[Audio.FromJToken] ERROR: Token is null");
+                    return null;
+                }
+                
+                Debug.WriteLine($"[Audio.FromJToken] Processing token type: {token.Type}");
+                
+                Audio audio = new Audio
+                {
+                    Id = token.Value<int>("id"),
+                    OwnerId = token.Value<int>("owner_id"),
+                    Artist = token.Value<string>("artist") ?? "Неизвестен",
+                    Title = token.Value<string>("title") ?? "Без названия",
+                    Url = token.Value<string>("url") ?? string.Empty,
+                    Duration = token.Value<int>("duration"),
+                    IsAdded = token.Value<bool?>("is_added") ?? token.Value<bool?>("added") ?? false
+                };
+                
+                Debug.WriteLine($"[Audio.FromJToken] Created Audio: {audio.Artist} - {audio.Title} (ID: {audio.Id})");
+                return audio;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Audio.FromJToken] Error creating Audio from JToken: {ex.GetType().FullName}: {ex.Message}");
+                Debug.WriteLine($"[Audio.FromJToken] Stack trace: {ex.StackTrace}");
+                return null;
+            }
+        }
+    }
+
+    public class AudioResponse
+    {
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        [JsonPropertyName("items")]
+        public List<Audio> Items { get; set; }
     }
 
     // for comptabillity with anotherprofilepage class
