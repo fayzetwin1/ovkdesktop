@@ -1,4 +1,4 @@
-# OVK Desktop - клиент OpenVK под Windows в Modern стиле
+# OpenVK Desktop - клиент OpenVK под Windows в Modern стиле
 
 ![](logo.png)
 
@@ -18,7 +18,7 @@
 
 Требования для билда проекта: 
 
-- .NET версии 9.0
+- .NET версии 9.0, 8.0
 - [Windows SDK](https://go.microsoft.com/fwlink/?linkid=2313119)
 - [Windows App SDK](https://aka.ms/windowsappsdk/1.7/latest/windowsappruntimeinstall-x64.exe)
 - Visual Studio 2022 (через dotnet cli забилдить адекватно не получится)
