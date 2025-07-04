@@ -179,22 +179,65 @@
                                        Padding="10" Margin="0,0,0,10"
                                        HorizontalAlignment="Stretch">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding RepostOwnerText}" 
-                                                   Opacity="0.7" Margin="0,0,0,5"/>
+                                        <!-- Repost author header with avatar and info -->
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Author avatar -->
+                                            <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                                                <Ellipse.Fill>
+                                                    <ImageBrush ImageSource="{Binding Repost.Profile.Photo200}" 
+                                                                Stretch="UniformToFill"/>
+                                                </Ellipse.Fill>
+                                            </Ellipse>
+                                            
+                                            <!-- Author info -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <!-- Clickable repost owner text -->
+                                                <Button x:Name="RepostAuthorButton"
+                                                        Background="Transparent" 
+                                                        BorderThickness="0"
+                                                        Padding="0,2" 
+                                                        Margin="0,0,0,0"
+                                                        HorizontalAlignment="Left"
+                                                        HorizontalContentAlignment="Left"
+                                                        Tag="{Binding Repost.FromId}"
+                                                        Click="RepostAuthor_Click">
+                                                    <TextBlock Text="{Binding RepostOwnerText}" 
+                                                              Opacity="1.0" 
+                                                              Margin="0,0,0,0"
+                                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                              FontWeight="SemiBold"/>
+                                                </Button>
+                                                
+                                                <!-- Post date -->
+                                                <TextBlock Text="{Binding Repost.FormattedDate}"
+                                                           Opacity="0.7" 
+                                                           FontSize="12"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        
+                                        <!-- Repost content -->
                                         <TextBlock Text="{Binding Repost.Text}" 
-                                                   TextWrapping="Wrap" Margin="0,0,0,5"
-                                                   Foreground="{ThemeResource TextFillColorPrimary}"/>
+                                                  TextWrapping="Wrap" Margin="0,0,0,10"
+                                                  Foreground="{ThemeResource TextFillColorPrimary}"/>
+                                        
                                         <Image Source="{Binding Repost.MainImageUrl}"
-                                               Stretch="Uniform" MaxHeight="300"
-                                               HorizontalAlignment="Left"
-                                               Visibility="{Binding Repost.HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                              Stretch="Uniform" MaxHeight="300"
+                                              HorizontalAlignment="Left" Margin="0,0,0,10"
+                                              Visibility="{Binding Repost.HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                              
                                         <Image Source="{Binding Repost.GifUrl}"
-                                               Stretch="Uniform" MaxHeight="300"
-                                               HorizontalAlignment="Left"
-                                               Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                              Stretch="Uniform" MaxHeight="300"
+                                              HorizontalAlignment="Left" Margin="0,0,0,10"
+                                              Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                              
                                         <Grid Visibility="{Binding Repost.HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                              Margin="0,5,0,0"
-                                              HorizontalAlignment="Left">
+                                             Margin="0,0,0,0"
+                                             HorizontalAlignment="Left">
                                             <MediaPlayerElement 
                                                 Source="{Binding Repost.MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
                                                 MaxHeight="300" 
@@ -204,10 +247,17 @@
                                 </Border>
 
                                 <!-- Лайки и комментарии -->
-                                <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="15" Margin="0,10,0,0">
+                                <StackPanel Grid.Row="6" 
+                                          Orientation="Horizontal" 
+                                          Spacing="15" 
+                                          Margin="0,20,0,0"
+                                          VerticalAlignment="Bottom">
                                     <!-- Кнопка лайка -->
-                                    <Button Tag="{Binding}" Click="LikeButton_Click" 
-                                            Background="Transparent" BorderThickness="0" Padding="5,2">
+                                    <Button Tag="{Binding}" 
+                                            Click="LikeButton_Click" 
+                                            Background="Transparent" 
+                                            BorderThickness="0" 
+                                            Padding="5,2">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                             <TextBlock Text="❤" />
                                             <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" 
@@ -216,11 +266,15 @@
                                     </Button>
 
                                     <!-- Кнопка комментариев -->
-                                    <Button Tag="{Binding}" Tapped="ShowPostComments_Tapped" 
-                                            Background="Transparent" BorderThickness="0" Padding="5,2">
+                                    <Button Tag="{Binding}" 
+                                            Tapped="ShowPostComments_Tapped" 
+                                            Background="Transparent" 
+                                            BorderThickness="0" 
+                                            Padding="5,2">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                             <TextBlock Text="💬" />
-                                            <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" 
+                                                       VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>

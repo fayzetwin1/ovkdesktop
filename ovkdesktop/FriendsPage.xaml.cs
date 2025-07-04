@@ -40,7 +40,24 @@ namespace ovkdesktop
             public int IsOnline { get; set; }
 
             [JsonPropertyName("photo_200")]
+            public string Avatar { get; set; }
+        }
 
+        public class FriendRequest
+        {
+            [JsonPropertyName("id")]
+            public int Id { get; set; }
+
+            [JsonPropertyName("first_name")]
+            public string FirstName { get; set; }
+
+            [JsonPropertyName("last_name")]
+            public string LastName { get; set; }
+
+            [JsonPropertyName("online")]
+            public int IsOnline { get; set; }
+
+            [JsonPropertyName("photo_200")]
             public string Avatar { get; set; }
         }
 
@@ -53,20 +70,52 @@ namespace ovkdesktop
             public List<Friends> Items { get; set; }
         }
 
+        public class FriendRequestsResponse
+        {
+            [JsonPropertyName("count")]
+            public int Count { get; set; }
+
+            [JsonPropertyName("items")]
+            public List<FriendRequest> Items { get; set; }
+        }
+
         public class APIResponseFriends
         {
             [JsonPropertyName("response")]
             public FriendsResponse Response { get; set; }
+        }
+
+        public class APIResponseFriendRequests
+        {
+            [JsonPropertyName("response")]
+            public FriendRequestsResponse Response { get; set; }
+        }
+
+        public class FriendStatus
+        {
+            [JsonPropertyName("friend_status")]
+            public int Status { get; set; }
+
+            [JsonPropertyName("user_id")]
+            public int UserId { get; set; }
+        }
+
+        public class FriendStatusResponse
+        {
+            [JsonPropertyName("response")]
+            public List<FriendStatus> Response { get; set; }
         }
     }
     public sealed partial class FriendsPage : Page
     {
 
         public ObservableCollection<Models.Friends> Friends { get; } = new();
+        public ObservableCollection<Models.FriendRequest> FriendRequests { get; } = new();
         private readonly APIServiceFriends apiService = new();
         private string id;
 
         private Models.Friends selectedFriend;
+        private Models.FriendRequest selectedRequest;
 
         public FriendsPage()
         {
@@ -86,6 +135,7 @@ namespace ovkdesktop
                 }
 
                 await LoadFriendsListAsync(token.Token);
+                await LoadFriendRequestsAsync(token.Token);
             }
             catch (WebException ex) when (ex.Response is HttpWebResponse response)
             {
@@ -160,6 +210,47 @@ namespace ovkdesktop
             }
         }
 
+        private async Task LoadFriendRequestsAsync(string token)
+        {
+            try
+            {
+                RequestsProgressRing.IsActive = true;
+                RequestsProgressRing.Visibility = Visibility.Visible;
+
+                var response = await apiService.GetFriendRequestsAsync(token);
+
+                if (response?.Response?.Items != null)
+                {
+                    FriendRequests.Clear();
+                    foreach (var request in response.Response.Items)
+                    {
+                        FriendRequests.Add(request);
+                    }
+
+                    int count = response.Response.Count;
+                    RequestsCount.Text = $"Запросы в друзья: {count}";
+                    
+                    RequestsListView.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                    NoRequestsText.Visibility = count > 0 ? Visibility.Collapsed : Visibility.Visible;
+                }
+                else
+                {
+                    NoRequestsText.Visibility = Visibility.Visible;
+                    RequestsListView.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Ошибка при загрузке запросов в друзья: {ex.Message}");
+                Debug.WriteLine($"exception: {ex}");
+            }
+            finally
+            {
+                RequestsProgressRing.IsActive = false;
+                RequestsProgressRing.Visibility = Visibility.Collapsed;
+            }
+        }
+
         private void HandleWebException(WebException ex, HttpWebResponse response)
         {
             try
@@ -222,6 +313,23 @@ namespace ovkdesktop
             }
         }
 
+        private void RequestItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is Models.FriendRequest request)
+            {
+                selectedRequest = request;
+
+                var flyout = new MenuFlyout();
+
+                var profileItem = new MenuFlyoutItem { Text = "Профиль" };
+                profileItem.Click += (s, args) => NavigateToRequestProfile(selectedRequest);
+
+                flyout.Items.Add(profileItem);
+
+                flyout.ShowAt(fe, e.GetPosition(fe));
+            }
+        }
+
         private async Task ShowDeleteConfirmationDialogAsync(Models.Friends friend)
         {
             var dialog = new ContentDialog
@@ -258,8 +366,6 @@ namespace ovkdesktop
             }
         }
 
-
-
         private void NavigateToProfile(Models.Friends friend)
         {
             if (friend != null)
@@ -268,10 +374,66 @@ namespace ovkdesktop
             }
         }
 
+        private void NavigateToRequestProfile(Models.FriendRequest request)
+        {
+            if (request != null)
+            {
+                this.Frame.Navigate(typeof(AnotherProfilePage), request.Id);
+            }
+        }
 
-      
+        private async void AcceptRequest_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Models.FriendRequest request)
+            {
+                OVKDataBody token = await LoadTokenAsync();
+                if (token != null && !string.IsNullOrEmpty(token.Token))
+                {
+                    int result = await apiService.AddFriendAsync(token.Token, request.Id);
+                    if (result == 2) // request approved
+                    {
+                        FriendRequests.Remove(request);
+                        RequestsCount.Text = $"Запросы в друзья: {FriendRequests.Count}";
+                        
+                        // Refresh friends list to show the new friend
+                        await LoadFriendsListAsync(token.Token);
 
+                        // Hide requests list if it's now empty
+                        RequestsListView.Visibility = FriendRequests.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                        NoRequestsText.Visibility = FriendRequests.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+                    }
+                    else
+                    {
+                        ShowError("Не удалось принять запрос в друзья.");
+                    }
+                }
+            }
+        }
 
+        private async void RejectRequest_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is Models.FriendRequest request)
+            {
+                OVKDataBody token = await LoadTokenAsync();
+                if (token != null && !string.IsNullOrEmpty(token.Token))
+                {
+                    bool success = await apiService.DeleteFriendAsync(token.Token, request.Id);
+                    if (success)
+                    {
+                        FriendRequests.Remove(request);
+                        RequestsCount.Text = $"Запросы в друзья: {FriendRequests.Count}";
+                        
+                        // Hide requests list if it's now empty
+                        RequestsListView.Visibility = FriendRequests.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                        NoRequestsText.Visibility = FriendRequests.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
+                    }
+                    else
+                    {
+                        ShowError("Не удалось отклонить запрос в друзья.");
+                    }
+                }
+            }
+        }
 
         public class APIServiceFriends
         {
@@ -340,6 +502,40 @@ namespace ovkdesktop
                 return false;
             }
 
+            public async Task<int> AddFriendAsync(string token, int userId)
+            {
+                try
+                {
+                    // check if client is initialized
+                    if (httpClient == null)
+                    {
+                        await Task.Run(() => InitializeHttpClientAsync());
+                        await Task.Delay(500); // give time to initialize
+                    }
+                    
+                    // use older version of API for better compatibility
+                    string url = $"method/friends.add?access_token={token}&user_id={userId}&v=5.126";
+                    Debug.WriteLine($"[APIServiceFriends] AddFriend URL: {instanceUrl}{url}");
+
+                    var response = await httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    using JsonDocument doc = JsonDocument.Parse(content);
+                    // check response status: 1 - request sent, 2 - request accepted
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement resp) &&
+                        resp.ValueKind == JsonValueKind.Number)
+                    {
+                        return resp.GetInt32();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[APIServiceFriends] Exception in AddFriendAsync: {ex.Message}");
+                }
+                return 0; // Error or failure
+            }
+
             public async Task<Models.APIResponseFriends> GetFriendsAsync(string token)
             {
                 try
@@ -382,7 +578,83 @@ namespace ovkdesktop
                     return null;
                 }
             }
-        }
 
+            public async Task<Models.APIResponseFriendRequests> GetFriendRequestsAsync(string token)
+            {
+                try
+                {
+                    // check if client is initialized
+                    if (httpClient == null)
+                    {
+                        await Task.Run(() => InitializeHttpClientAsync());
+                        await Task.Delay(500); // give time to initialize
+                    }
+                    
+                    // use older version of API for better compatibility
+                    string url = $"method/friends.getRequests?access_token={token}&fields=photo_200&extended=1&v=5.126";
+                    Debug.WriteLine($"[APIServiceFriends] GetFriendRequests URL: {instanceUrl}{url}");
+
+                    var response = await httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    return JsonSerializer.Deserialize<Models.APIResponseFriendRequests>(content, options);
+                }
+                catch (HttpRequestException ex)
+                {
+                    Debug.WriteLine($"[APIServiceFriends] HTTP exception in GetFriendRequestsAsync: {ex.Message}");
+                    return null;
+                }
+                catch (JsonException ex)
+                {
+                    Debug.WriteLine($"[APIServiceFriends] JSON exception in GetFriendRequestsAsync: {ex.Message}");
+                    return null;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[APIServiceFriends] General exception in GetFriendRequestsAsync: {ex.Message}");
+                    return null;
+                }
+            }
+
+            public async Task<List<Models.FriendStatus>> AreFriendsAsync(string token, string userIds)
+            {
+                try
+                {
+                    // check if client is initialized
+                    if (httpClient == null)
+                    {
+                        await Task.Run(() => InitializeHttpClientAsync());
+                        await Task.Delay(500); // give time to initialize
+                    }
+                    
+                    // use older version of API for better compatibility
+                    string url = $"method/friends.areFriends?access_token={token}&user_ids={userIds}&v=5.126";
+                    Debug.WriteLine($"[APIServiceFriends] AreFriends URL: {instanceUrl}{url}");
+
+                    var response = await httpClient.GetAsync(url);
+                    response.EnsureSuccessStatusCode();
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+
+                    var result = JsonSerializer.Deserialize<Models.FriendStatusResponse>(content, options);
+                    return result?.Response ?? new List<Models.FriendStatus>();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[APIServiceFriends] Exception in AreFriendsAsync: {ex.Message}");
+                    return new List<Models.FriendStatus>();
+                }
+            }
+        }
     }
 }

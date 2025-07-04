@@ -424,6 +424,89 @@ namespace ovkdesktop
                                         post.Comments = new Comments { Count = 0 };
                                     }
 
+                                    // Process reposts (copy_history)
+                                    if (item.TryGetProperty("copy_history", out JsonElement copyHistoryElement) && 
+                                        copyHistoryElement.ValueKind == JsonValueKind.Array &&
+                                        copyHistoryElement.GetArrayLength() > 0)
+                                    {
+                                        post.CopyHistory = new List<UserWallPost>();
+                                        
+                                        foreach (JsonElement repostElement in copyHistoryElement.EnumerateArray())
+                                        {
+                                            var repost = new UserWallPost();
+                                            
+                                            // Extract basic repost properties
+                                            if (repostElement.TryGetProperty("id", out JsonElement repostIdElement))
+                                                repost.Id = repostIdElement.GetInt32();
+                                                
+                                            if (repostElement.TryGetProperty("from_id", out JsonElement repostFromIdElement))
+                                                repost.FromId = repostFromIdElement.GetInt32();
+                                                
+                                            if (repostElement.TryGetProperty("owner_id", out JsonElement repostOwnerIdElement))
+                                                repost.OwnerId = repostOwnerIdElement.GetInt32();
+                                                
+                                            if (repostElement.TryGetProperty("date", out JsonElement repostDateElement))
+                                                repost.Date = repostDateElement.GetInt64();
+                                                
+                                            if (repostElement.TryGetProperty("text", out JsonElement repostTextElement))
+                                                repost.Text = repostTextElement.GetString();
+                                                
+                                            // Process repost attachments
+                                            if (repostElement.TryGetProperty("attachments", out JsonElement repostAttachmentsElement) && 
+                                                repostAttachmentsElement.ValueKind == JsonValueKind.Array)
+                                            {
+                                                repost.Attachments = new List<Attachment>();
+                                                
+                                                foreach (JsonElement repostAttachmentElement in repostAttachmentsElement.EnumerateArray())
+                                                {
+                                                    var repostAttachment = new Attachment();
+                                                    
+                                                    if (repostAttachmentElement.TryGetProperty("type", out JsonElement repostTypeElement))
+                                                        repostAttachment.Type = repostTypeElement.GetString();
+                                                        
+                                                    // Process repost photos
+                                                    if (repostAttachment.Type == "photo" && 
+                                                        repostAttachmentElement.TryGetProperty("photo", out JsonElement repostPhotoElement))
+                                                    {
+                                                        var photo = new Photo();
+                                                        
+                                                        if (repostPhotoElement.TryGetProperty("id", out JsonElement photoIdElement))
+                                                            photo.Id = photoIdElement.GetInt32();
+                                                            
+                                                        if (repostPhotoElement.TryGetProperty("sizes", out JsonElement photoSizesElement) && 
+                                                            photoSizesElement.ValueKind == JsonValueKind.Array)
+                                                        {
+                                                            photo.Sizes = new List<PhotoSize>();
+                                                            
+                                                            foreach (JsonElement sizeElement in photoSizesElement.EnumerateArray())
+                                                            {
+                                                                var size = new PhotoSize();
+                                                                
+                                                                if (sizeElement.TryGetProperty("type", out JsonElement sizeTypeElement))
+                                                                    size.Type = sizeTypeElement.GetString();
+                                                                    
+                                                                if (sizeElement.TryGetProperty("url", out JsonElement sizeUrlElement))
+                                                                    size.Url = sizeUrlElement.GetString();
+                                                                    
+                                                                photo.Sizes.Add(size);
+                                                            }
+                                                        }
+                                                        
+                                                        repostAttachment.Photo = photo;
+                                                    }
+                                                    
+                                                    // Add other attachment types as needed (video, audio, etc.)
+                                                    
+                                                    repost.Attachments.Add(repostAttachment);
+                                                }
+                                            }
+                                            
+                                            post.CopyHistory.Add(repost);
+                                        }
+                                        
+                                        Debug.WriteLine($"[ProfilePage] Processed repost for post ID {post.Id}, found {post.CopyHistory.Count} reposts");
+                                    }
+
                                     // add post to result
                                     result.Response.Items.Add(post);
                                 }
@@ -492,6 +575,9 @@ namespace ovkdesktop
                 
                 // Обновляем статус лайков для всех постов
                 await UpdateLikesStatusAsync();
+                
+                // Fetch profiles for reposts
+                await LoadRepostProfilesAsync(token.Token);
                 
                 // Обновляем текст с количеством постов
                 PostsCountText.Text = $"Записей: {postsResponse.Response.Count}";
@@ -1355,7 +1441,7 @@ namespace ovkdesktop
                     if (audioService != null)
                     {
                         // Создаем плейлист из одного трека и воспроизводим
-                        var playlist = new System.Collections.ObjectModel.ObservableCollection<Models.Audio> { audio };
+                        var playlist = new ObservableCollection<Models.Audio> { audio };
                         audioService.SetPlaylist(playlist, 0);
                         
                         Debug.WriteLine("[ProfilePage] Audio playback started");
@@ -1369,6 +1455,209 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProfilePage] Error playing audio: {ex.Message}");
+            }
+        }
+        
+        // Handle clicks on repost authors to navigate to their profiles
+        private void RepostAuthor_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is Button button && button.Tag != null)
+                {
+                    // Get the FromId (user or group ID) from the button Tag
+                    int fromId = 0;
+                    if (button.Tag is int intId)
+                    {
+                        fromId = intId;
+                    }
+                    else if (int.TryParse(button.Tag.ToString(), out int parsedId))
+                    {
+                        fromId = parsedId;
+                    }
+                    
+                    if (fromId != 0)
+                    {
+                        Debug.WriteLine($"[ProfilePage] Navigating to profile with ID: {fromId}");
+                        
+                        // Navigate to user profile or group page based on ID
+                        Frame.Navigate(typeof(AnotherProfilePage), fromId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error navigating to repost author: {ex.Message}");
+            }
+        }
+
+        // Load profile information for reposts
+        private async Task LoadRepostProfilesAsync(string token)
+        {
+            try
+            {
+                // --- Сбор ID остаётся без изменений ---
+                var userIds = new HashSet<int>();
+                var groupIds = new HashSet<int>();
+
+                foreach (var post in Posts)
+                {
+                    if (post.HasRepost && post.CopyHistory != null && post.CopyHistory.Count > 0)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (repost.FromId > 0)
+                            {
+                                userIds.Add(repost.FromId);
+                            }
+                            else if (repost.FromId < 0)
+                            {
+                                groupIds.Add(Math.Abs(repost.FromId));
+                            }
+                        }
+                    }
+                }
+
+                Debug.WriteLine($"[ProfilePage] Found {userIds.Count} user IDs and {groupIds.Count} group IDs in reposts");
+
+                // --- Загрузка профилей групп и пользователей остаётся без изменений ---
+                var groupProfiles = new Dictionary<int, UserProfile>();
+                if (groupIds.Count > 0)
+                {
+                    try
+                    {
+                        string ids = string.Join(",", groupIds);
+                        var url = $"method/groups.getById?access_token={token}&group_ids={ids}&fields=description,members_count,site,screen_name,photo_50,photo_100,photo_200,photo_max&v=5.126";
+                        Debug.WriteLine($"[ProfilePage] Fetching group profiles with URL: {instanceUrl}{url}");
+                        var response = await httpClient.GetAsync(url);
+                        response.EnsureSuccessStatusCode();
+                        var json = await response.Content.ReadAsStringAsync();
+
+                        using (JsonDocument doc = JsonDocument.Parse(json))
+                        {
+                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && responseElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (JsonElement groupElement in responseElement.EnumerateArray())
+                                {
+                                    int groupId = 0;
+                                    var groupProfile = new UserProfile { IsGroup = true };
+                                    if (groupElement.TryGetProperty("id", out JsonElement idElement)) groupId = idElement.GetInt32();
+                                    if (groupElement.TryGetProperty("name", out JsonElement nameElement)) groupProfile.FirstName = nameElement.GetString();
+                                    groupProfile.LastName = "";
+                                    if (groupElement.TryGetProperty("screen_name", out JsonElement screenNameElement)) groupProfile.Nickname = screenNameElement.GetString();
+
+                                    string photoUrl = null;
+                                    if (groupElement.TryGetProperty("photo_200", out JsonElement p200)) photoUrl = p200.GetString();
+                                    else if (groupElement.TryGetProperty("photo_100", out JsonElement p100)) photoUrl = p100.GetString();
+                                    else if (groupElement.TryGetProperty("photo_50", out JsonElement p50)) photoUrl = p50.GetString();
+                                    groupProfile.Photo200 = photoUrl;
+                                    groupProfile.Id = -groupId;
+                                    groupProfiles[groupId] = groupProfile;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex) { Debug.WriteLine($"[ProfilePage] Error getting group info: {ex.Message}"); }
+                }
+
+                var userProfiles = new Dictionary<int, UserProfile>();
+                if (userIds.Count > 0)
+                {
+                    try
+                    {
+                        string ids = string.Join(",", userIds);
+                        var url = $"method/users.get?access_token={token}&user_ids={ids}&fields=photo_200,screen_name&v=5.126";
+                        Debug.WriteLine($"[ProfilePage] Fetching user profiles with URL: {instanceUrl}{url}");
+                        var response = await httpClient.GetAsync(url);
+                        response.EnsureSuccessStatusCode();
+                        var json = await response.Content.ReadAsStringAsync();
+
+                        using (JsonDocument doc = JsonDocument.Parse(json))
+                        {
+                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && responseElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (JsonElement userElement in responseElement.EnumerateArray())
+                                {
+                                    var profile = new UserProfile();
+                                    if (userElement.TryGetProperty("id", out JsonElement idEl)) profile.Id = idEl.GetInt32();
+                                    if (userElement.TryGetProperty("first_name", out JsonElement fnEl)) profile.FirstName = fnEl.GetString();
+                                    if (userElement.TryGetProperty("last_name", out JsonElement lnEl)) profile.LastName = lnEl.GetString();
+                                    if (userElement.TryGetProperty("screen_name", out JsonElement snEl)) profile.Nickname = snEl.GetString();
+                                    if (userElement.TryGetProperty("photo_200", out JsonElement p200)) profile.Photo200 = p200.GetString();
+                                    userProfiles[profile.Id] = profile;
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex) { Debug.WriteLine($"[ProfilePage] Error getting user profiles: {ex.Message}"); }
+                }
+
+                // === ИЗМЕНЕНИЯ НАЧИНАЮТСЯ ЗДЕСЬ ===
+
+                // Assign profiles to reposts using a safe 'for' loop
+                for (int i = 0; i < Posts.Count; i++)
+                {
+                    var post = Posts[i];
+                    bool postWasModified = false;
+
+                    if (post.HasRepost && post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            try
+                            {
+                                if (repost.FromId < 0)
+                                {
+                                    int groupId = Math.Abs(repost.FromId);
+                                    if (groupProfiles.TryGetValue(groupId, out var groupProfile))
+                                    {
+                                        repost.Profile = groupProfile;
+                                        postWasModified = true;
+                                        Debug.WriteLine($"[ProfilePage] Assigned group profile '{groupProfile.FirstName}' to repost {repost.Id}");
+                                    }
+                                }
+                                else if (repost.FromId > 0)
+                                {
+                                    if (userProfiles.TryGetValue(repost.FromId, out var userProfile))
+                                    {
+                                        repost.Profile = userProfile;
+                                        postWasModified = true;
+                                        Debug.WriteLine($"[ProfilePage] Assigned user profile '{userProfile.FirstName} {userProfile.LastName}' to repost {repost.Id}");
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"[ProfilePage] Error assigning profile to repost: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    // === ИЗМЕНЕНИЯ ЗДЕСЬ ===
+                    // Если пост был изменен, выполняем обновление коллекции в UI-потоке.
+                    if (postWasModified)
+                    {
+                        // Захватываем нужные переменные для лямбда-выражения
+                        var postToUpdate = Posts[i];
+                        var indexToUpdate = i;
+
+                        // Отправляем задачу в очередь диспетчера UI
+                        this.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            // Этот код гарантированно выполнится в UI-потоке
+                            if (Posts.Count > indexToUpdate)
+                            {
+                                Posts.RemoveAt(indexToUpdate);
+                                Posts.Insert(indexToUpdate, postToUpdate);
+                            }
+                        });
+                    }
+                }
+                // === КОНЕЦ ИЗМЕНЕНИЙ ===
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error loading repost profiles: {ex.Message}");
             }
         }
     }

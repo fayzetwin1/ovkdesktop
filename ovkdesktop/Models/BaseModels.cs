@@ -174,7 +174,35 @@ namespace ovkdesktop.Models
         public UserWallPost Repost => HasRepost ? CopyHistory[0] : null;
 
         [JsonIgnore]
-        public string RepostOwnerText => HasRepost ? $"Оригинал: {Repost?.FromId}" : "";
+        public string RepostOwnerText => HasRepost ? FormatRepostOwnerText() : "";
+        
+        [JsonIgnore]
+        public UserProfile Profile { get; set; }
+
+        private string FormatRepostOwnerText()
+        {
+            if (Repost == null) return "";
+            
+            if (Repost.Profile != null)
+            {
+                // If it's a group (negative ID), only show FirstName (which contains the group name)
+                if (Repost.FromId < 0)
+                {
+                    return Repost.Profile.FirstName;
+                }
+                
+                // Otherwise it's a user, show first and last name
+                return $"{Repost.Profile.FirstName} {Repost.Profile.LastName}";
+            }
+            
+            // If profile is not available, use fallback
+            if (Repost.FromId < 0)
+            {
+                return $"Группа {Math.Abs(Repost.FromId)}";
+            }
+            
+            return $"Пользователь {Repost.FromId}";
+        }
     }
 
     public class ProfileWallPost : BasePost
@@ -189,7 +217,35 @@ namespace ovkdesktop.Models
         public ProfileWallPost Repost => HasRepost ? CopyHistory[0] : null;
 
         [JsonIgnore]
-        public string RepostOwnerText => HasRepost ? $"Оригинал: {Repost?.FromId}" : "";
+        public string RepostOwnerText => HasRepost ? FormatRepostOwnerText() : "";
+        
+        [JsonIgnore]
+        public UserProfile Profile { get; set; }
+
+        private string FormatRepostOwnerText()
+        {
+            if (Repost == null) return "";
+            
+            if (Repost.Profile != null)
+            {
+                // If it's a group (negative ID), only show FirstName (which contains the group name)
+                if (Repost.FromId < 0)
+                {
+                    return Repost.Profile.FirstName;
+                }
+                
+                // Otherwise it's a user, show first and last name
+                return $"{Repost.Profile.FirstName} {Repost.Profile.LastName}";
+            }
+            
+            // If profile is not available, use fallback
+            if (Repost.FromId < 0)
+            {
+                return $"Группа {Math.Abs(Repost.FromId)}";
+            }
+            
+            return $"Пользователь {Repost.FromId}";
+        }
     }
 
     public class NewsFeedPost : BasePost
@@ -441,7 +497,10 @@ namespace ovkdesktop.Models
         public string Photo200 { get; set; }
 
         [JsonPropertyName("from_id")]
-        public int FromID { get; set; }
+        public int FromId { get; set; }
+        
+        [JsonIgnore]
+        public bool IsGroup { get; set; }
     }
 
     public class UsersGetResponse

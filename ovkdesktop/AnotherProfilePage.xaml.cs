@@ -39,16 +39,22 @@ namespace ovkdesktop
         private int userId;
         private string instanceUrl;
         private UserProfile userProfile;
+        private FriendsPage.APIServiceFriends friendsApiService;
+        private bool isFriend = false;
+        private int friendshipStatus = 0;
 
         public AnotherProfilePage()
         {
             this.InitializeComponent();
-            _ = InitializeHttpClientAsync();
+            friendsApiService = new FriendsPage.APIServiceFriends();
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            // Make sure httpClient is initialized first
+            await InitializeHttpClientAsync();
 
             if (e.Parameter is int id)
             {
@@ -92,84 +98,200 @@ namespace ovkdesktop
         {
             try
             {
-                // use older version of API for better compatibility
-                var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200&v=5.126";
-                Debug.WriteLine($"[AnotherProfilePage] Getting profile with URL: {instanceUrl}{url}");
-                
-                var response = await httpClient.GetAsync(url);
-                Debug.WriteLine($"[AnotherProfilePage] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[AnotherProfilePage] Profile response JSON: {json}");
-                
-                UserProfile profile = null;
-                
-                try
+                if (string.IsNullOrEmpty(userId))
                 {
-                    using (JsonDocument doc = JsonDocument.Parse(json))
+                    Debug.WriteLine("[AnotherProfilePage] UserId is null or empty");
+                    return null;
+                }
+                
+                int id;
+                if (!int.TryParse(userId, out id))
+                {
+                    Debug.WriteLine($"[AnotherProfilePage] Failed to parse userId: {userId}");
+                    return null;
+                }
+                
+                // Check if it's a group/public page (negative id)
+                if (id < 0)
+                {
+                    var groupInfo = await GetGroupInfoAsync(token, Math.Abs(id));
+                    if (groupInfo != null)
                     {
-                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
-                            responseElement.ValueKind == JsonValueKind.Array && 
-                            responseElement.GetArrayLength() > 0)
+                        return new UserProfile
                         {
-                            JsonElement userElement = responseElement[0];
-                            profile = new UserProfile();
-                            
-                            if (userElement.TryGetProperty("id", out JsonElement idElement))
-                                profile.Id = idElement.GetInt32();
-                                
-                            if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
-                                profile.FirstName = firstNameElement.GetString();
-                                
-                            if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
-                                profile.LastName = lastNameElement.GetString();
-                                
-                            if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
-                                profile.Nickname = nicknameElement.GetString();
-                                
-                            if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
-                                profile.Photo200 = photoElement.GetString();
-                            else
+                            Id = id,
+                            FirstName = groupInfo.Name,
+                            LastName = "",
+                            Nickname = groupInfo.ScreenName,
+                            Photo200 = groupInfo.Photo200 ?? groupInfo.Photo100 ?? groupInfo.Photo50,
+                            IsGroup = true
+                        };
+                    }
+                }
+                else
+                {
+                    // Regular user profile
+                    // use older version of API for better compatibility
+                    var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200&v=5.126";
+                    Debug.WriteLine($"[AnotherProfilePage] Getting profile with URL: {instanceUrl}{url}");
+                    
+                    if (httpClient == null)
+                    {
+                        Debug.WriteLine("[AnotherProfilePage] HttpClient is null, initializing...");
+                        await InitializeHttpClientAsync();
+                        
+                        if (httpClient == null)
+                        {
+                            Debug.WriteLine("[AnotherProfilePage] Failed to initialize HttpClient");
+                            return null;
+                        }
+                    }
+                    
+                    var response = await httpClient.GetAsync(url);
+                    Debug.WriteLine($"[AnotherProfilePage] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
+                    response.EnsureSuccessStatusCode();
+
+                    var json = await response.Content.ReadAsStringAsync();
+                    Debug.WriteLine($"[AnotherProfilePage] Profile response JSON: {json}");
+                    
+                    UserProfile profile = null;
+                    
+                    try
+                    {
+                        using (JsonDocument doc = JsonDocument.Parse(json))
+                        {
+                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
+                                responseElement.ValueKind == JsonValueKind.Array && 
+                                responseElement.GetArrayLength() > 0)
                             {
-                                Debug.WriteLine($"[AnotherProfilePage] No photo_200 field for user {profile.Id}, trying alternative fields");
+                                JsonElement userElement = responseElement[0];
+                                profile = new UserProfile();
                                 
-                                // try to get other photo sizes
-                                if (userElement.TryGetProperty("photo_max", out JsonElement photoMaxElement))
-                                {
-                                    profile.Photo200 = photoMaxElement.GetString();
-                                    Debug.WriteLine($"[AnotherProfilePage] Used photo_max for user {profile.Id}: {profile.Photo200}");
-                                }
-                                else if (userElement.TryGetProperty("photo_100", out JsonElement photo100Element))
-                                {
-                                    profile.Photo200 = photo100Element.GetString();
-                                    Debug.WriteLine($"[AnotherProfilePage] Used photo_100 for user {profile.Id}: {profile.Photo200}");
-                                }
-                                else if (userElement.TryGetProperty("photo_50", out JsonElement photo50Element))
-                                {
-                                    profile.Photo200 = photo50Element.GetString();
-                                    Debug.WriteLine($"[AnotherProfilePage] Used photo_50 for user {profile.Id}: {profile.Photo200}");
-                                }
+                                if (userElement.TryGetProperty("id", out JsonElement idElement))
+                                    profile.Id = idElement.GetInt32();
+                                    
+                                if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
+                                    profile.FirstName = firstNameElement.GetString();
+                                    
+                                if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
+                                    profile.LastName = lastNameElement.GetString();
+                                    
+                                if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
+                                    profile.Nickname = nicknameElement.GetString();
+                                    
+                                if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
+                                    profile.Photo200 = photoElement.GetString();
                                 else
                                 {
-                                    Debug.WriteLine($"[AnotherProfilePage] No photo field for user {profile.Id}");
+                                    Debug.WriteLine($"[AnotherProfilePage] No photo_200 field for user {profile.Id}, trying alternative fields");
+                                    
+                                    // try to get other photo sizes
+                                    if (userElement.TryGetProperty("photo_max", out JsonElement photoMaxElement))
+                                    {
+                                        profile.Photo200 = photoMaxElement.GetString();
+                                        Debug.WriteLine($"[AnotherProfilePage] Used photo_max for user {profile.Id}: {profile.Photo200}");
+                                    }
+                                    else if (userElement.TryGetProperty("photo_100", out JsonElement photo100Element))
+                                    {
+                                        profile.Photo200 = photo100Element.GetString();
+                                        Debug.WriteLine($"[AnotherProfilePage] Used photo_100 for user {profile.Id}: {profile.Photo200}");
+                                    }
+                                    else if (userElement.TryGetProperty("photo_50", out JsonElement photo50Element))
+                                    {
+                                        profile.Photo200 = photo50Element.GetString();
+                                        Debug.WriteLine($"[AnotherProfilePage] Used photo_50 for user {profile.Id}: {profile.Photo200}");
+                                    }
+                                    else
+                                    {
+                                        Debug.WriteLine($"[AnotherProfilePage] No photo field for user {profile.Id}");
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                catch (JsonException ex)
-                {
-                    Debug.WriteLine($"[AnotherProfilePage] JSON error: {ex.Message}");
-                    throw;
+                    catch (JsonException ex)
+                    {
+                        Debug.WriteLine($"[AnotherProfilePage] JSON error: {ex.Message}");
+                        throw;
+                    }
+                    
+                    return profile;
                 }
                 
-                return profile;
+                return null;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error getting profile: {ex.Message}");
                 ShowError($"Ошибка при загрузке профиля: {ex.Message}");
+                return null;
+            }
+        }
+        
+        private async Task<GroupProfile> GetGroupInfoAsync(string token, int groupId)
+        {
+            try
+            {
+                if (httpClient == null)
+                {
+                    Debug.WriteLine("[AnotherProfilePage] HttpClient is null, initializing...");
+                    await InitializeHttpClientAsync();
+                    
+                    if (httpClient == null)
+                    {
+                        Debug.WriteLine("[AnotherProfilePage] Failed to initialize HttpClient");
+                        return null;
+                    }
+                }
+                
+                var url = $"method/groups.getById?access_token={token}&group_id={groupId}&fields=photo_50,photo_100,photo_200&v=5.126";
+                Debug.WriteLine($"[AnotherProfilePage] Getting group info with URL: {instanceUrl}{url}");
+                
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[AnotherProfilePage] Group response JSON: {json}");
+                
+                using (JsonDocument doc = JsonDocument.Parse(json))
+                {
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
+                        responseElement.ValueKind == JsonValueKind.Array && 
+                        responseElement.GetArrayLength() > 0)
+                    {
+                        JsonElement groupElement = responseElement[0];
+                        var group = new GroupProfile();
+                        
+                        if (groupElement.TryGetProperty("id", out JsonElement idElement))
+                            group.Id = idElement.GetInt32();
+                            
+                        if (groupElement.TryGetProperty("name", out JsonElement nameElement))
+                            group.Name = nameElement.GetString();
+                            
+                        if (groupElement.TryGetProperty("screen_name", out JsonElement screenNameElement))
+                            group.ScreenName = screenNameElement.GetString();
+                            
+                        if (groupElement.TryGetProperty("description", out JsonElement descriptionElement))
+                            group.Description = descriptionElement.GetString();
+                            
+                        if (groupElement.TryGetProperty("photo_50", out JsonElement photo50Element))
+                            group.Photo50 = photo50Element.GetString();
+                            
+                        if (groupElement.TryGetProperty("photo_100", out JsonElement photo100Element))
+                            group.Photo100 = photo100Element.GetString();
+                            
+                        if (groupElement.TryGetProperty("photo_200", out JsonElement photo200Element))
+                            group.Photo200 = photo200Element.GetString();
+                        
+                        return group;
+                    }
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error getting group info: {ex.Message}");
                 return null;
             }
         }
@@ -479,351 +601,283 @@ namespace ovkdesktop
         {
             try
             {
-                // Инициализируем HTTP клиент, если он еще не инициализирован
-                if (httpClient == null)
-                {
-                    await InitializeHttpClientAsync();
-                }
+                LoadingProgressRing.IsActive = true;
+                LoadingProgressRing.Visibility = Visibility.Visible;
+                FriendshipStatusBadge.Visibility = Visibility.Collapsed;
+                AddFriendButton.Visibility = Visibility.Collapsed;
+                RemoveFriendButton.Visibility = Visibility.Collapsed;
                 
-                OVKDataBody tokenData = await LoadTokenAsync();
-                if (tokenData == null)
+                OVKDataBody token = await LoadTokenAsync();
+                if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("Error when loading token. Please, authorize again.");
+                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
                     return;
                 }
-
-                string token = tokenData.Token;
-                instanceUrl = tokenData.InstanceUrl;
                 
-                // show loading indicator
-                LoadingProgressRing.IsActive = true;
-                ErrorText.Visibility = Visibility.Collapsed;
-                
-                // determine if we are loading user or group profile
-                if (userId < 0)
+                // Load user profile
+                userProfile = await GetProfileInfoAsync(token.Token, userId.ToString());
+                if (userProfile != null)
                 {
-                    // load group profile (negative ID)
-                    var groupProfile = await GetGroupInfoAsync(token, Math.Abs(userId));
+                    ProfileNameTextBlock.Text = userProfile.IsGroup ? 
+                        userProfile.FirstName : 
+                        $"{userProfile.FirstName} {userProfile.LastName}";
                     
-                    if (groupProfile != null)
-                {
-                        // fill UI with group information
-                        ProfileNameTextBlock.Text = groupProfile.Name;
-                        
-                        if (!string.IsNullOrEmpty(groupProfile.ScreenName))
-                        {
-                            ProfileNicknameTextBlock.Text = $"@{groupProfile.ScreenName}";
-                            ProfileNicknameTextBlock.Visibility = Visibility.Visible;
-                        }
-                        else
-                        {
-                            ProfileNicknameTextBlock.Visibility = Visibility.Collapsed;
-                        }
-                        
-                        // set group avatar
-                        if (!string.IsNullOrEmpty(groupProfile.Photo200))
+                    if (!string.IsNullOrEmpty(userProfile.Nickname))
                     {
-                            Debug.WriteLine($"[AnotherProfilePage] Set group avatar: {groupProfile.Photo200}");
-                            try
-                            {
-                                // check if URL is valid
-                                var uri = new Uri(groupProfile.Photo200);
-                                Debug.WriteLine($"[AnotherProfilePage] URI group avatar: {uri.AbsoluteUri}, Scheme: {uri.Scheme}");
-                                
-                                ProfileImage.ImageSource = new BitmapImage(uri);
-                                Debug.WriteLine("[AnotherProfilePage] Group avatar successfully set");
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[AnotherProfilePage] Error when setting group avatar: {ex.Message}");
-                                Debug.WriteLine($"[AnotherProfilePage] Stack trace: {ex.StackTrace}");
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine("[AnotherProfilePage] Group avatar URL is empty");
+                        ProfileNicknameTextBlock.Text = $"@{userProfile.Nickname}";
+                        ProfileNicknameTextBlock.Visibility = Visibility.Visible;
                     }
                     
-                        // add group description if it exists
-                        if (!string.IsNullOrEmpty(groupProfile.Description))
+                    if (!string.IsNullOrEmpty(userProfile.Photo200))
                     {
-                            ProfileStatusTextBlock.Text = groupProfile.Description;
-                            ProfileStatusTextBlock.Visibility = Visibility.Visible;
-                    }
-                    else
-                    {
-                            ProfileStatusTextBlock.Visibility = Visibility.Collapsed;
-                        }
-                        
-                        // add information about the number of participants
-                        if (groupProfile.MembersCount > 0)
-                        {
-                            ProfileInfoTextBlock.Text = $"Подписчики: {groupProfile.MembersCount}";
-                            ProfileInfoTextBlock.Visibility = Visibility.Visible;
-                        }
-                        else
-                        {
-                            ProfileInfoTextBlock.Visibility = Visibility.Collapsed;
-                        }
-                    }
-                    else
-                    {
-                        ShowError("Не удалось загрузить информацию о группе.");
-                        return;
-                }
-            }
-                else
-                {
-                    // load user profile (positive ID)
-                    userProfile = await GetProfileInfoAsync(token, userId.ToString());
-                    
-                    if (userProfile != null)
-                    {
-                        // fill UI with user information
-                        ProfileNameTextBlock.Text = $"{userProfile.FirstName} {userProfile.LastName}";
-                        
-                        if (!string.IsNullOrEmpty(userProfile.Nickname))
-                        {
-                            ProfileNicknameTextBlock.Text = $"@{userProfile.Nickname}";
-                            ProfileNicknameTextBlock.Visibility = Visibility.Visible;
-                        }
-                        else
-                        {
-                            ProfileNicknameTextBlock.Visibility = Visibility.Collapsed;
-                        }
-                        
-                        // set user avatar
-                        if (!string.IsNullOrEmpty(userProfile.Photo200))
-                        {
-                            Debug.WriteLine($"[AnotherProfilePage] Set user avatar: {userProfile.Photo200}");
-                            try
-                            {
-                                // check if URL is valid
-                                var uri = new Uri(userProfile.Photo200);
-                                Debug.WriteLine($"[AnotherProfilePage] URI user avatar: {uri.AbsoluteUri}, Scheme: {uri.Scheme}");
-                                
-                                ProfileImage.ImageSource = new BitmapImage(uri);
-                                Debug.WriteLine("[AnotherProfilePage] User avatar successfully set");
-            }
-            catch (Exception ex)
-            {
-                                Debug.WriteLine($"[AnotherProfilePage] Error when setting user avatar: {ex.Message}");
-                                Debug.WriteLine($"[AnotherProfilePage] Stack trace: {ex.StackTrace}");
-                            }
-                        }
-                        else
-                        {
-                            Debug.WriteLine("[AnotherProfilePage] User avatar URL is empty");
-                        }
-                        
-                        // hide unnecessary elements for user
-                        ProfileStatusTextBlock.Visibility = Visibility.Collapsed;
-                        ProfileInfoTextBlock.Visibility = Visibility.Collapsed;
-                    }
-                    else
-                    {
-                        ShowError("Не удалось загрузить информацию о пользователе.");
-                        return;
-                    }
-                }
-                
-                // load posts from wall
-                var postsData = await GetPostsAsync(token, userId.ToString());
-                
-                if (postsData != null && postsData.Response != null && postsData.Response.Items != null)
-                {
-                    // clear current collection of posts
-                    Posts.Clear();
-                    
-                    // add posts to collection
-                    foreach (var post in postsData.Response.Items)
-                    {
-                        Posts.Add(post);
+                        ProfileImage.ImageSource = new BitmapImage(new Uri(userProfile.Photo200));
                     }
                     
-                    // Обновляем статус лайков для постов и аудио
-                    await UpdateLikesStatusAsync();
+                    // Only show friend actions for users, not for groups
+                    if (!userProfile.IsGroup)
+                    {
+                        // Check friendship status
+                        await CheckFriendshipStatusAsync(token.Token);
+                    }
                     
-                    // update UI
-                    if (Posts.Count > 0)
-                    {
-                        NoPostsTextBlock.Visibility = Visibility.Collapsed;
-                        PostsListView.Visibility = Visibility.Visible;
-                    }
-                    else
-                    {
-                        NoPostsTextBlock.Visibility = Visibility.Visible;
-                        PostsListView.Visibility = Visibility.Collapsed;
-                    }
+                    // Load wall posts
+                    await LoadPostsAsync(token.Token);
                 }
                 else
                 {
-                    NoPostsTextBlock.Visibility = Visibility.Visible;
-                    PostsListView.Visibility = Visibility.Collapsed;
+                    ShowError("Не удалось загрузить профиль пользователя.");
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка при загрузке профиля: {ex.Message}");
-                Debug.WriteLine($"[AnotherProfilePage] Error: {ex.Message}");
-                Debug.WriteLine($"[AnotherProfilePage] Stack trace: {ex.StackTrace}");
+                ShowError($"Ошибка при загрузке данных профиля: {ex.Message}");
+                Debug.WriteLine($"[AnotherProfilePage] LoadProfileDataAsync exception: {ex}");
             }
             finally
             {
-                // hide loading indicator
                 LoadingProgressRing.IsActive = false;
+                LoadingProgressRing.Visibility = Visibility.Collapsed;
             }
         }
 
-        private async Task<GroupProfile> GetGroupInfoAsync(string token, int groupId)
+        private async Task CheckFriendshipStatusAsync(string token)
         {
             try
             {
-                // use older version of API for better compatibility
-                var url = $"method/groups.getById?access_token={token}&group_id={groupId}&fields=photo_50,photo_100,photo_200,photo_max,description,members_count,site&v=5.126";
-                Debug.WriteLine($"[AnotherProfilePage] Getting group with URL: {instanceUrl}{url}");
-                
-                var response = await httpClient.GetAsync(url);
-                Debug.WriteLine($"[AnotherProfilePage] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
-                response.EnsureSuccessStatusCode();
-
-                var json = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[AnotherProfilePage] Group response JSON: {json}");
-                
-                // additional output of JSON properties for debugging
-                try
+                var friendStatusList = await friendsApiService.AreFriendsAsync(token, userId.ToString());
+                if (friendStatusList != null && friendStatusList.Count > 0)
                 {
-                    using (JsonDocument debugDoc = JsonDocument.Parse(json))
+                    var friendStatus = friendStatusList.FirstOrDefault(fs => fs.UserId == userId);
+                    
+                    if (friendStatus != null)
                     {
-                        if (debugDoc.RootElement.TryGetProperty("response", out JsonElement debugResponseElement) && 
-                            debugResponseElement.ValueKind == JsonValueKind.Array && 
-                            debugResponseElement.GetArrayLength() > 0)
+                        friendshipStatus = friendStatus.Status;
+                        
+                        switch (friendshipStatus)
                         {
-                            JsonElement debugGroupElement = debugResponseElement[0];
-                            Debug.WriteLine("[AnotherProfilePage] Available properties of group:");
-                            foreach (JsonProperty property in debugGroupElement.EnumerateObject())
-                            {
-                                Debug.WriteLine($"[AnotherProfilePage] - {property.Name}: {property.Value}");
-                            }
+                            case 0: // не являются друзьями
+                                FriendshipStatusBadge.Visibility = Visibility.Collapsed;
+                                AddFriendButton.Visibility = Visibility.Visible;
+                                RemoveFriendButton.Visibility = Visibility.Collapsed;
+                                break;
+                            case 1: // заявка отправлена
+                                FriendshipStatusBadge.Visibility = Visibility.Visible;
+                                FriendshipStatusBadge.Text = "Заявка отправлена";
+                                AddFriendButton.Visibility = Visibility.Collapsed;
+                                RemoveFriendButton.Visibility = Visibility.Visible;
+                                break;
+                            case 2: // являются друзьями
+                                isFriend = true;
+                                FriendshipStatusBadge.Visibility = Visibility.Visible;
+                                FriendshipStatusBadge.Text = "У вас в друзьях";
+                                AddFriendButton.Visibility = Visibility.Collapsed;
+                                RemoveFriendButton.Visibility = Visibility.Visible;
+                                break;
+                            case 3: // заявка получена
+                                FriendshipStatusBadge.Visibility = Visibility.Visible;
+                                FriendshipStatusBadge.Text = "Хочет добавить вас в друзья";
+                                AddFriendButton.Visibility = Visibility.Visible;
+                                RemoveFriendButton.Visibility = Visibility.Collapsed;
+                                break;
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[AnotherProfilePage] Error when parsing JSON for debugging: {ex.Message}");
-                }
-                
-                GroupProfile group = null;
-                
-                try
-                {
-                    using (JsonDocument doc = JsonDocument.Parse(json))
+                    else
                     {
-                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
-                            responseElement.ValueKind == JsonValueKind.Array && 
-                            responseElement.GetArrayLength() > 0)
-                        {
-                            JsonElement groupElement = responseElement[0];
-                            group = new GroupProfile();
-                            
-                            if (groupElement.TryGetProperty("id", out JsonElement idElement))
-                                group.Id = idElement.GetInt32();
-                                
-                            if (groupElement.TryGetProperty("name", out JsonElement nameElement))
-                                group.Name = nameElement.GetString();
-                                
-                            if (groupElement.TryGetProperty("screen_name", out JsonElement screenNameElement))
-                                group.ScreenName = screenNameElement.GetString();
-                                
-                            if (groupElement.TryGetProperty("photo_200", out JsonElement photoElement))
-                                group.Photo200 = photoElement.GetString();
-                            else
-                            {
-                                Debug.WriteLine($"[AnotherProfilePage] No photo_200 field for group {group.Id}, trying alternative fields");
-                            }
-                            
-                            if (groupElement.TryGetProperty("photo_max", out JsonElement photoMaxElement))
-                            {
-                                group.PhotoMax = photoMaxElement.GetString();
-                                Debug.WriteLine($"[AnotherProfilePage] Received URL photo_max for group {group.Id}: {group.PhotoMax}");
-                                
-                                // if photo_200 is missing, use photo_max
-                                if (string.IsNullOrEmpty(group.Photo200))
-                                {
-                                    group.Photo200 = group.PhotoMax;
-                                    Debug.WriteLine($"[AnotherProfilePage] Set photo_200 from photo_max for group {group.Id}");
-                                }
-                            }
-                            
-                            if (groupElement.TryGetProperty("photo_100", out JsonElement photo100Element))
-                            {
-                                group.Photo100 = photo100Element.GetString();
-                                Debug.WriteLine($"[AnotherProfilePage] Received URL photo_100 for group {group.Id}: {group.Photo100}");
-                                
-                                // if photo_200 is missing, use photo_100
-                                if (string.IsNullOrEmpty(group.Photo200))
-                                {
-                                    group.Photo200 = group.Photo100;
-                                    Debug.WriteLine($"[AnotherProfilePage] Set photo_200 from photo_100 for group {group.Id}");
-                                }
-                            }
-                            
-                            if (groupElement.TryGetProperty("photo_50", out JsonElement photo50Element))
-                            {
-                                group.Photo50 = photo50Element.GetString();
-                                Debug.WriteLine($"[AnotherProfilePage] Received URL photo_50 for group {group.Id}: {group.Photo50}");
-                                
-                                // if photo_200 is missing, use photo_50
-                                if (string.IsNullOrEmpty(group.Photo200))
-                                {
-                                    group.Photo200 = group.Photo50;
-                                    Debug.WriteLine($"[AnotherProfilePage] Set photo_200 from photo_50 for group {group.Id}");
-                                }
-                            }
-                                
-                            if (groupElement.TryGetProperty("description", out JsonElement descriptionElement))
-                                group.Description = descriptionElement.GetString();
-                                
-                            if (groupElement.TryGetProperty("members_count", out JsonElement membersCountElement))
-                                group.MembersCount = membersCountElement.GetInt32();
-                                
-                            if (groupElement.TryGetProperty("site", out JsonElement siteElement))
-                                group.Site = siteElement.GetString();
-                        }
+                        // Default - show Add Friend button
+                        AddFriendButton.Visibility = Visibility.Visible;
+                        RemoveFriendButton.Visibility = Visibility.Collapsed;
                     }
                 }
-                catch (JsonException ex)
+                else
                 {
-                    Debug.WriteLine($"[AnotherProfilePage] JSON error: {ex.Message}");
-                    throw;
+                    // Default - show Add Friend button
+                    AddFriendButton.Visibility = Visibility.Visible;
+                    RemoveFriendButton.Visibility = Visibility.Collapsed;
                 }
-                
-                return group;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AnotherProfilePage] Error getting group: {ex.Message}");
-                ShowError($"Ошибка при загрузке группы: {ex.Message}");
-                return null;
+                Debug.WriteLine($"[AnotherProfilePage] CheckFriendshipStatusAsync exception: {ex.Message}");
+                // Default to showing Add Friend button on error
+                AddFriendButton.Visibility = Visibility.Visible;
+                RemoveFriendButton.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private async Task LoadPostsAsync(string token)
+        {
+            try
+            {
+                // Hide no posts text
+                NoPostsTextBlock.Visibility = Visibility.Collapsed;
+                
+                // Get posts from API
+                var response = await GetPostsAsync(token, userId.ToString());
+                if (response == null || response.Response == null || response.Response.Items == null)
+                {
+                    Debug.WriteLine($"[AnotherProfilePage] Error: posts response is null");
+                    
+                    NoPostsTextBlock.Visibility = Visibility.Visible;
+                    return;
+                }
+                
+                // Check if there are posts
+                if (response.Response.Items.Count == 0)
+                {
+                    Debug.WriteLine($"[AnotherProfilePage] No posts found");
+                    
+                    NoPostsTextBlock.Visibility = Visibility.Visible;
+                    return;
+                }
+                
+                // Update collection
+                Posts.Clear();
+                foreach (var post in response.Response.Items)
+                    Posts.Add(post);
+                
+                // Show posts
+                PostsListView.Visibility = Visibility.Visible;
+                
+                // Update likes status
+                await UpdateLikesStatusAsync();
+                
+                // Load profiles for reposts
+                await LoadRepostProfilesAsync(token);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error loading posts: {ex.Message}");
+                ShowError($"Ошибка при загрузке постов: {ex.Message}");
+            }
+            
+            // Hide loading indicator
+            LoadingProgressRing.IsActive = false;
+        }
+
+        private async void AddFriend_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                OVKDataBody token = await LoadTokenAsync();
+                if (token == null || string.IsNullOrEmpty(token.Token))
+                {
+                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
+                    return;
+                }
+
+                // Show loading state
+                AddFriendButton.IsEnabled = false;
+                AddFriendProgress.Visibility = Visibility.Visible;
+
+                // Add friend
+                int result = await friendsApiService.AddFriendAsync(token.Token, userId);
+                
+                if (result == 1) // request sent
+                {
+                    FriendshipStatusBadge.Visibility = Visibility.Visible;
+                    FriendshipStatusBadge.Text = "Заявка отправлена";
+                    AddFriendButton.Visibility = Visibility.Collapsed;
+                    RemoveFriendButton.Visibility = Visibility.Visible;
+                }
+                else if (result == 2) // approved instantly
+                {
+                    isFriend = true;
+                    FriendshipStatusBadge.Visibility = Visibility.Visible;
+                    FriendshipStatusBadge.Text = "У вас в друзьях";
+                    AddFriendButton.Visibility = Visibility.Collapsed;
+                    RemoveFriendButton.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    ShowError("Не удалось отправить запрос в друзья.");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Ошибка: {ex.Message}");
+                Debug.WriteLine($"[AnotherProfilePage] AddFriend_Click exception: {ex}");
+            }
+            finally
+            {
+                // Reset UI state
+                AddFriendButton.IsEnabled = true;
+                AddFriendProgress.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private async void RemoveFriend_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                OVKDataBody token = await LoadTokenAsync();
+                if (token == null || string.IsNullOrEmpty(token.Token))
+                {
+                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
+                    return;
+                }
+
+                // Show loading state
+                RemoveFriendButton.IsEnabled = false;
+                RemoveFriendProgress.Visibility = Visibility.Visible;
+
+                // Remove friend
+                bool success = await friendsApiService.DeleteFriendAsync(token.Token, userId);
+                
+                if (success)
+                {
+                    isFriend = false;
+                    FriendshipStatusBadge.Visibility = Visibility.Collapsed;
+                    AddFriendButton.Visibility = Visibility.Visible;
+                    RemoveFriendButton.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    ShowError("Не удалось удалить пользователя из друзей.");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Ошибка: {ex.Message}");
+                Debug.WriteLine($"[AnotherProfilePage] RemoveFriend_Click exception: {ex}");
+            }
+            finally
+            {
+                // Reset UI state
+                RemoveFriendButton.IsEnabled = true;
+                RemoveFriendProgress.Visibility = Visibility.Collapsed;
             }
         }
 
         private void BackPostsClick(object sender, RoutedEventArgs e)
         {
-            if (this.Frame.CanGoBack)
-                this.Frame.GoBack();
+            Frame.GoBack();
         }
 
         private void ShowPostComments_Tapped(object sender, TappedRoutedEventArgs e)
         {
-            if (sender is FrameworkElement element && element.DataContext is UserWallPost post)
+            if (sender is Button button && button.Tag is UserWallPost post)
             {
-                var parameters = new PostInfoPage.PostInfoParameters
-                {
-                    PostId = post.Id,
-                    OwnerId = post.OwnerId
-                };
-                this.Frame.Navigate(typeof(PostInfoPage), parameters);
+                Frame.Navigate(typeof(PostInfoPage), new object[] { post, userProfile });
             }
         }
 
@@ -1664,12 +1718,12 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine($"[AnotherProfilePage] Playing audio: {audio.Artist} - {audio.Title}");
                     
-                    // Получаем сервис аудиоплеера из App
+                    // Get audio service from App
                     var audioService = App.AudioService;
                     if (audioService != null)
                     {
-                        // Создаем плейлист из одного трека и воспроизводим
-                        var playlist = new System.Collections.ObjectModel.ObservableCollection<Models.Audio> { audio };
+                        // Create playlist from single track and play it
+                        var playlist = new ObservableCollection<Models.Audio> { audio };
                         audioService.SetPlaylist(playlist, 0);
                         
                         Debug.WriteLine("[AnotherProfilePage] Audio playback started");
@@ -1683,6 +1737,286 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error playing audio: {ex.Message}");
+            }
+        }
+
+        // Handle clicks on repost authors to navigate to their profiles
+        private void RepostAuthor_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is Button button && button.Tag != null)
+                {
+                    // Get the FromId (user or group ID) from the button Tag
+                    int fromId = 0;
+                    if (button.Tag is int intId)
+                    {
+                        fromId = intId;
+                    }
+                    else if (int.TryParse(button.Tag.ToString(), out int parsedId))
+                    {
+                        fromId = parsedId;
+                    }
+                    
+                    if (fromId != 0)
+                    {
+                        Debug.WriteLine($"[AnotherProfilePage] Navigating to profile with ID: {fromId}");
+                        
+                        // Don't navigate if clicking on the same profile
+                        if (fromId == userId)
+                        {
+                            return;
+                        }
+                        
+                        // Navigate to user profile or group page based on ID
+                        Frame.Navigate(typeof(AnotherProfilePage), fromId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error navigating to repost author: {ex.Message}");
+            }
+        }
+
+        // Load profile information for reposts
+        private async Task LoadRepostProfilesAsync(string token)
+        {
+            try
+            {
+                // Collect all user IDs from reposts
+                var userIds = new HashSet<int>();
+                var groupIds = new HashSet<int>();
+                
+                foreach (var post in Posts)
+                {
+                    if (post.HasRepost && post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (repost.FromId > 0)
+                            {
+                                userIds.Add(repost.FromId);
+                            }
+                            else if (repost.FromId < 0)
+                            {
+                                groupIds.Add(Math.Abs(repost.FromId));
+                            }
+                        }
+                    }
+                }
+                
+                Debug.WriteLine($"[AnotherProfilePage] Found {userIds.Count} user IDs and {groupIds.Count} group IDs in reposts");
+                
+                // Fetch group profiles first
+                var groupProfiles = new Dictionary<int, UserProfile>();
+                if (groupIds.Count > 0)
+                {
+                    try
+                    {
+                        string ids = string.Join(",", groupIds);
+                        var url = $"method/groups.getById?access_token={token}&group_ids={ids}&fields=description,members_count,site,screen_name,photo_50,photo_100,photo_200,photo_max&v=5.126";
+                        
+                        Debug.WriteLine($"[AnotherProfilePage] Fetching group profiles with URL: {instanceUrl}{url}");
+                        
+                        var response = await httpClient.GetAsync(url);
+                        response.EnsureSuccessStatusCode();
+                        
+                        var json = await response.Content.ReadAsStringAsync();
+                        Debug.WriteLine($"[AnotherProfilePage] Groups API response: {json}");
+                        
+                        using (JsonDocument doc = JsonDocument.Parse(json))
+                        {
+                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
+                                responseElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (JsonElement groupElement in responseElement.EnumerateArray())
+                                {
+                                    int groupId = 0;
+                                    var groupProfile = new UserProfile { IsGroup = true };
+                                    
+                                    if (groupElement.TryGetProperty("id", out JsonElement idElement))
+                                        groupId = idElement.GetInt32();
+                                        
+                                    if (groupElement.TryGetProperty("name", out JsonElement nameElement))
+                                        groupProfile.FirstName = nameElement.GetString();
+                                    
+                                    groupProfile.LastName = ""; // Groups don't have last names
+                                        
+                                    if (groupElement.TryGetProperty("screen_name", out JsonElement screenNameElement))
+                                        groupProfile.Nickname = screenNameElement.GetString();
+                                    
+                                    string photoUrl = null;
+                                    
+                                    if (groupElement.TryGetProperty("photo_200", out JsonElement photo200Element))
+                                        photoUrl = photo200Element.GetString();
+                                    else if (groupElement.TryGetProperty("photo_100", out JsonElement photo100Element))
+                                        photoUrl = photo100Element.GetString();
+                                    else if (groupElement.TryGetProperty("photo_50", out JsonElement photo50Element))
+                                        photoUrl = photo50Element.GetString();
+                                    else if (groupElement.TryGetProperty("photo_max", out JsonElement photoMaxElement))
+                                        photoUrl = photoMaxElement.GetString();
+                                    
+                                    groupProfile.Photo200 = photoUrl;
+                                    Debug.WriteLine($"[AnotherProfilePage] Group photo URL: {photoUrl}");
+                                    
+                                    groupProfile.Id = -groupId;
+                                    
+                                    groupProfiles[groupId] = groupProfile;
+                                    Debug.WriteLine($"[AnotherProfilePage] Loaded group profile: ID={groupId}, Name={groupProfile.FirstName}, Photo={groupProfile.Photo200?.Substring(0, Math.Min(groupProfile.Photo200?.Length ?? 0, 50))}");
+                                }
+                            }
+                        }
+                        
+                        Debug.WriteLine($"[AnotherProfilePage] Loaded {groupProfiles.Count} group profiles");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[AnotherProfilePage] Error getting group info: {ex.Message}");
+                    }
+                }
+                
+                // Fetch user profiles
+                var userProfiles = new Dictionary<int, UserProfile>();
+                if (userIds.Count > 0)
+                {
+                    try
+                    {
+                        string ids = string.Join(",", userIds);
+                        var url = $"method/users.get?access_token={token}&user_ids={ids}&fields=photo_200,screen_name&v=5.126";
+                        
+                        Debug.WriteLine($"[AnotherProfilePage] Fetching user profiles with URL: {instanceUrl}{url}");
+                        
+                        var response = await httpClient.GetAsync(url);
+                        response.EnsureSuccessStatusCode();
+                        
+                        var json = await response.Content.ReadAsStringAsync();
+                        Debug.WriteLine($"[AnotherProfilePage] Users API response: {json.Substring(0, Math.Min(json.Length, 200))}...");
+                        
+                        using (JsonDocument doc = JsonDocument.Parse(json))
+                        {
+                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
+                                responseElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (JsonElement userElement in responseElement.EnumerateArray())
+                                {
+                                    var profile = new UserProfile();
+                                    
+                                    if (userElement.TryGetProperty("id", out JsonElement idElement))
+                                        profile.Id = idElement.GetInt32();
+                                        
+                                    if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
+                                        profile.FirstName = firstNameElement.GetString();
+                                        
+                                    if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
+                                        profile.LastName = lastNameElement.GetString();
+                                        
+                                    if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
+                                        profile.Nickname = nicknameElement.GetString();
+                                        
+                                    if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
+                                        profile.Photo200 = photoElement.GetString();
+                                    else
+                                    {
+                                        if (userElement.TryGetProperty("photo_100", out JsonElement photo100Element))
+                                            profile.Photo200 = photo100Element.GetString();
+                                        else if (userElement.TryGetProperty("photo_50", out JsonElement photo50Element))
+                                            profile.Photo200 = photo50Element.GetString();
+                                    }
+                                    
+                                    userProfiles[profile.Id] = profile;
+                                    Debug.WriteLine($"[AnotherProfilePage] Loaded user profile: ID={profile.Id}, Name={profile.FirstName} {profile.LastName}, Photo={profile.Photo200?.Substring(0, Math.Min(profile.Photo200?.Length ?? 0, 50))}");
+                                }
+                            }
+                        }
+                        
+                        Debug.WriteLine($"[AnotherProfilePage] Loaded {userProfiles.Count} user profiles");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[AnotherProfilePage] Error getting user profiles: {ex.Message}");
+                    }
+                }
+                
+                // Assign profiles to reposts
+                foreach (var post in Posts)
+                {
+                    if (post.HasRepost && post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            try {
+                                if (repost.FromId < 0)
+                                {
+                                    int groupId = Math.Abs(repost.FromId);
+                                    if (groupProfiles.TryGetValue(groupId, out var groupProfile))
+                                    {
+                                        // Create a deep copy of the profile instead of using the same reference
+                                        repost.Profile = new UserProfile
+                                        {
+                                            Id = groupProfile.Id,
+                                            FirstName = groupProfile.FirstName,
+                                            LastName = groupProfile.LastName,
+                                            Nickname = groupProfile.Nickname,
+                                            Photo200 = groupProfile.Photo200,
+                                            IsGroup = true
+                                        };
+                                        
+                                        Debug.WriteLine($"[AnotherProfilePage] Assigned group profile '{groupProfile.FirstName}' to repost {repost.Id}, Photo: {groupProfile.Photo200}");
+                                        
+                                        // Force UI update
+                                        var index = Posts.IndexOf(post);
+                                        if (index >= 0)
+                                        {
+                                            Posts.RemoveAt(index);
+                                            Posts.Insert(index, post);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Debug.WriteLine($"[AnotherProfilePage] No group profile found for ID={groupId}");
+                                    }
+                                }
+                                else if (repost.FromId > 0)
+                                {
+                                    if (userProfiles.TryGetValue(repost.FromId, out var userProfile))
+                                    {
+                                        // Create a deep copy of the profile instead of using the same reference
+                                        repost.Profile = new UserProfile
+                                        {
+                                            Id = userProfile.Id,
+                                            FirstName = userProfile.FirstName,
+                                            LastName = userProfile.LastName,
+                                            Nickname = userProfile.Nickname,
+                                            Photo200 = userProfile.Photo200,
+                                            IsGroup = false
+                                        };
+                                        
+                                        Debug.WriteLine($"[AnotherProfilePage] Assigned user profile '{userProfile.FirstName} {userProfile.LastName}' to repost {repost.Id}, Photo: {userProfile.Photo200}");
+                                        
+                                        // Force UI update
+                                        var index = Posts.IndexOf(post);
+                                        if (index >= 0)
+                                        {
+                                            Posts.RemoveAt(index);
+                                            Posts.Insert(index, post);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Debug.WriteLine($"[AnotherProfilePage] No user profile found for ID={repost.FromId}");
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                Debug.WriteLine($"[AnotherProfilePage] Error assigning profile to repost: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error loading repost profiles: {ex.Message}");
             }
         }
     }
