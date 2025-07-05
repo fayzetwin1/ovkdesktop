@@ -59,6 +59,7 @@ namespace ovkdesktop
         {
             this.InitializeComponent();
             this.NavigationCacheMode = NavigationCacheMode.Disabled;
+            PostsListView.ContainerContentChanging += PostsListView_ContainerContentChanging;
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -235,6 +236,70 @@ namespace ovkdesktop
                 return null;
             }
         }
+
+        private void PostsListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+        {
+            if (args.InRecycleQueue) return;
+
+            var itemContainer = args.ItemContainer as ListViewItem;
+            if (itemContainer == null) return;
+
+            itemContainer.Loaded -= ItemContainer_Loaded;
+            itemContainer.Loaded += ItemContainer_Loaded;
+        }
+
+        private void ItemContainer_Loaded(object sender, RoutedEventArgs e)
+        {
+            var itemContainer = sender as ListViewItem;
+            if (itemContainer == null) return;
+
+            var rootGrid = FindVisualChild<Grid>(itemContainer);
+            if (rootGrid != null)
+            {
+                rootGrid.RightTapped -= PostItem_RightTapped;
+                rootGrid.RightTapped += PostItem_RightTapped;
+            }
+        }
+
+
+
+        private void PostItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            if (sender is not FrameworkElement element || element.DataContext is not UserWallPost post)
+            {
+                return;
+            }
+
+            e.Handled = true;
+
+            var flyout = new MenuFlyout();
+            var repostItem = new MenuFlyoutItem { Text = "Репост", Tag = post };
+            repostItem.Click += RepostButton_Click; 
+            flyout.Items.Add(repostItem);
+
+            flyout.ShowAt(element, e.GetPosition(element));
+        }
+
+        private T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(obj, i);
+                if (child != null && child is T)
+                    return (T)child;
+                else
+                {
+                    T childOfChild = FindVisualChild<T>(child);
+                    if (childOfChild != null)
+                        return childOfChild;
+                }
+            }
+            return null;
+        }
+
+
+
+
 
         private async Task<UserProfile> GetProfileInfoAsync(string apiToken, int profileId, CancellationToken cancellationToken)
         {
@@ -636,6 +701,75 @@ namespace ovkdesktop
             {
                 if (fromId == userId) return;
                 Frame.Navigate(typeof(AnotherProfilePage), fromId);
+            }
+        }
+
+        private async void RepostButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is MenuFlyoutItem item && item.Tag is UserWallPost post)
+                {
+                    OVKDataBody ovkToken = await LoadTokenAsync();
+                    if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
+                    {
+                        ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                        return;
+                    }
+
+                    string objectId = $"wall{post.OwnerId}_{post.Id}";
+                    bool success = await RepostAsync(ovkToken.Token, objectId);
+
+                    var dialog = new ContentDialog
+                    {
+                        Title = success ? "Успех" : "Ошибка",
+                        Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await dialog.ShowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error in RepostButton_Click: {ex.Message}");
+                ShowError($"Ошибка при репосте: {ex.Message}");
+            }
+        }
+        private async Task<bool> RepostAsync(string token, string objectId, string message = null)
+        {
+            if (httpClient == null) return false;
+
+            try
+            {
+                var url = $"method/wall.repost?access_token={token}&object={objectId}&v=5.126";
+                if (!string.IsNullOrEmpty(message))
+                {
+                    url += $"&message={Uri.EscapeDataString(message)}";
+                }
+
+                Debug.WriteLine($"[AnotherProfilePage] Repost URL: {instanceUrl}{url}");
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[AnotherProfilePage] Repost response: {json}");
+
+                using JsonDocument doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("response", out var responseElement))
+                {
+                    if ((responseElement.ValueKind == JsonValueKind.Number && responseElement.GetInt32() == 1) ||
+                        (responseElement.TryGetProperty("success", out var successElement) && successElement.GetInt32() == 1))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error in RepostAsync: {ex.Message}");
+                return false;
             }
         }
 

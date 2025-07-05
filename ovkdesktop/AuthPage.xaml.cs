@@ -113,9 +113,9 @@ namespace ovkdesktop
                     }
 
                     // check if 2fa is required
-                    if (errorCode == 28)
+                    if (errorCode == 28 && !string.IsNullOrEmpty(errorMsg) && errorMsg.Contains("2FA", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.WriteLine("[AuthPage] 2FA required, showing code input dialog");
+                        Debug.WriteLine("[AuthPage] 2FA required (Validation required message found), showing code input dialog");
                         await Show2FADialog();
                         return;
                     }
@@ -126,7 +126,7 @@ namespace ovkdesktop
                     errorHttp.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
                     errorHttp.Title = "Ошибка";
                     errorHttp.PrimaryButtonText = "Ладно";
-                    errorHttp.Content = $"При попытке авторизации возникла ошибка со стороны инстанса OpenVK.\n\nТекст ошибки: {errorMsg}\nКод ошибки: {errorCode}\n\nПараметры запроса: {requestParams}";
+                    errorHttp.Content = $"При попытке авторизации возникла ошибка со стороны инстанса OpenVK.\n\nТекст ошибки: {errorMsg}\nКод ошибки: {errorCode}";
                     errorHttp.DefaultButton = ContentDialogButton.Primary;
 
                     await errorHttp.ShowAsync();

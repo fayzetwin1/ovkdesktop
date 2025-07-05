@@ -44,6 +44,8 @@ namespace ovkdesktop
         /// </summary>
         public App()
         {
+            
+
             InitializeComponent();
             
             // processing unhandled exceptions
@@ -74,6 +76,9 @@ namespace ovkdesktop
         {
             try
             {
+
+                LoggerService.Instance.Initialize();
+
                 // create the main window
                 MainWindow = new MainWindow();
                 MainWindowInstance = MainWindow as MainWindow;
@@ -99,8 +104,10 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine($"XAML BindingFailed: {e.Message}");
                 };
-
+                
+                LoggerService.Instance.Log("Application launched and main window activated.");
                 Debug.WriteLine("[App] Main window activated");
+
             }
             catch (Exception ex)
             {

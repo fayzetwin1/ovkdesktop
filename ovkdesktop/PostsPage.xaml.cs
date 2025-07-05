@@ -573,8 +573,13 @@ namespace ovkdesktop
                         BorderThickness = new Thickness(1),
                         CornerRadius = new CornerRadius(8),
                         MaxWidth = 600,
-                        HorizontalAlignment = HorizontalAlignment.Left
+                        HorizontalAlignment = HorizontalAlignment.Left,
+                        Tag = post
                     };
+
+                    postCard.RightTapped += PostCard_RightTapped;
+
+                    var flyout = new MenuFlyout();
 
                     // define rows for card
                     postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 0: Header
@@ -721,6 +726,56 @@ namespace ovkdesktop
                 Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
                 ShowError($"error in UI creation: {ex.Message}");
                 LoadingProgressRingNewsPosts.IsActive = false;
+            }
+        }
+
+        private void PostCard_RightTapped(object sender, RightTappedRoutedEventArgs e)
+        {
+            if (sender is not Grid postCard || postCard.Tag is not NewsFeedPost post)
+            {
+                return;
+            }
+
+            var flyout = new MenuFlyout();
+            var repostItem = new MenuFlyoutItem { Text = "Репост", Tag = post };
+
+            repostItem.Click += RepostButton_Click;
+            flyout.Items.Add(repostItem);
+
+            flyout.ShowAt(postCard, e.GetPosition(postCard));
+        }
+
+
+        private async void RepostButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is MenuFlyoutItem item && item.Tag is NewsFeedPost post)
+                {
+                    OVKDataBody token = await LoadTokenAsync();
+                    if (token == null || string.IsNullOrEmpty(token.Token))
+                    {
+                        ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
+                        return;
+                    }
+
+                    string objectId = $"wall{post.OwnerId}_{post.Id}";
+                    bool success = await apiService.RepostAsync(token.Token, objectId);
+
+                    var dialog = new ContentDialog
+                    {
+                        Title = success ? "Успех" : "Ошибка",
+                        Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await dialog.ShowAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PostsPage] Error in RepostButton_Click: {ex.Message}");
+                ShowError($"Ошибка при репосте: {ex.Message}");
             }
         }
 
@@ -1755,6 +1810,51 @@ namespace ovkdesktop
                 httpClient = new HttpClient { BaseAddress = new Uri(instanceUrl) };
                 
                 Debug.WriteLine($"[APIServiceNewsPosts] Fallback to default URL: {instanceUrl}");
+            }
+        }
+
+        public async Task<bool> RepostAsync(string token, string objectId, string message = null)
+        {
+            try
+            {
+                if (httpClient == null)
+                {
+                    await Task.Run(() => InitializeHttpClientAsync());
+                    await Task.Delay(500);
+                }
+
+                var url = $"method/wall.repost?access_token={token}&object={objectId}&v=5.126";
+                if (!string.IsNullOrEmpty(message))
+                {
+                    url += $"&message={Uri.EscapeDataString(message)}";
+                }
+
+                Debug.WriteLine($"[APIServiceNewsPosts] Repost URL: {instanceUrl}{url}");
+
+                var response = await httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[APIServiceNewsPosts] Repost response: {json}");
+
+                using JsonDocument doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("response", out var responseElement))
+                {
+                    if (responseElement.ValueKind == JsonValueKind.Number && responseElement.GetInt32() == 1)
+                    {
+                        return true;
+                    }
+                    if (responseElement.TryGetProperty("success", out var successElement) && successElement.GetInt32() == 1)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[APIServiceNewsPosts] Error in RepostAsync: {ex.Message}");
+                return false;
             }
         }
 
