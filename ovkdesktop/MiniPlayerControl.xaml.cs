@@ -451,14 +451,14 @@ namespace ovkdesktop
                     if (!success)
                     {
                         FavoriteIcon.Glyph = "\uEB52"; // filled heart
-                        FavoriteIcon.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 233, G = 30, B = 99 }); // #E91E63 (розовый/красный)
+                        FavoriteIcon.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 233, G = 30, B = 99 }); // #E91E63 (pink/red)
                     }
                 }
                 else
                 {
                     // visual feedback before the request
                     FavoriteIcon.Glyph = "\uEB52"; // change the icon immediately to a filled heart
-                    FavoriteIcon.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 233, G = 30, B = 99 }); // #E91E63 (розовый/красный)
+                    FavoriteIcon.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 233, G = 30, B = 99 }); // #E91E63 (pink/red)
                     
                     success = await _audioService.AddToFavorites(currentAudio);
                     Debug.WriteLine($"[MiniPlayerControl] Add to favorites result: {success}");
@@ -467,7 +467,7 @@ namespace ovkdesktop
                     if (!success)
                     {
                         FavoriteIcon.Glyph = "\uE00B"; // empty heart
-                        FavoriteIcon.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 128, G = 128, B = 128 }); // #808080 (серый)
+                        FavoriteIcon.Foreground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 128, G = 128, B = 128 }); // #808080 (gray)
                     }
                 }
                 
@@ -721,8 +721,8 @@ namespace ovkdesktop
             
             // set the color of the icon: red for liked, gray for not liked
             FavoriteIcon.Foreground = isAdded 
-                ? new SolidColorBrush(new Windows.UI.Color { A = 255, R = 233, G = 30, B = 99 })  // #E91E63 (розовый/красный)
-                : new SolidColorBrush(new Windows.UI.Color { A = 255, R = 128, G = 128, B = 128 }); // #808080 (серый)
+                ? new SolidColorBrush(new Windows.UI.Color { A = 255, R = 233, G = 30, B = 99 })  // #E91E63 (pink/red)
+                : new SolidColorBrush(new Windows.UI.Color { A = 255, R = 128, G = 128, B = 128 }); // #808080 (gray)
             
             Debug.WriteLine($"[MiniPlayerControl] Updated favorite icon: {(isAdded ? "Added" : "Not added")}");
         }

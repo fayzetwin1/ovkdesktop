@@ -194,7 +194,7 @@ namespace ovkdesktop
 
         private async Task AuthorizeAsync(string twoFactorCode = null)
         {
-            // ШАГ 1: Получаем токен доступа
+            // Get access token
             var url = $"{_instanceUrl}token?username={_username}&password={_password}&grant_type=password&client_name=OpenVK Desktop&v=5.126";
 
             if (!string.IsNullOrEmpty(twoFactorCode))
@@ -209,7 +209,7 @@ namespace ovkdesktop
             request.Method = "GET";
             request.Headers.Add("User-Agent", "OpenVK Desktop Client/1.0");
 
-            using var webResponse = await request.GetResponseAsync(); // Используем async-версию
+            using var webResponse = await request.GetResponseAsync(); // Use async
             using var webStream = webResponse.GetResponseStream();
             using var reader = new StreamReader(webStream);
             var data = await reader.ReadToEndAsync();
@@ -227,8 +227,7 @@ namespace ovkdesktop
 
             if (string.IsNullOrEmpty(token))
             {
-                // Логика обработки ошибки, если токен не получен
-                // ... (ваш код обработки ошибок остается без изменений)
+                // Error handling if token not received
                 ContentDialog finalAuth = new ContentDialog
                 {
                     XamlRoot = this.Content.XamlRoot,
@@ -239,10 +238,10 @@ namespace ovkdesktop
                     DefaultButton = ContentDialogButton.Primary
                 };
                 await finalAuth.ShowAsync();
-                return; // Выходим из метода
+                return; // Exit method
             }
 
-            // ШАГ 2: Используем полученный токен для получения ID пользователя
+            // Use token to get user ID
             Debug.WriteLine("[AuthPage] Successfully received access token. Now getting user ID...");
             int userId = 0;
             try
@@ -271,7 +270,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AuthPage] Failed to get user ID after getting token: {ex.Message}");
-                // Показываем ошибку пользователю
+                // Show error
                 ContentDialog errorDialog = new ContentDialog
                 {
                     XamlRoot = this.Content.XamlRoot,
@@ -281,7 +280,7 @@ namespace ovkdesktop
                     PrimaryButtonText = "ОК"
                 };
                 await errorDialog.ShowAsync();
-                return; // Прерываем процесс
+                return; // Interrupt process
             }
 
             if (userId == 0)
@@ -299,7 +298,7 @@ namespace ovkdesktop
                 return;
             }
 
-            // ШАГ 3: Сохраняем все данные и переходим на главную страницу
+            // Save data and go to main page
             await SessionHelper.SaveInstanceUrlAsync(_instanceUrl);
 
             using (FileStream fs = new FileStream("ovkdata.json", FileMode.Create))
@@ -416,22 +415,21 @@ namespace ovkdesktop
 
     class OVKDataBody
     {
-        // Добавляем JsonPropertyName для корректной сериализации/десериализации
+        // Add JsonPropertyName for serialization
         [JsonPropertyName("user_id")]
         public int UserId { get; set; }
 
         [JsonPropertyName("access_token")]
         public string Token { get; set; }
 
-        // InstanceUrl не является частью ответа API, поэтому его мы не будем сериализовать в JSON.
-        // Он будет храниться в другом месте (в настройках).
+        // InstanceUrl not in API response, stored in settings
         [JsonIgnore]
         public string InstanceUrl { get; set; }
 
-        // Пустой конструктор для десериализации
+        // Empty constructor for deserialization
         public OVKDataBody() { }
 
-        // Конструктор для создания объекта при авторизации
+        // Constructor for authorization
         public OVKDataBody(int userId, string token, string instanceUrl)
         {
             UserId = userId;

@@ -16,6 +16,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
         <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
+        <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -139,11 +140,55 @@
                                 </Grid.RowDefinitions>
 
                                 <!-- date of post -->
-                                <TextBlock Grid.Row="0"
-									   Text="{Binding FormattedDate}"
-									   Opacity="0.7" Margin="0,0,0,10"/>
+                                    <!-- Row 0: Post Header -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
 
-                                <!-- text -->
+                                        <!-- Author Avatar -->
+                                        <Button Grid.Column="0" Padding="0" BorderThickness="0" Background="Transparent"
+                                            Tag="{Binding FromId}" Click="Author_Click"
+                                            VerticalAlignment="Top">
+                                            <Ellipse Width="48" Height="48" Margin="0,0,12,0">
+                                                <Ellipse.Fill>
+                                                    <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                                                </Ellipse.Fill>
+                                            </Ellipse>
+                                        </Button>
+
+                                        <!-- Author Info & Date -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                                                <Button Padding="0" Margin="0,-2,0,0" BorderThickness="0" Background="Transparent"
+                                                    Tag="{Binding FromId}" Click="Author_Click">
+                                                    <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                                </Button>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="5"
+                                                    Visibility="{Binding IsWallPostByAnotherUser, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text=">" FontWeight="SemiBold" Opacity="0.7"/>
+                                                    <TextBlock Text="{Binding ElementName=ProfileNameTextBlock, Path=Text}" FontWeight="SemiBold" Opacity="0.7"/> 
+
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Date and Pinned Icon -->
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                                                <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                                                <FontIcon Glyph="" FontSize="12"
+                                                  Foreground="{ThemeResource SystemAccentColor}"
+                                                  ToolTipService.ToolTip="Закрепленная запись"
+                                                  Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+
+                                    <!-- text -->
                                 <TextBlock Grid.Row="1"
 									   Text="{Binding Text}"
 									   TextWrapping="Wrap" Margin="0,0,0,10"
@@ -233,7 +278,7 @@
                                                 <!-- Author avatar -->
                                                 <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
                                                     <Ellipse.Fill>
-                                                        <ImageBrush ImageSource="{Binding Repost.Profile.BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                                        <ImageBrush ImageSource="{Binding Repost.Profile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
                                                     </Ellipse.Fill>
                                                 </Ellipse>
 

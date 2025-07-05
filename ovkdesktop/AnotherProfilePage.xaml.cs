@@ -1,15 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
+﻿using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -18,12 +7,25 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Text;
 using Microsoft.Web.WebView2.Core;
+using ovkdesktop.Converters;
 using ovkdesktop.Models;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-using ovkdesktop.Converters;
 
 namespace ovkdesktop
 {
@@ -43,6 +45,8 @@ namespace ovkdesktop
         private readonly List<WebView2> _activeWebViews = new List<WebView2>();
 
         private FriendsPage.APIServiceFriends friendsApiService;
+
+        private CancellationTokenSource _cancellationTokenSource;
         public ObservableCollection<UserWallPost> Posts { get; } = new();
         private int userId;
         private string instanceUrl;
@@ -61,24 +65,25 @@ namespace ovkdesktop
         {
             base.OnNavigatedTo(e);
 
-            // This method will handle all async setup
-            bool initialized = await InitializeDependenciesAsync();
-            if (!initialized)
-            {
-                LoadingProgressRing.IsActive = false;
-                return; // Stop execution if initialization failed.
-            }
-
             if (e.Parameter is int id)
             {
                 userId = id;
-                await LoadProfileDataAsync();
+                await LoadPageDataAsync();
+            }
+            else if (e.Parameter is long longId)
+            {
+                userId = (int)longId;
+                await LoadPageDataAsync();
             }
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
+
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
 
             foreach (var mediaPlayerElement in _activeMediaPlayers)
             {
@@ -88,34 +93,93 @@ namespace ovkdesktop
             }
             _activeMediaPlayers.Clear();
 
-            // 2. Закрываем все WebView2. Метод Close() безопасно завершает их процессы.
             foreach (var webView in _activeWebViews)
             {
                 webView.Close();
             }
             _activeWebViews.Clear();
+        }
 
-            // This is called when you navigate AWAY from the page.
-            // We reset the UI to a clean "loading" state.
-            if (e.NavigationMode == NavigationMode.Forward)
+
+        private async Task LoadPageDataAsync()
+        {
+            _cancellationTokenSource = new CancellationTokenSource();
+            var token = _cancellationTokenSource.Token;
+
+            try
             {
-                // Clear the data
-                Posts.Clear();
-                userProfile = null;
-                userId = 0;
-
-                // Reset the UI elements
-                ProfileNameTextBlock.Text = "Загрузка..."; // Use a resource string here
-                ProfileNicknameTextBlock.Visibility = Visibility.Collapsed;
-                ProfileImage.ImageSource = null;
-                FriendshipStatusBadge.Visibility = Visibility.Collapsed;
-                AddFriendButton.Visibility = Visibility.Collapsed;
-                RemoveFriendButton.Visibility = Visibility.Collapsed;
+                LoadingProgressRing.IsActive = true;
                 PostsListView.Visibility = Visibility.Collapsed;
                 NoPostsTextBlock.Visibility = Visibility.Collapsed;
-                LoadingProgressRing.IsActive = true;
+                Posts.Clear();
+
+                // initialize dependencies
+                instanceUrl = await SessionHelper.GetInstanceUrlAsync();
+                httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
+                friendsApiService = new FriendsPage.APIServiceFriends(httpClient, instanceUrl);
+
+                token.ThrowIfCancellationRequested();
+
+                // load OVK token
+                OVKDataBody ovkToken = await LoadTokenAsync();
+                if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
+                {
+                    ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                    return;
+                }
+
+                token.ThrowIfCancellationRequested();
+
+                // load profile information
+                userProfile = await GetProfileInfoAsync(ovkToken.Token, userId, token);
+                if (userProfile == null)
+                {
+                    ShowError("Не удалось загрузить профиль.");
+                    return;
+                }
+
+                // Update profile UI
+                UpdateProfileUI(ovkToken);
+
+                token.ThrowIfCancellationRequested();
+
+                // load posts
+                await LoadPostsAsync(ovkToken.Token, token);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[AnotherProfilePage] Page loading was canceled.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error loading page data: {ex.Message}");
+                ShowError($"Произошла ошибка: {ex.Message}");
+            }
+            finally
+            {
+                LoadingProgressRing.IsActive = false;
             }
         }
+
+        private void UpdateProfileUI(OVKDataBody currentUserToken)
+        {
+            ProfileNameTextBlock.Text = userProfile.FullName;
+            if (!string.IsNullOrEmpty(userProfile.Photo200))
+            {
+                ProfileImage.ImageSource = new BitmapImage(new Uri(userProfile.Photo200));
+            }
+
+            FriendshipStatusBadge.Visibility = Visibility.Collapsed;
+            AddFriendButton.Visibility = Visibility.Collapsed;
+            RemoveFriendButton.Visibility = Visibility.Collapsed;
+
+            if (!userProfile.IsGroup && userProfile.Id != currentUserToken.UserId)
+            {
+                _ = CheckFriendshipStatusAsync(currentUserToken.Token);
+            }
+        }
+
+
 
         private async Task<bool> InitializeDependenciesAsync()
         {
@@ -145,7 +209,7 @@ namespace ovkdesktop
         {
             try
             {
-                // Получаем URL инстанса из настроек
+                // Get instance URL from settings
                 instanceUrl = await SessionHelper.GetInstanceUrlAsync();
                 httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
                 
@@ -172,141 +236,62 @@ namespace ovkdesktop
             }
         }
 
-        private async Task<UserProfile> GetProfileInfoAsync(string token, string userId)
+        private async Task<UserProfile> GetProfileInfoAsync(string apiToken, int profileId, CancellationToken cancellationToken)
         {
+            if (profileId == 0) return null;
+
             try
             {
-                if (string.IsNullOrEmpty(userId))
+                if (profileId < 0)
                 {
-                    Debug.WriteLine("[AnotherProfilePage] UserId is null or empty");
-                    return null;
-                }
-                
-                int id;
-                if (!int.TryParse(userId, out id))
-                {
-                    Debug.WriteLine($"[AnotherProfilePage] Failed to parse userId: {userId}");
-                    return null;
-                }
-
-                // Check if it's a group/public page (negative id)
-                if (id < 0)
-                {
-                    var groupInfo = await GetGroupInfoAsync(token, Math.Abs(id));
-                    if (groupInfo != null)
-                    {
-                        return new UserProfile
-                        {
-                            Id = id,
-                            FirstName = groupInfo.Name,
-                            LastName = "",
-                            Nickname = groupInfo.ScreenName, // Юзернейм паблика
-                                                             // FIX: Дополнительная проверка, чтобы Photo200 не был null
-                            Photo200 = groupInfo.Photo200 ?? groupInfo.Photo100 ?? groupInfo.Photo50,
-                            IsGroup = true
-                        };
-                    }
+                    var group = await GetGroupInfoAsync(apiToken, Math.Abs(profileId), cancellationToken);
+                    return group?.ToUserProfile();
                 }
                 else
                 {
-                    // Regular user profile
-                    // use older version of API for better compatibility
-                    var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_50,photo_100,photo_200&v=5.126";
-                    Debug.WriteLine($"[AnotherProfilePage] Getting profile with URL: {instanceUrl}{url}");
-                    
-                    if (httpClient == null)
-                    {
-                        Debug.WriteLine("[AnotherProfilePage] HttpClient is null, initializing...");
-                        await InitializeHttpClientAsync();
-                        
-                        if (httpClient == null)
-                        {
-                            Debug.WriteLine("[AnotherProfilePage] Failed to initialize HttpClient");
-                            return null;
-                        }
-                    }
-                    
-                    var response = await httpClient.GetAsync(url);
-                    Debug.WriteLine($"[AnotherProfilePage] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
+                    var url = $"method/users.get?access_token={apiToken}&user_ids={profileId}&fields=photo_50,photo_100,photo_200,screen_name&v=5.126";
+                    var response = await httpClient.GetAsync(url, cancellationToken);
                     response.EnsureSuccessStatusCode();
+                    var usersResponse = await response.Content.ReadFromJsonAsync<UsersGetResponse>(cancellationToken: cancellationToken);
 
-                    var json = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[AnotherProfilePage] Profile response JSON: {json}");
-                    
-                    UserProfile profile = null;
-                    
-                    try
-                    {
-                        using (JsonDocument doc = JsonDocument.Parse(json))
-                        {
-                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
-                                responseElement.ValueKind == JsonValueKind.Array && 
-                                responseElement.GetArrayLength() > 0)
-                            {
-                                JsonElement userElement = responseElement[0];
-                                profile = new UserProfile();
-                                
-                                if (userElement.TryGetProperty("id", out JsonElement idElement))
-                                    profile.Id = idElement.GetInt32();
-                                    
-                                if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
-                                    profile.FirstName = firstNameElement.GetString();
-                                    
-                                if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
-                                    profile.LastName = lastNameElement.GetString();
-                                    
-                                if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
-                                    profile.Nickname = nicknameElement.GetString();
-                                    
-                                if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
-                                    profile.Photo200 = photoElement.GetString();
-                                else
-                                {
-                                    Debug.WriteLine($"[AnotherProfilePage] No photo_200 field for user {profile.Id}, trying alternative fields");
-                                    
-                                    // try to get other photo sizes
-                                    if (userElement.TryGetProperty("photo_max", out JsonElement photoMaxElement))
-                                    {
-                                        profile.Photo200 = photoMaxElement.GetString();
-                                        Debug.WriteLine($"[AnotherProfilePage] Used photo_max for user {profile.Id}: {profile.Photo200}");
-                                    }
-                                    else if (userElement.TryGetProperty("photo_100", out JsonElement photo100Element))
-                                    {
-                                        profile.Photo200 = photo100Element.GetString();
-                                        Debug.WriteLine($"[AnotherProfilePage] Used photo_100 for user {profile.Id}: {profile.Photo200}");
-                                    }
-                                    else if (userElement.TryGetProperty("photo_50", out JsonElement photo50Element))
-                                    {
-                                        profile.Photo200 = photo50Element.GetString();
-                                        Debug.WriteLine($"[AnotherProfilePage] Used photo_50 for user {profile.Id}: {profile.Photo200}");
-                                    }
-                                    else
-                                    {
-                                        Debug.WriteLine($"[AnotherProfilePage] No photo field for user {profile.Id}");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (JsonException ex)
-                    {
-                        Debug.WriteLine($"[AnotherProfilePage] JSON error: {ex.Message}");
-                        throw;
-                    }
-                    
+                    var profile = usersResponse?.Response?.FirstOrDefault();
+                    if (profile != null) profile.IsGroup = false;
                     return profile;
                 }
-                
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error getting profile info for ID {profileId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        private async Task<GroupProfile> GetGroupInfoAsync(string apiToken, int groupId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var url = $"method/groups.getById?access_token={apiToken}&group_id={groupId}&fields=photo_50,photo_100,photo_200,screen_name,description&v=5.126";
+                var response = await httpClient.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("response", out var responseElement) && responseElement.ValueKind == JsonValueKind.Array)
+                {
+                    return JsonSerializer.Deserialize<List<GroupProfile>>(responseElement.GetRawText()).FirstOrDefault();
+                }
                 return null;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AnotherProfilePage] Error getting profile: {ex.Message}");
-                ShowError($"Ошибка при загрузке профиля: {ex.Message}");
+                Debug.WriteLine($"[AnotherProfilePage] Error getting group info for ID {groupId}: {ex.Message}");
                 return null;
             }
         }
-        
+
+
+
+
         private async Task<GroupProfile> GetGroupInfoAsync(string token, int groupId)
         {
             try
@@ -380,7 +365,6 @@ namespace ovkdesktop
         {
             try
             {
-                // Добавляем extended=1, чтобы получить профили и группы вместе с постами
                 var url = $"method/wall.get?access_token={token}&owner_id={userId}&extended=1&v=5.126";
                 Debug.WriteLine($"[AnotherProfilePage] Getting posts with URL: {instanceUrl}{url}");
 
@@ -398,10 +382,8 @@ namespace ovkdesktop
 
                 var result = JsonSerializer.Deserialize<APIResponse<WallResponse<UserWallPost>>>(json, options);
 
-                // Теперь, когда у WallResponse есть Profiles и Groups, этот код будет работать
                 if (result?.Response != null)
                 {
-                    // Собираем все профили и группы в один словарь для удобного поиска
                     var profiles = result.Response.Profiles?.ToDictionary(p => p.Id, p => p)
                                  ?? new Dictionary<int, UserProfile>();
 
@@ -410,7 +392,6 @@ namespace ovkdesktop
 
                     var allProfiles = profiles.Concat(groups).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-                    // Присваиваем профили авторам репостов
                     foreach (var post in result.Response.Items)
                     {
                         if (post.CopyHistory != null)
@@ -436,7 +417,7 @@ namespace ovkdesktop
             }
         }
 
-        private async Task LoadProfileDataAsync()
+        private async Task LoadProfileDataAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -445,63 +426,34 @@ namespace ovkdesktop
                 FriendshipStatusBadge.Visibility = Visibility.Collapsed;
                 AddFriendButton.Visibility = Visibility.Collapsed;
                 RemoveFriendButton.Visibility = Visibility.Collapsed;
-                
+
                 OVKDataBody token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
                     ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
                     return;
                 }
-                
-                // Load user profile
-                userProfile = await GetProfileInfoAsync(token.Token, userId.ToString());
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                userProfile = await GetProfileInfoAsync(token.Token, userId, cancellationToken);
+
                 if (userProfile != null)
                 {
-                    ProfileNameTextBlock.Text = userProfile.IsGroup ?
-                        userProfile.FirstName :
-                        $"{userProfile.FirstName} {userProfile.LastName}";
+                    UpdateProfileUI(token);
 
-                    // ... остальной код для обновления UI ...
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    // Only show friend actions for users, not for groups
-                    if (!userProfile.IsGroup)
-                    {
-                        // FIX: Проверяем, является ли это профилем текущего пользователя
-                        if (token.UserId == userId)
-                        {
-                            // Это наш собственный профиль, скрываем все кнопки, связанные с дружбой
-                            FriendshipStatusBadge.Visibility = Visibility.Collapsed;
-                            AddFriendButton.Visibility = Visibility.Collapsed;
-                            RemoveFriendButton.Visibility = Visibility.Collapsed;
-                        }
-                        else
-                        {
-                            // Это чужой профиль, проверяем статус дружбы как обычно
-                            await CheckFriendshipStatusAsync(token.Token);
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(userProfile.Photo200))
-                    {
-                        try
-                        {
-                            ProfileImage.ImageSource = new BitmapImage(new Uri(userProfile.Photo200));
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"[AnotherProfilePage] Failed to load profile image URI: {userProfile.Photo200}. Error: {ex.Message}");
-                            // Можно установить "заглушку"
-                            // ProfileImage.ImageSource = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
-                        }
-                    }
-
-                    // Load wall posts
-                    await LoadPostsAsync(token.Token);
+                    await LoadPostsAsync(token.Token, cancellationToken);
                 }
                 else
                 {
                     ShowError("Не удалось загрузить профиль пользователя.");
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[AnotherProfilePage] Profile data loading was canceled.");
             }
             catch (Exception ex)
             {
@@ -528,28 +480,27 @@ namespace ovkdesktop
                     {
                         friendshipStatus = friendStatus.Status;
 
-                        // FIX: Исправлена логика статусов дружбы согласно документации OpenVK API
-                        // 0: не друзья, 1: отправлена заявка, 2: получена заявка, 3: друзья
+                        // 0: not friends, 1: request sent, 2: request received, 3: friends
                         switch (friendshipStatus)
                         {
-                            case 0: // не являются друзьями
+                            case 0: // not friends
                                 FriendshipStatusBadge.Visibility = Visibility.Collapsed;
                                 AddFriendButton.Visibility = Visibility.Visible;
                                 RemoveFriendButton.Visibility = Visibility.Collapsed;
                                 break;
-                            case 1: // заявка отправлена (от вас)
+                            case 1: // request sent
                                 FriendshipStatusBadge.Visibility = Visibility.Visible;
                                 FriendshipStatusBadge.Text = "Заявка отправлена";
                                 AddFriendButton.Visibility = Visibility.Collapsed;
                                 RemoveFriendButton.Visibility = Visibility.Visible;
                                 break;
-                            case 2: // заявка получена (к вам)
+                            case 2: // request received
                                 FriendshipStatusBadge.Visibility = Visibility.Visible;
                                 FriendshipStatusBadge.Text = "Хочет добавить вас в друзья";
                                 AddFriendButton.Visibility = Visibility.Visible;
                                 RemoveFriendButton.Visibility = Visibility.Collapsed;
                                 break;
-                            case 3: // являются друзьями
+                            case 3: // friends
                                 isFriend = true;
                                 FriendshipStatusBadge.Visibility = Visibility.Visible;
                                 FriendshipStatusBadge.Text = "У вас в друзьях";
@@ -560,14 +511,14 @@ namespace ovkdesktop
                     }
                     else
                     {
-                        // По умолчанию - показать кнопку "Добавить в друзья"
+                        // Default: show "Add to friends" button
                         AddFriendButton.Visibility = Visibility.Visible;
                         RemoveFriendButton.Visibility = Visibility.Collapsed;
                     }
                 }
                 else
                 {
-                    // По умолчанию - показать кнопку "Добавить в друзья"
+                    // Default: show "Add to friends" button
                     AddFriendButton.Visibility = Visibility.Visible;
                     RemoveFriendButton.Visibility = Visibility.Collapsed;
                 }
@@ -575,50 +526,183 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] CheckFriendshipStatusAsync exception: {ex.Message}");
-                // Показать кнопку "Добавить в друзья" в случае ошибки
+                // Show "Add to friends" button on error
                 AddFriendButton.Visibility = Visibility.Visible;
                 RemoveFriendButton.Visibility = Visibility.Collapsed;
             }
         }
 
-        private async Task LoadPostsAsync(string token)
+        private async Task<List<UserWallPost>> GetPostsWithAuthorsAsync(string apiToken, UserProfile pageOwnerProfile, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var url = $"method/wall.get?access_token={apiToken}&owner_id={pageOwnerProfile.Id}&extended=1&v=5.126";
+                var response = await httpClient.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var wallData = await response.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+                if (wallData?.Response?.Items == null) return new List<UserWallPost>();
+
+
+                var profilesDict = new Dictionary<long, UserProfile>();
+
+                // add page owner profile
+                if (pageOwnerProfile != null)
+                {
+                    // Ensure ID is correct (for groups it's negative)
+                    profilesDict[pageOwnerProfile.Id] = pageOwnerProfile;
+                }
+
+                // add other profiles
+                wallData.Response.Profiles?.ForEach(p => { p.IsGroup = false; profilesDict[p.Id] = p; });
+                wallData.Response.Groups?.ForEach(g => profilesDict[-g.Id] = g.ToUserProfile());
+
+
+
+                foreach (var post in wallData.Response.Items)
+                {
+                    if (profilesDict.TryGetValue(post.FromId, out var authorProfile))
+                    {
+                        post.AuthorProfile = authorProfile;
+                    }
+
+                    if (post.HasRepost && post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (profilesDict.TryGetValue(repost.FromId, out var repostProfile))
+                            {
+                                repost.Profile = repostProfile;
+                            }
+                        }
+                    }
+                }
+
+                return wallData.Response.Items;
+            }
+            catch (Exception ex)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Debug.WriteLine($"[AnotherProfilePage] Error getting posts: {ex.Message}");
+                ShowError("Ошибка при загрузке постов.");
+                return new List<UserWallPost>();
+            }
+        }
+
+
+
+        private async Task LoadPostsAsync(string token, CancellationToken cancellationToken)
         {
             try
             {
                 NoPostsTextBlock.Visibility = Visibility.Collapsed;
+                PostsListView.Visibility = Visibility.Collapsed;
+                Posts.Clear();
 
-                // Получаем посты уже с данными о репостах благодаря extended=1
-                var wallData = await GetPostsAsync(token, userId.ToString());
+                // Get posts already with author data thanks to extended=1
+                var postsWithAuthors = await GetPostsWithAuthorsAsync(token, userProfile, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
 
-                if (wallData?.Response?.Items == null || !wallData.Response.Items.Any())
+                if (!postsWithAuthors.Any())
                 {
                     Debug.WriteLine($"[AnotherProfilePage] No posts found or response is empty.");
                     NoPostsTextBlock.Visibility = Visibility.Visible;
-                    PostsListView.Visibility = Visibility.Collapsed;
                     return;
                 }
 
-                // Очищаем старые посты и добавляем новые
-                Posts.Clear();
-                foreach (var post in wallData.Response.Items)
+                foreach (var post in postsWithAuthors)
                 {
                     Posts.Add(post);
                 }
 
                 PostsListView.Visibility = Visibility.Visible;
 
-                // Обновляем статусы лайков для основного поста
-                await UpdateLikesStatusAsync();
+                await UpdateLikesStatusAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[AnotherProfilePage] Post loading was canceled.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error loading posts: {ex.Message}");
                 ShowError($"Ошибка при загрузке постов: {ex.Message}");
             }
-            finally
+        }
+
+        private void Author_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.Tag is int fromId && fromId != 0)
             {
-                // Этот код не нужен здесь, так как LoadingProgressRing должен быть один на всю страницу.
-                // LoadingProgressRing.IsActive = false; 
+                if (fromId == userId) return;
+                Frame.Navigate(typeof(AnotherProfilePage), fromId);
+            }
+        }
+
+        private async Task LoadAuthorsAndRepostProfilesAsync(string token)
+        {
+            try
+            {
+                var userIds = new HashSet<int>();
+                var groupIds = new HashSet<int>();
+
+                foreach (var post in Posts)
+                {
+                    if (post.FromId > 0) userIds.Add(post.FromId);
+                    else if (post.FromId < 0) groupIds.Add(Math.Abs(post.FromId));
+
+                    if (post.HasRepost && post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (repost.FromId > 0) userIds.Add(repost.FromId);
+                            else if (repost.FromId < 0) groupIds.Add(Math.Abs(repost.FromId));
+                        }
+                    }
+                }
+
+                if (!userIds.Any() && !groupIds.Any()) return;
+
+                Debug.WriteLine($"[AnotherProfilePage] Found {userIds.Count} user IDs and {groupIds.Count} group IDs to fetch.");
+
+                var allProfiles = await SessionHelper.GetProfilesByIdsAsync(userIds, groupIds);
+
+                for (int i = 0; i < Posts.Count; i++)
+                {
+                    var post = Posts[i];
+                    bool postModified = false;
+
+                    if (allProfiles.TryGetValue(post.FromId, out var authorProfile))
+                    {
+                        post.AuthorProfile = authorProfile;
+                        postModified = true;
+                    }
+
+                    if (post.HasRepost && post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (allProfiles.TryGetValue(repost.FromId, out var repostProfile))
+                            {
+                                repost.Profile = repostProfile;
+                                postModified = true;
+                            }
+                        }
+                    }
+
+                    if (postModified)
+                    {
+                        var postToUpdate = post;
+                        this.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            if (i < Posts.Count) Posts[i] = postToUpdate;
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error loading author/repost profiles: {ex.Message}");
             }
         }
 
@@ -994,7 +1078,7 @@ namespace ovkdesktop
         }
 
         //add webview for youtube url type
-        // FIX: Метод должен быть асинхронным для безопасной работы с WebView2
+        // FIX: Method should be async for safe work with WebView2
         private async void AddYouTubePlayer(StackPanel container, string videoUrl)
         {
             try
@@ -1038,24 +1122,24 @@ namespace ovkdesktop
 
                 var webView = new WebView2
                 {
-                    // Source убрали отсюда, установим его после инициализации
+                    // Source removed from here, will set it after initialization
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch,
                     MinHeight = 200,
                     MinWidth = 400
                 };
 
-                // FIX: Добавляем WebView в контейнер ДО инициализации
+                // FIX: Add WebView to container BEFORE initialization
                 webViewContainer.Children.Add(webView);
                 container.Children.Add(webViewContainer);
 
-                // FIX: Явно дожидаемся инициализации ядра WebView2. Это КЛЮЧЕВОЙ шаг для стабильности.
+                // FIX: Explicitly wait for WebView2 core initialization. This is a KEY step for stability.
                 await webView.EnsureCoreWebView2Async();
 
-                // FIX: Устанавливаем источник только ПОСЛЕ успешной инициализации
+                // FIX: Set source only AFTER successful initialization
                 webView.Source = new Uri(videoUrl);
 
-                // FIX: Регистрируем созданный WebView для последующей очистки
+                // FIX: Register created WebView for subsequent cleanup
                 _activeWebViews.Add(webView);
             }
             catch (Exception ex)
@@ -1063,7 +1147,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"Error when creating WebView2 for YouTube: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
 
-                // Ваш код обработки ошибок остается без изменений
+                // Your error handling code remains unchanged
                 try
                 {
                     var youtubeButton = new HyperlinkButton
@@ -1181,6 +1265,8 @@ namespace ovkdesktop
         // method for liking an object (post, comment, etc.)
         private async Task<bool> LikeItemAsync(string token, string type, int ownerId, int itemId)
         {
+            if (httpClient == null) return false;
+
             try
             {
                 // check if the client is initialized
@@ -1230,6 +1316,8 @@ namespace ovkdesktop
         // method for removing a like from an object
         private async Task<bool> UnlikeItemAsync(string token, string type, int ownerId, int itemId)
         {
+            if (httpClient == null) return false;
+
             try
             {
                 // check if the client is initialized
@@ -1337,7 +1425,7 @@ namespace ovkdesktop
                             var stackPanel = button.Content as StackPanel;
                             if (stackPanel != null && stackPanel.Children.Count >= 2)
                             {
-                                // Второй TextBlock содержит количество лайков
+                                // Second TextBlock contains number of likes
                                 var likesCountTextBlock = stackPanel.Children[1] as TextBlock;
                                 if (likesCountTextBlock != null)
                                 {
@@ -1370,17 +1458,15 @@ namespace ovkdesktop
         }
 
         // method for updating the status of likes for all posts
-        private async Task UpdateLikesStatusAsync()
+        private async Task UpdateLikesStatusAsync(CancellationToken cancellationToken)
         {
             try
             {
                 foreach (var post in Posts)
                 {
-                    // check if the user has liked this post
+                    cancellationToken.ThrowIfCancellationRequested();
                     bool isLiked = await SessionHelper.IsLikedAsync("post", post.OwnerId, post.Id);
-                    
-                    // update the status of the like in the post object
-                    if (post.Likes == null)
+                    /* if (post.Likes == null)
                     {
                         post.Likes = new Likes { Count = 0, UserLikes = isLiked ? 1 : 0 };
                     }
@@ -1388,52 +1474,40 @@ namespace ovkdesktop
                     {
                         post.Likes.UserLikes = isLiked ? 1 : 0;
                     }
-                    
-                    Debug.WriteLine($"[AnotherProfilePage] Post {post.Id} liked status: {isLiked}");
-                    
-                    // Проверяем статус лайков для аудио в посте
+
                     if (post.HasAudio)
                     {
-                        await UpdateAudioLikesStatusAsync(post.Audios);
-                    }
+                        await UpdateAudioLikesStatusAsync(post.Audios, cancellationToken);
+                    } */
                 }
             }
+            catch (OperationCanceledException) { /* ignore */ }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error updating likes status: {ex.Message}");
             }
         }
-        
-        // Метод для обновления статуса лайков аудио
-        private async Task UpdateAudioLikesStatusAsync(List<Models.Audio> audios)
+
+        // Method for updating audio likes status
+        private async Task UpdateAudioLikesStatusAsync(List<Models.Audio> audios, CancellationToken cancellationToken)
         {
             try
             {
-                if (audios == null || audios.Count == 0)
-                {
-                    return;
-                }
-                
-                Debug.WriteLine($"[AnotherProfilePage] Updating like status for {audios.Count} audio tracks");
-                
+                if (audios == null || !audios.Any()) return;
                 foreach (var audio in audios)
                 {
-                    // Проверяем статус лайка для аудио
-                    bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
-                    
-                    // Обновляем статус в объекте аудио
-                    audio.IsAdded = isLiked;
-                    
-                    Debug.WriteLine($"[AnotherProfilePage] Audio {audio.Id} liked status: {isLiked}");
+                    cancellationToken.ThrowIfCancellationRequested();
+                    audio.IsAdded = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
                 }
             }
+            catch (OperationCanceledException) { /* Игнорируем */ }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error updating audio likes status: {ex.Message}");
             }
         }
 
-        // Метод для добавления аудио в пост
+        // Method for adding audio to post
         private void AddAudioContent(StackPanel container, UserWallPost post)
         {
             try
@@ -1444,7 +1518,7 @@ namespace ovkdesktop
                     return;
                 }
                 
-                // Добавляем заголовок для аудио
+                // Add header for audio
                 if (post.Audios.Count > 0)
                 {
                     var audioLabel = new TextBlock
@@ -1455,16 +1529,16 @@ namespace ovkdesktop
                     };
                     container.Children.Add(audioLabel);
                     
-                    // Создаем отдельный контейнер для аудио
+                    // Create separate container for audio
                     var audioContainer = new StackPanel
                     {
                         Margin = new Thickness(0, 0, 0, 10)
                     };
                     
-                    // Добавляем каждое аудио
+                    // Add each audio
                     foreach (var audio in post.Audios)
                     {
-                        // Создаем элемент для аудио
+                        // Create element for audio
                         var audioItem = CreateAudioElement(audio);
                         audioContainer.Children.Add(audioItem);
                     }
@@ -1479,12 +1553,12 @@ namespace ovkdesktop
             }
         }
         
-        // Метод для создания элемента аудио
+        // Method for creating audio element
         private UIElement CreateAudioElement(Models.Audio audio)
         {
             try
             {
-                // Создаем Grid для аудио
+                // Create Grid for audio
                 var grid = new Grid
                 {
                     Margin = new Thickness(0, 5, 0, 5),
@@ -1492,12 +1566,12 @@ namespace ovkdesktop
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
                 };
                 
-                // Добавляем колонки
+                // Add columns
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 
-                // Кнопка воспроизведения
+                // Play button
                 var playButton = new Button
                 {
                     Width = 40,
@@ -1515,7 +1589,7 @@ namespace ovkdesktop
                 Grid.SetColumn(playButton, 0);
                 grid.Children.Add(playButton);
                 
-                // Информация о треке
+                // Track information
                 var infoPanel = new StackPanel
                 {
                     VerticalAlignment = VerticalAlignment.Center,
@@ -1544,7 +1618,7 @@ namespace ovkdesktop
                 Grid.SetColumn(infoPanel, 1);
                 grid.Children.Add(infoPanel);
                 
-                // Длительность
+                // Duration
                 var durationText = new TextBlock
                 {
                     Text = audio.FormattedDuration,
@@ -1565,7 +1639,7 @@ namespace ovkdesktop
             }
         }
         
-        // Обработчик нажатия на кнопку воспроизведения аудио
+        // Handler for clicking the audio play button
         private void PlayAudio_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1599,42 +1673,13 @@ namespace ovkdesktop
         // Handle clicks on repost authors to navigate to their profiles
         private void RepostAuthor_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (sender is FrameworkElement element && element.Tag is long fromId && fromId != 0)
             {
-                if (sender is Button button && button.Tag != null)
-                {
-                    // Get the FromId (user or group ID) from the button Tag
-                    int fromId = 0;
-                    if (button.Tag is int intId)
-                    {
-                        fromId = intId;
-                    }
-                    else if (int.TryParse(button.Tag.ToString(), out int parsedId))
-                    {
-                        fromId = parsedId;
-                    }
-                    
-                    if (fromId != 0)
-                    {
-                        Debug.WriteLine($"[AnotherProfilePage] Navigating to profile with ID: {fromId}");
-                        
-                        // Don't navigate if clicking on the same profile
-                        if (fromId == userId)
-                        {
-                            return;
-                        }
-                        
-                        // Navigate to user profile or group page based on ID
-                        Frame.Navigate(typeof(AnotherProfilePage), fromId);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[AnotherProfilePage] Error navigating to repost author: {ex.Message}");
+                if ((int)fromId == userId) return;
+                Frame.Navigate(typeof(AnotherProfilePage), fromId);
             }
         }
 
-        
+
     }
 }

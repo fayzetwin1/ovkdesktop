@@ -1,25 +1,27 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Windows.Foundation;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
-using System.Threading.Tasks;
-using System.Net.Http;
-using System.Net;
-using System.Text.Json;
-using Microsoft.UI.Xaml.Media.Imaging;
-using System.Text.Json.Serialization;
-using System.Diagnostics;
-using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml.Input;
-using ovkdesktop.Models;
-using ovkdesktop.Converters;
-using Microsoft.UI.Text;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Web.WebView2.Core;
+using ovkdesktop.Converters;
+using ovkdesktop.Models;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Windows.Foundation;
 
 namespace ovkdesktop
 {
@@ -30,39 +32,66 @@ namespace ovkdesktop
         private string userId;
         private string instanceUrl;
 
+        private CancellationTokenSource _cancellationTokenSource;
+
         private readonly List<MediaPlayerElement> _activeMediaPlayers = new List<MediaPlayerElement>();
         private readonly List<WebView2> _activeWebViews = new List<WebView2>();
 
         public ProfilePage()
         {
             this.InitializeComponent();
-            _ = InitializeHttpClientAsync();
         }
-        
-        private async Task InitializeHttpClientAsync()
+
+        protected override async void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            await InitializeAndLoadAsync();
+        }
+
+        private async Task InitializeAndLoadAsync()
         {
             try
             {
-                // Получаем URL инстанса из настроек
+                // Create CancellationTokenSource for loading session
+                _cancellationTokenSource = new CancellationTokenSource();
+                var token = _cancellationTokenSource.Token;
+
                 instanceUrl = await SessionHelper.GetInstanceUrlAsync();
                 httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
-                
+
                 Debug.WriteLine($"[ProfilePage] Initialized with instance URL: {instanceUrl}");
-                
-                await LoadProfileAndPostsAsync();
+
+                // Check if operation canceled
+                token.ThrowIfCancellationRequested();
+
+                // Pass token as argument
+                await LoadProfileAndPostsAsync(token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected exception when user leaves page
+                Debug.WriteLine("[ProfilePage] Load operation was canceled.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProfilePage] Error initializing: {ex.Message}");
-                ShowError($"Ошибка инициализации: {ex.Message}");
+                if (ErrorTextBlock != null) // Add null check
+                {
+                    ShowError($"Ошибка инициализации: {ex.Message}");
+                    LoadingProgressRing.IsActive = false;
+                }
             }
         }
+
+        
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             base.OnNavigatedFrom(e);
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
 
-            // FIX: Очищаем все медиа-элементы для предотвращения сбоев
             foreach (var mediaPlayerElement in _activeMediaPlayers)
             {
                 mediaPlayerElement.MediaPlayer?.Pause();
@@ -92,7 +121,7 @@ namespace ovkdesktop
             }
         }
 
-        private async Task<UserProfile> GetProfileAsync(string token)
+        private async Task<UserProfile> GetProfileAsync(string token, CancellationToken cancellationToken)
         {
             try
             {
@@ -101,7 +130,7 @@ namespace ovkdesktop
                 
                 Debug.WriteLine($"[ProfilePage] Getting profile with URL: {instanceUrl}{url}");
                 
-                var response = await httpClient.GetAsync(url);
+                var response = await httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();
@@ -153,463 +182,120 @@ namespace ovkdesktop
             }
         }
 
-        private async Task<APIResponse<WallResponse<UserWallPost>>> GetPostsAsync(string token, string ownerId)
+        private async Task<APIResponse<WallResponse<UserWallPost>>> GetPostsWithProfilesAsync(string apiToken, UserProfile pageOwnerProfile, CancellationToken cancellationToken)
         {
             try
             {
-                // use older version of API for better compatibility
-                var url = $"method/wall.get?owner_id={ownerId}&access_token={token}&v=5.126";
-                
-                Debug.WriteLine($"[ProfilePage] Getting posts with URL: {instanceUrl}{url}");
-                
-                var response = await httpClient.GetAsync(url);
+                var url = $"method/wall.get?access_token={apiToken}&owner_id={pageOwnerProfile.Id}&extended=1&v=5.126";
+                var response = await httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[ProfilePage] Posts response JSON: {json}");
+                var result = await response.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+                if (result?.Response == null) return result;
 
-                // create empty object for result
-                var result = new APIResponse<WallResponse<UserWallPost>>
+
+                // create dictionary for profiles
+                var profilesDict = new Dictionary<long, UserProfile>();
+
+                // add profile of owner
+                if (pageOwnerProfile != null)
                 {
-                    Response = new WallResponse<UserWallPost>
+                    profilesDict[pageOwnerProfile.Id] = pageOwnerProfile;
+                }
+
+                // add other users
+                result.Response.Profiles?.ForEach(p => { p.IsGroup = false; profilesDict[p.Id] = p; });
+
+                // add groups
+                result.Response.Groups?.ForEach(g => profilesDict[-g.Id] = g.ToUserProfile());
+
+
+                //give profiles for every post
+                foreach (var post in result.Response.Items)
+                {
+                    if (profilesDict.TryGetValue(post.FromId, out var authorProfile))
                     {
-                        Items = new List<UserWallPost>()
+                        post.AuthorProfile = authorProfile;
                     }
-                };
 
-                try
-                {
-                    // use JsonDocument for manual JSON parsing
-                    using (JsonDocument doc = JsonDocument.Parse(json))
+                    if (post.HasRepost && post.CopyHistory != null)
                     {
-                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
+                        foreach (var repost in post.CopyHistory)
                         {
-                            // get count
-                            if (responseElement.TryGetProperty("count", out JsonElement countElement))
+                            if (profilesDict.TryGetValue(repost.FromId, out var repostProfile))
                             {
-                                result.Response.Count = countElement.GetInt32();
-                            }
-
-                            // process items
-                            if (responseElement.TryGetProperty("items", out JsonElement itemsElement) && 
-                                itemsElement.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (JsonElement item in itemsElement.EnumerateArray())
-                                {
-                                    var post = new UserWallPost();
-
-                                    // get basic properties
-                                    if (item.TryGetProperty("id", out JsonElement idElement))
-                                        post.Id = idElement.GetInt32();
-
-                                    if (item.TryGetProperty("from_id", out JsonElement fromIdElement))
-                                        post.FromId = fromIdElement.GetInt32();
-
-                                    if (item.TryGetProperty("owner_id", out JsonElement ownerIdElement))
-                                        post.OwnerId = ownerIdElement.GetInt32();
-
-                                    if (item.TryGetProperty("date", out JsonElement dateElement))
-                                        post.Date = dateElement.GetInt64();
-
-                                    if (item.TryGetProperty("post_type", out JsonElement postTypeElement))
-                                        post.PostType = postTypeElement.GetString();
-
-                                    if (item.TryGetProperty("text", out JsonElement textElement))
-                                        post.Text = textElement.GetString();
-
-                                    // process attachments
-                                    if (item.TryGetProperty("attachments", out JsonElement attachmentsElement) && 
-                                        attachmentsElement.ValueKind == JsonValueKind.Array)
-                                    {
-                                        post.Attachments = new List<Attachment>();
-                                        
-                                        foreach (JsonElement attachmentElement in attachmentsElement.EnumerateArray())
-                                        {
-                                            var attachment = new Attachment();
-
-                                            if (attachmentElement.TryGetProperty("type", out JsonElement typeElement))
-                                                attachment.Type = typeElement.GetString();
-
-                                            // process photos
-                                            if (attachment.Type == "photo" && attachmentElement.TryGetProperty("photo", out JsonElement photoElement))
-                                            {
-                                                var photo = new Photo();
-                                                
-                                                if (photoElement.TryGetProperty("id", out JsonElement photoIdElement))
-                                                    photo.Id = photoIdElement.GetInt32();
-
-                                                if (photoElement.TryGetProperty("owner_id", out JsonElement photoOwnerIdElement))
-                                                    photo.OwnerId = photoOwnerIdElement.GetInt32();
-
-                                                if (photoElement.TryGetProperty("text", out JsonElement photoTextElement))
-                                                    photo.Text = photoTextElement.GetString();
-
-                                                if (photoElement.TryGetProperty("date", out JsonElement photoDateElement))
-                                                    photo.Date = photoDateElement.GetInt64();
-
-                                                // process sizes of photo
-                                                if (photoElement.TryGetProperty("sizes", out JsonElement sizesElement) && 
-                                                    sizesElement.ValueKind == JsonValueKind.Array)
-                                                {
-                                                    photo.Sizes = new List<PhotoSize>();
-                                                    
-                                                    foreach (JsonElement sizeElement in sizesElement.EnumerateArray())
-                                                    {
-                                                        var size = new PhotoSize();
-                                                        
-                                                        if (sizeElement.TryGetProperty("type", out JsonElement sizeTypeElement))
-                                                            size.Type = sizeTypeElement.GetString();
-                                                            
-                                                        if (sizeElement.TryGetProperty("url", out JsonElement sizeUrlElement))
-                                                            size.Url = sizeUrlElement.GetString();
-                                                            
-                                                        if (sizeElement.TryGetProperty("width", out JsonElement widthElement))
-                                                        {
-                                                            // safe getting width
-                                                            if (widthElement.ValueKind == JsonValueKind.Number)
-                                                                size.Width = widthElement.GetInt32();
-                                                            else if (widthElement.ValueKind == JsonValueKind.String)
-                                                            {
-                                                                int tempWidth;
-                                                                if (int.TryParse(widthElement.GetString(), out tempWidth))
-                                                                    size.Width = tempWidth;
-                                                            }
-                                                        }
-                                                        
-                                                        if (sizeElement.TryGetProperty("height", out JsonElement heightElement))
-                                                        {
-                                                            // safe getting height
-                                                            if (heightElement.ValueKind == JsonValueKind.Number)
-                                                                size.Height = heightElement.GetInt32();
-                                                            else if (heightElement.ValueKind == JsonValueKind.String)
-                                                            {
-                                                                int tempHeight;
-                                                                if (int.TryParse(heightElement.GetString(), out tempHeight))
-                                                                    size.Height = tempHeight;
-                                                            }
-                                                        }
-                                                        
-                                                        photo.Sizes.Add(size);
-                                                    }
-                                                }
-                                                
-                                                attachment.Photo = photo;
-                                            }
-                                            
-                                            // process videos
-                                            if (attachment.Type == "video" && attachmentElement.TryGetProperty("video", out JsonElement videoElement))
-                                            {
-                                                var video = new Video();
-                                                
-                                                if (videoElement.TryGetProperty("id", out JsonElement videoIdElement))
-                                                    video.Id = videoIdElement.GetInt32();
-                                                    
-                                                if (videoElement.TryGetProperty("owner_id", out JsonElement videoOwnerIdElement))
-                                                    video.OwnerId = videoOwnerIdElement.GetInt32();
-                                                    
-                                                if (videoElement.TryGetProperty("title", out JsonElement videoTitleElement))
-                                                    video.Title = videoTitleElement.GetString();
-                                                    
-                                                if (videoElement.TryGetProperty("description", out JsonElement videoDescElement))
-                                                    video.Description = videoDescElement.GetString();
-                                                    
-                                                if (videoElement.TryGetProperty("duration", out JsonElement videoDurationElement))
-                                                {
-                                                    if (videoDurationElement.ValueKind == JsonValueKind.Number)
-                                                        video.Duration = videoDurationElement.GetInt32();
-                                                }
-                                                
-                                                // safe getting image
-                                                if (videoElement.TryGetProperty("image", out JsonElement videoImageElement))
-                                                {
-                                                    if (videoImageElement.ValueKind == JsonValueKind.String)
-                                                    {
-                                                        string imageUrl = videoImageElement.GetString();
-                                                        video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
-                                                    }
-                                                    else if (videoImageElement.ValueKind == JsonValueKind.Object)
-                                                    {
-                                                        string imageUrl = videoImageElement.ToString();
-                                                        video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
-                                                    }
-                                                    else if (videoImageElement.ValueKind == JsonValueKind.Number)
-                                                    {
-                                                        string imageUrl = videoImageElement.GetInt64().ToString();
-                                                        video.Image = new List<PhotoSize> { new PhotoSize { Url = imageUrl } };
-                                                    }
-                                                    else
-                                                        video.Image = new List<PhotoSize>();
-                                                }
-                                                
-                                                if (videoElement.TryGetProperty("player", out JsonElement videoPlayerElement))
-                                                    video.Player = videoPlayerElement.GetString();
-                                                
-                                                attachment.Video = video;
-                                            }
-                                            
-                                            // process documents
-                                            if (attachment.Type == "doc" && attachmentElement.TryGetProperty("doc", out JsonElement docElement))
-                                            {
-                                                var docAttachment = new Doc();
-                                                
-                                                if (docElement.TryGetProperty("id", out JsonElement docIdElement))
-                                                    docAttachment.Id = docIdElement.GetInt32();
-                                                    
-                                                if (docElement.TryGetProperty("owner_id", out JsonElement docOwnerIdElement))
-                                                    docAttachment.OwnerId = docOwnerIdElement.GetInt32();
-                                                    
-                                                if (docElement.TryGetProperty("title", out JsonElement docTitleElement))
-                                                    docAttachment.Title = docTitleElement.GetString();
-                                                    
-                                                if (docElement.TryGetProperty("size", out JsonElement docSizeElement))
-                                                    docAttachment.Size = docSizeElement.GetInt32();
-                                                    
-                                                if (docElement.TryGetProperty("ext", out JsonElement docExtElement))
-                                                    docAttachment.Ext = docExtElement.GetString();
-                                                    
-                                                if (docElement.TryGetProperty("url", out JsonElement docUrlElement))
-                                                    docAttachment.Url = docUrlElement.GetString();
-                                                
-                                                attachment.Doc = docAttachment;
-                                            }
-                                            
-                                            // process audio
-                                            if (attachment.Type == "audio" && attachmentElement.TryGetProperty("audio", out JsonElement audioElement))
-                                            {
-                                                var audio = new Audio();
-                                                
-                                                if (audioElement.TryGetProperty("id", out JsonElement audioIdElement))
-                                                    audio.Id = audioIdElement.GetInt32();
-                                                    
-                                                if (audioElement.TryGetProperty("owner_id", out JsonElement audioOwnerIdElement))
-                                                    audio.OwnerId = audioOwnerIdElement.GetInt32();
-                                                    
-                                                if (audioElement.TryGetProperty("artist", out JsonElement audioArtistElement))
-                                                    audio.Artist = audioArtistElement.GetString();
-                                                    
-                                                if (audioElement.TryGetProperty("title", out JsonElement audioTitleElement))
-                                                    audio.Title = audioTitleElement.GetString();
-                                                    
-                                                if (audioElement.TryGetProperty("duration", out JsonElement audioDurationElement))
-                                                    audio.Duration = audioDurationElement.GetInt32();
-                                                    
-                                                if (audioElement.TryGetProperty("url", out JsonElement audioUrlElement))
-                                                    audio.Url = audioUrlElement.GetString();
-                                                    
-                                                if (audioElement.TryGetProperty("date", out JsonElement audioDateElement))
-                                                    audio.Date = audioDateElement.GetInt64();
-                                                
-                                                if (audioElement.TryGetProperty("added", out JsonElement audioAddedElement))
-                                                    audio.IsAdded = audioAddedElement.GetBoolean();
-                                                
-                                                Debug.WriteLine($"[ProfilePage] Processed audio attachment: {audio.Artist} - {audio.Title}");
-                                                attachment.Audio = audio;
-                                            }
-                                            
-                                            post.Attachments.Add(attachment);
-                                        }
-                                    }
-                                    
-                                    // process likes
-                                    if (item.TryGetProperty("likes", out JsonElement likesElement))
-                                    {
-                                        post.Likes = new Likes();
-                                        
-                                        if (likesElement.TryGetProperty("count", out JsonElement likesCountElement))
-                                            post.Likes.Count = likesCountElement.GetInt32();
-                                            
-                                        if (likesElement.TryGetProperty("user_likes", out JsonElement userLikesElement))
-                                            post.Likes.UserLikes = userLikesElement.GetInt32();
-                                            
-                                        if (likesElement.TryGetProperty("can_like", out JsonElement canLikeElement))
-                                            post.Likes.CanLike = canLikeElement.GetInt32();
-                                            
-                                        if (likesElement.TryGetProperty("can_publish", out JsonElement canPublishElement))
-                                            post.Likes.CanPublish = canPublishElement.GetInt32();
-                                    }
-                                    else
-                                    {
-                                        // if likes not received from server, initialize empty object
-                                        post.Likes = new Likes { Count = 0, UserLikes = 0 };
-                                    }
-
-                                    // process comments
-                                    if (item.TryGetProperty("comments", out JsonElement commentsElement))
-                                    {
-                                        post.Comments = new Comments();
-                                        
-                                        if (commentsElement.TryGetProperty("count", out JsonElement commentsCountElement))
-                                            post.Comments.Count = commentsCountElement.GetInt32();
-                                    }
-                                    else
-                                    {
-                                        // if comments not received from server, initialize empty object
-                                        post.Comments = new Comments { Count = 0 };
-                                    }
-
-                                    // Process reposts (copy_history)
-                                    if (item.TryGetProperty("copy_history", out JsonElement copyHistoryElement) &&
-                                        copyHistoryElement.ValueKind == JsonValueKind.Array &&
-                                        copyHistoryElement.GetArrayLength() > 0)
-                                    {
-                                        // FIX 1: Initialize the list with the correct type 'RepostedPost'.
-                                        post.CopyHistory = new List<RepostedPost>();
-
-                                        foreach (JsonElement repostElement in copyHistoryElement.EnumerateArray())
-                                        {
-                                            // FIX 2: Create the repost object with the correct type 'RepostedPost'.
-                                            var repost = new RepostedPost();
-
-                                            // Extract basic repost properties
-                                            if (repostElement.TryGetProperty("id", out JsonElement repostIdElement))
-                                                repost.Id = repostIdElement.GetInt32();
-
-                                            if (repostElement.TryGetProperty("from_id", out JsonElement repostFromIdElement))
-                                                repost.FromId = repostFromIdElement.GetInt32();
-
-                                            if (repostElement.TryGetProperty("owner_id", out JsonElement repostOwnerIdElement))
-                                                repost.OwnerId = repostOwnerIdElement.GetInt32();
-
-                                            if (repostElement.TryGetProperty("date", out JsonElement repostDateElement))
-                                                repost.Date = repostDateElement.GetInt64();
-
-                                            if (repostElement.TryGetProperty("text", out JsonElement repostTextElement))
-                                                repost.Text = repostTextElement.GetString();
-
-                                            // Process repost attachments
-                                            if (repostElement.TryGetProperty("attachments", out JsonElement repostAttachmentsElement) &&
-                                                repostAttachmentsElement.ValueKind == JsonValueKind.Array)
-                                            {
-                                                repost.Attachments = new List<Attachment>();
-
-                                                foreach (JsonElement repostAttachmentElement in repostAttachmentsElement.EnumerateArray())
-                                                {
-                                                    var repostAttachment = new Attachment();
-
-                                                    if (repostAttachmentElement.TryGetProperty("type", out JsonElement repostTypeElement))
-                                                        repostAttachment.Type = repostTypeElement.GetString();
-
-                                                    // Process repost photos
-                                                    if (repostAttachment.Type == "photo" &&
-                                                        repostAttachmentElement.TryGetProperty("photo", out JsonElement repostPhotoElement))
-                                                    {
-                                                        var photo = new Photo();
-
-                                                        if (repostPhotoElement.TryGetProperty("id", out JsonElement photoIdElement))
-                                                            photo.Id = photoIdElement.GetInt32();
-
-                                                        if (repostPhotoElement.TryGetProperty("sizes", out JsonElement photoSizesElement) &&
-                                                            photoSizesElement.ValueKind == JsonValueKind.Array)
-                                                        {
-                                                            photo.Sizes = new List<PhotoSize>();
-
-                                                            foreach (JsonElement sizeElement in photoSizesElement.EnumerateArray())
-                                                            {
-                                                                var size = new PhotoSize();
-
-                                                                if (sizeElement.TryGetProperty("type", out JsonElement sizeTypeElement))
-                                                                    size.Type = sizeTypeElement.GetString();
-
-                                                                if (sizeElement.TryGetProperty("url", out JsonElement sizeUrlElement))
-                                                                    size.Url = sizeUrlElement.GetString();
-
-                                                                photo.Sizes.Add(size);
-                                                            }
-                                                        }
-
-                                                        repostAttachment.Photo = photo;
-                                                    }
-
-                                                    // Add other attachment types as needed (video, audio, etc.)
-
-                                                    repost.Attachments.Add(repostAttachment);
-                                                }
-                                            }
-
-                                            // This will now work correctly.
-                                            post.CopyHistory.Add(repost);
-                                        }
-
-                                        Debug.WriteLine($"[ProfilePage] Processed repost for post ID {post.Id}, found {post.CopyHistory.Count} reposts");
-                                    }
-
-                                    // add post to result
-                                    result.Response.Items.Add(post);
-                                }
+                                repost.Profile = repostProfile;
                             }
                         }
                     }
-                }
-                catch (JsonException ex)
-                {
-                    Debug.WriteLine($"[ProfilePage] JSON error: {ex.Message}");
-                    throw;
                 }
 
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[ProfilePage] Error getting posts: {ex.Message}");
+                cancellationToken.ThrowIfCancellationRequested();
+                Debug.WriteLine($"[ProfilePage] Error getting posts with profiles: {ex.Message}");
                 ShowError($"Ошибка при загрузке постов: {ex.Message}");
                 return null;
             }
         }
 
-        private async Task LoadProfileAndPostsAsync()
+        
+
+        private async Task LoadProfileAndPostsAsync(CancellationToken cancellationToken)
         {
             try
             {
-                // Получаем токен
-                OVKDataBody token = await LoadTokenAsync();
-                if (token == null || string.IsNullOrEmpty(token.Token))
+                OVKDataBody ovkToken = await LoadTokenAsync();
+                if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
                 {
                     ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
                     return;
                 }
-                
-                // Получаем информацию о профиле
-                var profile = await GetProfileAsync(token.Token);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var profile = await GetProfileAsync(ovkToken.Token, cancellationToken);
                 if (profile == null)
                 {
                     ShowError("Не удалось загрузить информацию о профиле.");
                     return;
                 }
-                
-                // Сохраняем ID пользователя
+
                 userId = profile.Id.ToString();
-                
-                // Устанавливаем имя и аватарку
                 ProfileName.Text = $"{profile.FirstName} {profile.LastName}";
                 if (!string.IsNullOrEmpty(profile.Photo200))
                 {
                     ProfileAvatar.ProfilePicture = new BitmapImage(new Uri(profile.Photo200));
                 }
-                
-                // Получаем посты
-                var postsResponse = await GetPostsAsync(token.Token, userId);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Call optimized method
+                var postsResponse = await GetPostsWithProfilesAsync(ovkToken.Token, profile, cancellationToken);
                 if (postsResponse == null || postsResponse.Response == null || postsResponse.Response.Items == null)
                 {
                     ShowError("Не удалось загрузить посты.");
+                    LoadingProgressRing.IsActive = false;
                     return;
                 }
-                
-                // Очищаем коллекцию и добавляем новые посты
+
+                cancellationToken.ThrowIfCancellationRequested();
+
                 Posts.Clear();
                 foreach (var post in postsResponse.Response.Items)
+                {
                     Posts.Add(post);
-                
-                // Обновляем статус лайков для всех постов
-                await UpdateLikesStatusAsync();
-                
-                // Fetch profiles for reposts
-                await LoadRepostProfilesAsync(token.Token);
-                
-                // Обновляем текст с количеством постов
+                }
+                await UpdateLikesStatusAsync(cancellationToken);
+
                 PostsCountText.Text = $"Записей: {postsResponse.Response.Count}";
-                
-                // Скрываем индикатор загрузки
                 LoadingProgressRing.IsActive = false;
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[ProfilePage] LoadProfileAndPostsAsync was canceled.");
             }
             catch (Exception ex)
             {
@@ -618,6 +304,19 @@ namespace ovkdesktop
                 LoadingProgressRing.IsActive = false;
             }
         }
+
+        private void Author_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement element && element.Tag is long fromId && fromId != 0)
+            {
+                if (fromId.ToString() == userId) return;
+
+                Debug.WriteLine($"[ProfilePage] Navigating to profile with ID: {fromId}");
+                Frame.Navigate(typeof(AnotherProfilePage), fromId);
+            }
+        }
+
+        
 
         private void PublishNewPostButton(object sender, RoutedEventArgs e)
         {
@@ -935,10 +634,10 @@ namespace ovkdesktop
 
                 await webView.EnsureCoreWebView2Async();
 
-                // FIX: Устанавливаем источник ПОСЛЕ
+                // Set source after initialization
                 webView.Source = new Uri(videoUrl);
 
-                // FIX: Регистрируем WebView
+                // Register WebView
                 _activeWebViews.Add(webView);
             }
             catch (Exception ex)
@@ -1081,20 +780,20 @@ namespace ovkdesktop
         {
             try
             {
-                // check if client is initialized
+                // Check if client initialized
                 if (httpClient == null)
                 {
-                    await Task.Run(() => InitializeHttpClientAsync());
-                    await Task.Delay(500); // give time to initialize
+                    Debug.WriteLine("[ProfilePage] LikeItemAsync failed: httpClient is not initialized.");
+                    return false; // Cannot perform action without client
                 }
-                
-                // form URL for API request likes.add
+
+                // Form URL for likes.add request
                 var url = $"method/likes.add?access_token={token}" +
                         $"&type={type}" +
                         $"&owner_id={ownerId}" +
                         $"&item_id={itemId}" +
                         $"&v=5.126";
-                
+
                 Debug.WriteLine($"[ProfilePage] Like URL: {instanceUrl}{url}");
 
                 var response = await httpClient.GetAsync(url);
@@ -1102,20 +801,19 @@ namespace ovkdesktop
 
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[ProfilePage] Like response: {json}");
-                
-                // check response
+
+                // Check response
                 using JsonDocument doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
                 {
-                    // API returns number of likes
                     if (responseElement.TryGetProperty("likes", out JsonElement likesElement))
                     {
                         int likes = likesElement.GetInt32();
-                        Debug.WriteLine($"[ProfilePage] number of likes after like: {likes}");
+                        Debug.WriteLine($"[ProfilePage] Количество лайков после лайка: {likes}");
                         return true;
                     }
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -1130,20 +828,20 @@ namespace ovkdesktop
         {
             try
             {
-                // check if client is initialized
+                // Check if client initialized
                 if (httpClient == null)
                 {
-                    await Task.Run(() => InitializeHttpClientAsync());
-                    await Task.Delay(500); // give time to initialize
+                    Debug.WriteLine("[ProfilePage] UnlikeItemAsync failed: httpClient is not initialized.");
+                    return false; // Cannot perform action without client
                 }
-                
-                // form URL for API request likes.delete
+
+                // Form URL for likes.delete request
                 var url = $"method/likes.delete?access_token={token}" +
                         $"&type={type}" +
                         $"&owner_id={ownerId}" +
                         $"&item_id={itemId}" +
                         $"&v=5.126";
-                
+
                 Debug.WriteLine($"[ProfilePage] Unlike URL: {instanceUrl}{url}");
 
                 var response = await httpClient.GetAsync(url);
@@ -1151,20 +849,19 @@ namespace ovkdesktop
 
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[ProfilePage] Unlike response: {json}");
-                
-                // check response
+
+                // Check response
                 using JsonDocument doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
                 {
-                    // API returns number of likes
                     if (responseElement.TryGetProperty("likes", out JsonElement likesElement))
                     {
                         int likes = likesElement.GetInt32();
-                        Debug.WriteLine($"[ProfilePage] number of likes after unlike: {likes}");
+                        Debug.WriteLine($"[ProfilePage] Количество лайков после дизлайка: {likes}");
                         return true;
                     }
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -1268,41 +965,43 @@ namespace ovkdesktop
         }
 
         // method for updating likes status for all posts
-        private async Task UpdateLikesStatusAsync()
+        private async Task UpdateLikesStatusAsync(CancellationToken cancellationToken)
         {
             try
             {
+                // Can use Task.WhenAll for parallel execution
                 foreach (var post in Posts)
                 {
-                    // check if user liked this post
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     bool isLiked = await SessionHelper.IsLikedAsync("post", post.OwnerId, post.Id);
-                    
-                    // update like status in post object
-                    if (post.Likes == null)
+
+                    /* if (post.Likes == null)
                     {
-                        post.Likes = new Likes { Count = 0, UserLikes = isLiked ? 1 : 0 };
+                        post.Likes = new Likes { Count = post.Likes?.Count ?? 0, UserLikes = isLiked ? 1 : 0 };
                     }
                     else
                     {
                         post.Likes.UserLikes = isLiked ? 1 : 0;
                     }
-                    
-                    Debug.WriteLine($"[ProfilePage] Post {post.Id} liked status: {isLiked}");
-                    
-                    // Проверяем статус лайков для аудио в посте
+
                     if (post.HasAudio)
                     {
                         await UpdateAudioLikesStatusAsync(post.Audios);
-                    }
+                    } */
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[ProfilePage] UpdateLikesStatusAsync was canceled.");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProfilePage] Error updating likes status: {ex.Message}");
             }
         }
-        
-        // Метод для обновления статуса лайков аудио
+
+        // method for update status of audio likes
         private async Task UpdateAudioLikesStatusAsync(List<Models.Audio> audios)
         {
             try
@@ -1316,10 +1015,10 @@ namespace ovkdesktop
                 
                 foreach (var audio in audios)
                 {
-                    // Проверяем статус лайка для аудио
+                    // check status of like
                     bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
                     
-                    // Обновляем статус в объекте аудио
+                    // update status
                     audio.IsAdded = isLiked;
                     
                     Debug.WriteLine($"[ProfilePage] Audio {audio.Id} liked status: {isLiked}");
@@ -1331,7 +1030,6 @@ namespace ovkdesktop
             }
         }
 
-        // Метод для добавления аудио в пост
         private void AddAudioContent(StackPanel container, UserWallPost post)
         {
             try
@@ -1341,8 +1039,6 @@ namespace ovkdesktop
                     Debug.WriteLine("[ProfilePage] No audio attachments in post");
                     return;
                 }
-                
-                // Добавляем заголовок для аудио
                 if (post.Audios.Count > 0)
                 {
                     var audioLabel = new TextBlock
@@ -1353,16 +1049,13 @@ namespace ovkdesktop
                     };
                     container.Children.Add(audioLabel);
                     
-                    // Создаем отдельный контейнер для аудио
                     var audioContainer = new StackPanel
                     {
                         Margin = new Thickness(0, 0, 0, 10)
                     };
                     
-                    // Добавляем каждое аудио
                     foreach (var audio in post.Audios)
                     {
-                        // Создаем элемент для аудио
                         var audioItem = CreateAudioElement(audio);
                         audioContainer.Children.Add(audioItem);
                     }
@@ -1377,12 +1070,10 @@ namespace ovkdesktop
             }
         }
         
-        // Метод для создания элемента аудио
         private UIElement CreateAudioElement(Models.Audio audio)
         {
             try
             {
-                // Создаем Grid для аудио
                 var grid = new Grid
                 {
                     Margin = new Thickness(0, 5, 0, 5),
@@ -1390,12 +1081,10 @@ namespace ovkdesktop
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
                 };
                 
-                // Добавляем колонки
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 
-                // Кнопка воспроизведения
                 var playButton = new Button
                 {
                     Width = 40,
@@ -1413,7 +1102,6 @@ namespace ovkdesktop
                 Grid.SetColumn(playButton, 0);
                 grid.Children.Add(playButton);
                 
-                // Информация о треке
                 var infoPanel = new StackPanel
                 {
                     VerticalAlignment = VerticalAlignment.Center,
@@ -1441,8 +1129,7 @@ namespace ovkdesktop
                 
                 Grid.SetColumn(infoPanel, 1);
                 grid.Children.Add(infoPanel);
-                
-                // Длительность
+
                 var durationText = new TextBlock
                 {
                     Text = audio.FormattedDuration,
@@ -1463,7 +1150,6 @@ namespace ovkdesktop
             }
         }
         
-        // Обработчик нажатия на кнопку воспроизведения аудио
         private void PlayAudio_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1471,12 +1157,10 @@ namespace ovkdesktop
                 if (sender is Button button && button.Tag is Models.Audio audio)
                 {
                     Debug.WriteLine($"[ProfilePage] Playing audio: {audio.Artist} - {audio.Title}");
-                    
-                    // Получаем сервис аудиоплеера из App
+
                     var audioService = App.AudioService;
                     if (audioService != null)
                     {
-                        // Создаем плейлист из одного трека и воспроизводим
                         var playlist = new ObservableCollection<Models.Audio> { audio };
                         audioService.SetPlaylist(playlist, 0);
                         
@@ -1527,174 +1211,6 @@ namespace ovkdesktop
             }
         }
 
-        // Load profile information for reposts
-        private async Task LoadRepostProfilesAsync(string token)
-        {
-            try
-            {
-                // --- Сбор ID остаётся без изменений ---
-                var userIds = new HashSet<int>();
-                var groupIds = new HashSet<int>();
-
-                foreach (var post in Posts)
-                {
-                    if (post.HasRepost && post.CopyHistory != null && post.CopyHistory.Count > 0)
-                    {
-                        foreach (var repost in post.CopyHistory)
-                        {
-                            if (repost.FromId > 0)
-                            {
-                                userIds.Add(repost.FromId);
-                            }
-                            else if (repost.FromId < 0)
-                            {
-                                groupIds.Add(Math.Abs(repost.FromId));
-                            }
-                        }
-                    }
-                }
-
-                Debug.WriteLine($"[ProfilePage] Found {userIds.Count} user IDs and {groupIds.Count} group IDs in reposts");
-
-                // --- Загрузка профилей групп и пользователей остаётся без изменений ---
-                var groupProfiles = new Dictionary<int, UserProfile>();
-                if (groupIds.Count > 0)
-                {
-                    try
-                    {
-                        string ids = string.Join(",", groupIds);
-                        var url = $"method/groups.getById?access_token={token}&group_ids={ids}&fields=description,members_count,site,screen_name,photo_50,photo_100,photo_200,photo_max&v=5.126";
-                        Debug.WriteLine($"[ProfilePage] Fetching group profiles with URL: {instanceUrl}{url}");
-                        var response = await httpClient.GetAsync(url);
-                        response.EnsureSuccessStatusCode();
-                        var json = await response.Content.ReadAsStringAsync();
-
-                        using (JsonDocument doc = JsonDocument.Parse(json))
-                        {
-                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && responseElement.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (JsonElement groupElement in responseElement.EnumerateArray())
-                                {
-                                    int groupId = 0;
-                                    var groupProfile = new UserProfile { IsGroup = true };
-                                    if (groupElement.TryGetProperty("id", out JsonElement idElement)) groupId = idElement.GetInt32();
-                                    if (groupElement.TryGetProperty("name", out JsonElement nameElement)) groupProfile.FirstName = nameElement.GetString();
-                                    groupProfile.LastName = "";
-                                    if (groupElement.TryGetProperty("screen_name", out JsonElement screenNameElement)) groupProfile.Nickname = screenNameElement.GetString();
-
-                                    string photoUrl = null;
-                                    if (groupElement.TryGetProperty("photo_200", out JsonElement p200)) photoUrl = p200.GetString();
-                                    else if (groupElement.TryGetProperty("photo_100", out JsonElement p100)) photoUrl = p100.GetString();
-                                    else if (groupElement.TryGetProperty("photo_50", out JsonElement p50)) photoUrl = p50.GetString();
-                                    groupProfile.Photo200 = photoUrl;
-                                    groupProfile.Id = -groupId;
-                                    groupProfiles[groupId] = groupProfile;
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex) { Debug.WriteLine($"[ProfilePage] Error getting group info: {ex.Message}"); }
-                }
-
-                var userProfiles = new Dictionary<int, UserProfile>();
-                if (userIds.Count > 0)
-                {
-                    try
-                    {
-                        string ids = string.Join(",", userIds);
-                        var url = $"method/users.get?access_token={token}&user_ids={ids}&fields=photo_200,screen_name&v=5.126";
-                        Debug.WriteLine($"[ProfilePage] Fetching user profiles with URL: {instanceUrl}{url}");
-                        var response = await httpClient.GetAsync(url);
-                        response.EnsureSuccessStatusCode();
-                        var json = await response.Content.ReadAsStringAsync();
-
-                        using (JsonDocument doc = JsonDocument.Parse(json))
-                        {
-                            if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && responseElement.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (JsonElement userElement in responseElement.EnumerateArray())
-                                {
-                                    var profile = new UserProfile();
-                                    if (userElement.TryGetProperty("id", out JsonElement idEl)) profile.Id = idEl.GetInt32();
-                                    if (userElement.TryGetProperty("first_name", out JsonElement fnEl)) profile.FirstName = fnEl.GetString();
-                                    if (userElement.TryGetProperty("last_name", out JsonElement lnEl)) profile.LastName = lnEl.GetString();
-                                    if (userElement.TryGetProperty("screen_name", out JsonElement snEl)) profile.Nickname = snEl.GetString();
-                                    if (userElement.TryGetProperty("photo_200", out JsonElement p200)) profile.Photo200 = p200.GetString();
-                                    userProfiles[profile.Id] = profile;
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex) { Debug.WriteLine($"[ProfilePage] Error getting user profiles: {ex.Message}"); }
-                }
-
-                // === ИЗМЕНЕНИЯ НАЧИНАЮТСЯ ЗДЕСЬ ===
-
-                // Assign profiles to reposts using a safe 'for' loop
-                for (int i = 0; i < Posts.Count; i++)
-                {
-                    var post = Posts[i];
-                    bool postWasModified = false;
-
-                    if (post.HasRepost && post.CopyHistory != null)
-                    {
-                        foreach (var repost in post.CopyHistory)
-                        {
-                            try
-                            {
-                                if (repost.FromId < 0)
-                                {
-                                    int groupId = Math.Abs(repost.FromId);
-                                    if (groupProfiles.TryGetValue(groupId, out var groupProfile))
-                                    {
-                                        repost.Profile = groupProfile;
-                                        postWasModified = true;
-                                        Debug.WriteLine($"[ProfilePage] Assigned group profile '{groupProfile.FirstName}' to repost {repost.Id}");
-                                    }
-                                }
-                                else if (repost.FromId > 0)
-                                {
-                                    if (userProfiles.TryGetValue(repost.FromId, out var userProfile))
-                                    {
-                                        repost.Profile = userProfile;
-                                        postWasModified = true;
-                                        Debug.WriteLine($"[ProfilePage] Assigned user profile '{userProfile.FirstName} {userProfile.LastName}' to repost {repost.Id}");
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[ProfilePage] Error assigning profile to repost: {ex.Message}");
-                            }
-                        }
-                    }
-
-                    // === ИЗМЕНЕНИЯ ЗДЕСЬ ===
-                    // Если пост был изменен, выполняем обновление коллекции в UI-потоке.
-                    if (postWasModified)
-                    {
-                        // Захватываем нужные переменные для лямбда-выражения
-                        var postToUpdate = Posts[i];
-                        var indexToUpdate = i;
-
-                        // Отправляем задачу в очередь диспетчера UI
-                        this.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            // Этот код гарантированно выполнится в UI-потоке
-                            if (Posts.Count > indexToUpdate)
-                            {
-                                Posts.RemoveAt(indexToUpdate);
-                                Posts.Insert(indexToUpdate, postToUpdate);
-                            }
-                        });
-                    }
-                }
-                // === КОНЕЦ ИЗМЕНЕНИЙ ===
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[ProfilePage] Error loading repost profiles: {ex.Message}");
-            }
-        }
+        
     }
 }

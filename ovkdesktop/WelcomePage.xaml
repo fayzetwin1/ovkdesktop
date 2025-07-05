@@ -26,11 +26,11 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             
-            <!-- Логотип по центру -->
+            <!-- Logo in center -->
             <Image Grid.Row="0" Source="/Assets/Images/openvklogoScaled.png" Height="250" 
                    HorizontalAlignment="Center" Margin="0,0,0,20"/>
             
-            <!-- Текст и кнопка по центру -->
+            <!-- Text and button in center -->
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" MaxWidth="600">
                 <TextBlock Text="Добро пожаловать в OpenVK Desktop!" 
                            FontSize="28" Style="{ThemeResource TitleTextBlockStyle}"

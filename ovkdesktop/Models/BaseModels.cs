@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Reflection;
 using Newtonsoft.Json.Linq;
+using ovkdesktop.Converters;
 
 namespace ovkdesktop.Models
 {
@@ -35,7 +36,7 @@ namespace ovkdesktop.Models
         }
     }
 
-    public class BasePost
+    public class BasePost : ObservableObject
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
@@ -74,6 +75,9 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("views")]
         public Views Views { get; set; }
+
+        [JsonPropertyName("is_pinned")]
+        public bool IsPinned { get; set; }
 
         [JsonIgnore]
         public string FormattedDate
@@ -164,8 +168,14 @@ namespace ovkdesktop.Models
         [JsonPropertyName("copy_history")]
         public List<RepostedPost> CopyHistory { get; set; }
 
-        [JsonPropertyName("profile")] // Если API возвращает профиль сразу
-        public UserProfile Profile { get; set; }
+        private UserProfile _profile;
+
+        [JsonPropertyName("profile")]
+        public UserProfile Profile
+        {
+            get => _profile;
+            set => SetProperty(ref _profile, value);
+        }
 
         [JsonIgnore]
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
@@ -180,29 +190,40 @@ namespace ovkdesktop.Models
         {
             if (!HasRepost || Repost == null) return "";
 
-            // Если профиль автора репоста уже загружен
+            // If the repost author's profile is already loaded
             if (Repost.Profile != null)
             {
                 if (Repost.Profile.IsGroup)
                 {
-                    return Repost.Profile.FirstName; // Для групп имя в FirstName
+                    return Repost.Profile.FirstName; // For groups, the name is in FirstName
                 }
                 return $"{Repost.Profile.FirstName} {Repost.Profile.LastName}".Trim();
             }
 
-            // Запасной вариант, если профиль по какой-то причине не загрузился
+            // Fallback if the profile for some reason did not load
             if (Repost.FromId < 0)
             {
-                return $"Группа {Math.Abs(Repost.FromId)}";
+                return $"Group {Math.Abs(Repost.FromId)}";
             }
 
-            return $"Пользователь {Repost.FromId}";
+            return $"User {Repost.FromId}";
         }
     }
     public class RepostedPost : BasePost { }
 
     public class UserWallPost : BasePost
     {
+        private UserProfile _authorProfile;
+
+        [JsonIgnore]
+        public UserProfile AuthorProfile
+        {
+            get => _authorProfile;
+            set => SetProperty(ref _authorProfile, value);
+        }
+
+        [JsonIgnore]
+        public bool IsWallPostByAnotherUser => FromId != OwnerId && FromId != 0;
     }
 
     public class ProfileWallPost : BasePost
@@ -241,10 +262,10 @@ namespace ovkdesktop.Models
             // If profile is not available, use fallback
             if (Repost.FromId < 0)
             {
-                return $"Группа {Math.Abs(Repost.FromId)}";
+                return $"Group {Math.Abs(Repost.FromId)}";
             }
             
-            return $"Пользователь {Repost.FromId}";
+            return $"User {Repost.FromId}";
         }
     }
 
@@ -431,12 +452,18 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("from_id")]
         public int FromId { get; set; }
-        
+
         [JsonIgnore]
         public bool IsGroup { get; set; }
 
+
         [JsonIgnore]
         public string BestAvailablePhoto => Photo200 ?? Photo100 ?? Photo50;
+
+        [JsonIgnore]
+        public string FullName => IsGroup ? FirstName : $"{FirstName} {LastName}".Trim();
+
+
     }
 
     public class UsersGetResponse
@@ -481,9 +508,9 @@ namespace ovkdesktop.Models
         {
             return new UserProfile
             {
-                Id = -this.Id, // Важно: ID группы делаем отрицательным
+                Id = -this.Id, // Make group ID negative
                 FirstName = this.Name,
-                LastName = "", // У групп нет фамилии
+                LastName = "", // Groups have no last names
                 Nickname = this.ScreenName,
                 Photo200 = this.Photo200,
                 IsGroup = true
@@ -757,13 +784,13 @@ namespace ovkdesktop.Models
             return Sizes.FirstOrDefault(s => !string.IsNullOrEmpty(s.Url))?.Url;
         }
         
-        // Метод для получения URL самого большого фото
+        // Get largest photo URL
         public string GetLargestPhotoUrl()
         {
             if (Sizes == null || !Sizes.Any())
                 return null;
                 
-            // Сначала проверяем наличие фото по приоритетным типам
+            // Check photos by priority types
             var priorityTypes = new[] { "w", "z", "y", "x", "m", "s" };
             
             foreach (var type in priorityTypes)
@@ -773,7 +800,7 @@ namespace ovkdesktop.Models
                     return size.Url;
             }
             
-            // Если не нашли по типам, ищем самое большое по размеру
+            // If not found, look for largest by size
             var largestSize = Sizes
                 .Where(s => s.Width > 0 && s.Height > 0 && !string.IsNullOrEmpty(s.Url))
                 .OrderByDescending(s => s.Width * s.Height)
@@ -782,7 +809,7 @@ namespace ovkdesktop.Models
             if (largestSize != null)
                 return largestSize.Url;
                 
-            // Возвращаем первый доступный URL, если ничего не нашли
+            // Return first available URL if nothing found
             return Sizes.FirstOrDefault(s => !string.IsNullOrEmpty(s.Url))?.Url;
         }
     }
@@ -905,6 +932,7 @@ namespace ovkdesktop.Models
         public int Count { get; set; }
 
         [JsonPropertyName("user_likes")]
+        [JsonConverter(typeof(BoolAsIntJsonConverter))]
         public int UserLikes { get; set; }
 
         [JsonPropertyName("can_like")]
@@ -941,7 +969,7 @@ namespace ovkdesktop.Models
         public int Count { get; set; }
     }
 
-    public class Audio
+    public class Audio : ObservableObject
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
@@ -996,13 +1024,20 @@ namespace ovkdesktop.Models
         [JsonIgnore]
         public string FullTitle => $"{Artist} - {Title}";
 
-        [JsonPropertyName("added")]
-        public bool IsAdded { get; set; }
-        
+        private bool _isAdded;
+
+        [JsonPropertyName("is_added")]
+        [JsonConverter(typeof(IntAsBoolJsonConverter))] // Use converter for 1/0 values
+        public bool IsAdded
+        {
+            get => _isAdded;
+            set => SetProperty(ref _isAdded, value);
+        }
+
         [JsonIgnore]
         public string ThumbUrl { get; set; } = "ms-appx:///Assets/DefaultCover.png";
         
-        // Статический метод безопасного преобразования объекта к типу Audio
+        // Safe conversion of object to Audio
         public static Audio SafeCast(object obj)
         {
             try
@@ -1015,31 +1050,31 @@ namespace ovkdesktop.Models
                 
                 Debug.WriteLine($"[Audio.SafeCast] Attempting to cast object of type {obj.GetType().FullName}");
                 
-                // Если объект уже является Audio, то просто возвращаем его
+                // If already Audio, return it
                 if (obj is Audio audio)
                 {
                     Debug.WriteLine("[Audio.SafeCast] Object is already an Audio instance");
                     return audio;
                 }
                 
-                // Создаем новый экземпляр Audio
+                // Create new Audio
                 Audio result = new Audio();
                 
-                // Копируем свойства с помощью reflection
+                // Copy properties with reflection
                 PropertyInfo[] sourceProperties = obj.GetType().GetProperties();
                 
                 foreach (PropertyInfo sourceProp in sourceProperties)
                 {
                     try
                     {
-                        // Ищем соответствующее свойство в Audio
+                        // Find corresponding property in Audio
                         PropertyInfo targetProp = typeof(Audio).GetProperty(sourceProp.Name);
                         
                         if (targetProp != null && targetProp.CanWrite)
                         {
                             object value = sourceProp.GetValue(obj);
                             
-                            // Преобразуем тип, если необходимо
+                            // Convert type if needed
                             if (value != null && targetProp.PropertyType != value.GetType())
                             {
                                 try
@@ -1073,7 +1108,7 @@ namespace ovkdesktop.Models
             }
         }
         
-        // Метод для создания Audio из JToken
+        // Create Audio from JToken
         public static Audio FromJToken(JToken token)
         {
             try

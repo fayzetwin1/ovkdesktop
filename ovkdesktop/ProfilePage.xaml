@@ -16,6 +16,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
         <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
+        <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
     </Page.Resources>
 
     <Grid>
@@ -24,20 +25,21 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Профиль пользователя (аватар и информация) -->
+        <!-- User profile (avatar and information) -->
         <Grid Grid.Row="0" Margin="125,105,20,0">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             
-            <!-- Аватар пользователя -->
+            <!-- User avatar -->
             <PersonPicture Grid.Column="0" 
                           x:Name="ProfileAvatar" 
                           Width="120" Height="120"
                           VerticalAlignment="Top"/>
             
-            <!-- Информация о пользователе -->
+            <!-- User information -->
             <StackPanel Grid.Column="1" Margin="20,0,0,0">
                 <TextBlock x:Name="ProfileName" 
                           Text="Загрузка..." 
@@ -56,7 +58,7 @@
                           TextWrapping="Wrap"
                           Margin="0,0,0,10"/>
                 
-                <!-- Кнопки действий -->
+                <!-- Action buttons -->
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Button Content="Опубликовать пост" Click="PublishNewPostButton"/>
                     <Button Content="Отредактировать профиль"/>
@@ -64,7 +66,7 @@
             </StackPanel>
         </Grid>
 
-        <!-- Список постов -->
+        <!-- Posts list -->
         <Grid Grid.Row="1" Margin="110,20,20,20" x:Name="GridPostsMyProfile">
             <ProgressRing x:Name="LoadingProgressRing" 
                          IsActive="True" 
@@ -94,25 +96,67 @@
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
-                                <!-- Дата поста -->
-                                <TextBlock Grid.Row="0"
-                                          Text="{Binding FormattedDate}"
-                                          Opacity="0.7" Margin="0,0,0,10"/>
+                                <!-- Row 0: Post Header -->
+                                <Grid Grid.Row="0" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
 
-                                <!-- Текст поста -->
+                                    <!-- Author Avatar -->
+                                    <Button Grid.Column="0" Padding="0" BorderThickness="0" Background="Transparent"
+                                        Tag="{Binding FromId}" Click="Author_Click"
+                                        VerticalAlignment="Top">
+                                        <Ellipse Width="48" Height="48" Margin="0,0,12,0">
+                                            <Ellipse.Fill>
+                                                <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                                            </Ellipse.Fill>
+                                        </Ellipse>
+                                    </Button>
+
+                                    <!-- Author Info & Date -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                                            <Button Padding="0" Margin="0,-2,0,0" BorderThickness="0" Background="Transparent"
+                                                Tag="{Binding FromId}" Click="Author_Click">
+                                                <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold"
+                                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                            </Button>
+
+                                            <StackPanel Orientation="Horizontal" Spacing="5"
+                                                Visibility="{Binding IsWallPostByAnotherUser, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text=">" FontWeight="SemiBold" Opacity="0.7"/>
+                                                <TextBlock Text="{Binding ElementName=ProfileName, Path=Text}" FontWeight="SemiBold" Opacity="0.7"/>
+
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Date and Pinned Icon -->
+                                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                                            <FontIcon Glyph="" FontSize="12"
+                                                  Foreground="{ThemeResource SystemAccentColor}"
+                                                  ToolTipService.ToolTip="Закрепленная запись"
+                                                  Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Post text -->
                                 <TextBlock Grid.Row="1"
                                           Text="{Binding Text}"
                                           TextWrapping="Wrap" Margin="0,0,0,10"
                                           Foreground="{ThemeResource TextFillColorPrimary}"/>
 
-                                <!-- Изображение -->
+                                <!-- Image -->
                                 <Image Grid.Row="2"
                                       Source="{Binding MainImageUrl}"
                                       Stretch="Uniform" MaxHeight="400"
                                       HorizontalAlignment="Left" Margin="0,0,0,10"
                                       Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <!-- Видео -->
+                                <!-- Video -->
                                 <Grid Grid.Row="3" 
                                      Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
                                      Margin="0,0,0,10"
@@ -130,7 +174,7 @@
                                       HorizontalAlignment="Left" Margin="0,0,0,10"
                                       Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                                <!-- Аудио -->
+                                <!-- Audio -->
                                 <ItemsControl Grid.Row="5"
                                              ItemsSource="{Binding Audios}"
                                              Visibility="{Binding HasAudio, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -145,14 +189,14 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 
-                                                <!-- Кнопка воспроизведения -->
+                                                <!-- Play button -->
                                                 <Button Grid.Column="0" Width="40" Height="40" 
                                                         Padding="0" Background="Transparent"
                                                         Tag="{Binding}" Click="PlayAudio_Click">
                                                     <FontIcon Glyph="&#xE768;" FontSize="16"/>
                                                 </Button>
                                                 
-                                                <!-- Информация о треке -->
+                                                <!-- Track information -->
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
                                                     <TextBlock Text="{Binding Title}" 
                                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
@@ -162,7 +206,7 @@
                                                                Opacity="0.8" FontSize="12"/>
                                                 </StackPanel>
                                                 
-                                                <!-- Длительность -->
+                                                <!-- Duration -->
                                                 <TextBlock Grid.Column="2" Text="{Binding FormattedDuration}" 
                                                            VerticalAlignment="Center" Margin="10,0,0,0"
                                                            Opacity="0.8" FontSize="12"/>
@@ -171,7 +215,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <!-- Репост -->
+                                <!-- Repost -->
                                 <Border Grid.Row="6" 
                                        Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
                                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
@@ -190,8 +234,7 @@
                                             <!-- Author avatar -->
                                             <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
                                                 <Ellipse.Fill>
-                                                    <ImageBrush ImageSource="{Binding Repost.Profile.Photo200}" 
-                                                                Stretch="UniformToFill"/>
+                                                    <ImageBrush ImageSource="{Binding Repost.Profile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
                                                 </Ellipse.Fill>
                                             </Ellipse>
                                             
@@ -247,13 +290,13 @@
                                     </StackPanel>
                                 </Border>
 
-                                <!-- Лайки и комментарии -->
+                                <!-- Likes and comments -->
                                 <StackPanel Grid.Row="7" 
                                           Orientation="Horizontal" 
                                           Spacing="15" 
                                           Margin="0,20,0,0"
                                           VerticalAlignment="Bottom">
-                                    <!-- Кнопка лайка -->
+                                    <!-- Like button -->
                                     <Button Tag="{Binding}" 
                                             Click="LikeButton_Click" 
                                             Background="Transparent" 
@@ -266,7 +309,7 @@
                                         </StackPanel>
                                     </Button>
 
-                                    <!-- Кнопка комментариев -->
+                                    <!-- Comments button -->
                                     <Button Tag="{Binding}" 
                                             Tapped="ShowPostComments_Tapped" 
                                             Background="Transparent" 
@@ -286,7 +329,7 @@
             </ListView>
         </Grid>
         
-        <!-- Фрейм для навигации -->
+        <!-- Navigation frame -->
         <Frame x:Name="ContentProfileFrame" Grid.RowSpan="2">
             <Frame.ContentTransitions>
                 <TransitionCollection>

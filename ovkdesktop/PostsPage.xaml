@@ -25,7 +25,7 @@
                 HorizontalAlignment="Left"
                 Margin="25,-65,0,0"/>
 
-            <!-- Отладочный TextBlock -->
+            <!-- Debug TextBlock -->
             <TextBlock x:Name="DebugInfoText" 
                        Margin="125,60,0,0" 
                        Foreground="Blue" 
@@ -41,7 +41,7 @@
                 Width="50" Height="50" 
                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-            <!-- Заменяем ListView на ScrollViewer с StackPanel для ручного добавления элементов -->
+            <!-- Replace ListView with ScrollViewer with StackPanel for manual element addition -->
             <ScrollViewer>
                 <StackPanel x:Name="PostsContainer" Margin="15,0,0,20" HorizontalAlignment="Left"/>
             </ScrollViewer>

@@ -32,7 +32,7 @@
             </NavigationView>
         </Grid>
         
-        <!-- Контейнер для мини-плеера -->
+        <!-- Container for mini player -->
         <ContentControl Grid.Row="1" 
                 x:Name="MiniPlayerContainer" 
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -40,7 +40,7 @@
                 BorderThickness="0,1,0,0"
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Stretch">
-            <!-- Содержимое будет добавлено программно -->
+            <!-- Content will be added programmatically -->
         </ContentControl>
     </Grid>
 </Page>

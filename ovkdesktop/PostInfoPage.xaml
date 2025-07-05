@@ -41,7 +41,7 @@
                     </ListView.ItemTemplate>
                 </ListView>
                 
-                <!-- Панель для кнопки "Загрузить еще" и индикатора загрузки -->
+                <!-- Panel for "Load more" button and loading indicator -->
                 <Grid Margin="105,10,0,10">
                     <Button x:Name="LoadMoreButton" 
                             Content="Загрузить еще комментарии" 
@@ -58,7 +58,7 @@
             </StackPanel>
         </ScrollViewer>
         
-        <!-- Панель добавления комментария -->
+        <!-- Comment addition panel -->
         <Grid Grid.Row="2" Margin="105,10,20,20">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>

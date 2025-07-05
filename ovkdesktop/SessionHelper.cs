@@ -1,10 +1,12 @@
+using ovkdesktop.Models;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Diagnostics;
-using ovkdesktop.Models;
+using System.Linq;
 
 namespace ovkdesktop
 {
@@ -133,6 +135,120 @@ namespace ovkdesktop
             ClearUserIdCache();
         }
 
+        public static async Task<Dictionary<int, UserProfile>> GetProfilesByIdsAsync(HashSet<int> userIds, HashSet<int> groupIds)
+        {
+            var profiles = new Dictionary<int, UserProfile>();
+            string token = await GetTokenAsync();
+            if (string.IsNullOrEmpty(token)) return profiles;
+
+            using var httpClient = await GetConfiguredHttpClientAsync();
+            string instanceUrl = await GetInstanceUrlAsync();
+
+            // Load user profiles
+            if (userIds.Any())
+            {
+                try
+                {
+                    var ids = string.Join(",", userIds);
+                    var url = $"{instanceUrl}method/users.get?access_token={token}&user_ids={ids}&fields=photo_200,screen_name&v=5.126";
+                    var response = await httpClient.GetAsync(url);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        var usersResponse = JsonSerializer.Deserialize<UsersGetResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (usersResponse?.Response != null)
+                        {
+                            foreach (var user in usersResponse.Response)
+                            {
+                                profiles[user.Id] = user;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[SessionHelper] Error getting user profiles by IDs: {ex.Message}");
+                }
+            }
+
+            // Load group profiles
+            if (groupIds.Any())
+            {
+                try
+                {
+                    var ids = string.Join(",", groupIds);
+                    var url = $"{instanceUrl}method/groups.getById?access_token={token}&group_ids={ids}&fields=photo_200,screen_name&v=5.126";
+                    var response = await httpClient.GetAsync(url);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var json = await response.Content.ReadAsStringAsync();
+                        var groupsResponse = JsonSerializer.Deserialize<APIResponse<List<GroupProfile>>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (groupsResponse?.Response != null)
+                        {
+                            foreach (var group in groupsResponse.Response)
+                            {
+                                profiles[-group.Id] = group.ToUserProfile();
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[SessionHelper] Error getting group profiles by IDs: {ex.Message}");
+                }
+            }
+
+            return profiles;
+        }
+
+        public static async Task<bool> IsAudioAddedAsync(Audio audio)
+        {
+            if (audio == null) return false;
+
+            try
+            {
+                string token = await GetTokenAsync();
+                if (string.IsNullOrEmpty(token)) return false;
+
+                using var httpClient = await GetConfiguredHttpClientAsync();
+                string instanceUrl = await GetInstanceUrlAsync();
+
+                // Format audios parameter as {owner_id}_{audio_id}
+                string audiosParam = $"{audio.OwnerId}_{audio.Id}";
+                var url = $"{instanceUrl}method/audio.getByIds?access_token={token}&audios={audiosParam}&v=5.126";
+
+                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync URL: {url}");
+                var response = await httpClient.GetAsync(url);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync failed with status: {response.StatusCode}");
+                    return false;
+                }
+
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync response: {json}");
+
+                using var doc = JsonDocument.Parse(json);
+                // Track found if response array has elements
+                if (doc.RootElement.TryGetProperty("response", out var responseElement) &&
+                    responseElement.ValueKind == JsonValueKind.Array &&
+                    responseElement.GetArrayLength() > 0)
+                {
+                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync result: true (audio is added)");
+                    return true;
+                }
+
+                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync result: false (audio is not added)");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync error: {ex.Message}");
+                return false;
+            }
+        }
+
         public static async Task<string> GetInstanceUrlAsync()
         {
             var settings = await AppSettings.LoadAsync();
@@ -196,12 +312,12 @@ namespace ovkdesktop
         }
         
         /// <summary>
-        /// Проверяет, поставил ли текущий пользователь лайк объекту
+        /// Check if current user liked object
         /// </summary>
-        /// <param name="type">Тип объекта (post, comment, video, photo, note)</param>
-        /// <param name="ownerId">ID владельца объекта</param>
-        /// <param name="itemId">ID объекта</param>
-        /// <returns>true если пользователь поставил лайк, false если нет</returns>
+        /// <param name="type">Object type (post, comment, video, photo, note)</param>
+        /// <param name="ownerId">Object owner ID</param>
+        /// <param name="itemId">Object ID</param>
+        /// <returns>true if liked, false if not</returns>
         public static async Task<bool> IsLikedAsync(string type, int ownerId, int itemId)
         {
             try
@@ -234,47 +350,10 @@ namespace ovkdesktop
                 
                 Debug.WriteLine($"[SessionHelper] IsLikedAsync URL: {instanceUrl}{url}");
                 
-                // Особая обработка для аудио, так как API может не поддерживать лайки для аудио
-                if (type == "audio")
-                {
-                    try
-                    {
-                        var audioResponse = await httpClient.GetAsync(url);
-                        if (!audioResponse.IsSuccessStatusCode)
-                        {
-                            // Если сервер вернул ошибку для аудио, просто логируем и возвращаем текущее состояние
-                            // вместо false, чтобы избежать удаления треков из коллекции
-                            Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio failed with status: {audioResponse.StatusCode}");
-                            
-                            // Для аудио возвращаем true, чтобы избежать удаления из коллекции
-                            // Это временное решение, пока API не будет полностью поддерживать лайки для аудио
-                            return true;
-                        }
-                        
-                        var audioJson = await audioResponse.Content.ReadAsStringAsync();
-                        Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio response: {audioJson}");
-                        
-                        using JsonDocument doc = JsonDocument.Parse(audioJson);
-                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) &&
-                            responseElement.TryGetProperty("liked", out JsonElement likedElement))
-                        {
-                            int liked = likedElement.GetInt32();
-                            Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio result: {liked}");
-                            return liked == 1;
-                        }
-                        
-                        // Если не удалось получить статус лайка, возвращаем true для безопасности
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[SessionHelper] IsLikedAsync for audio error: {ex.Message}");
-                        // Для аудио возвращаем true, чтобы избежать удаления из коллекции
-                        return true;
-                    }
-                }
+                // Special handling for audio likes
                 
-                // Стандартная обработка для других типов объектов
+                
+                // Standard handling for other objects
                 HttpResponseMessage response;
                 string json;
                 
@@ -379,9 +458,9 @@ namespace ovkdesktop
         }
         
         /// <summary>
-        /// Получает ID текущего пользователя
+        /// Get current user ID
         /// </summary>
-        /// <returns>ID пользователя или -1 в случае ошибки</returns>
+        /// <returns>User ID or -1 on error</returns>
         public static async Task<int> GetCurrentUserIdAsync()
         {
             // if user ID was previously received, return it from cache
@@ -444,7 +523,7 @@ namespace ovkdesktop
         }
         
         /// <summary>
-        /// reset user ID cache
+        /// Reset user ID cache
         /// </summary>
         public static void ClearUserIdCache()
         {
@@ -728,7 +807,7 @@ namespace ovkdesktop
                     Debug.WriteLine("[SessionHelper] Token file deleted");
                 }
                 
-                // Сбрасываем кеш ID пользователя
+                // Reset user ID cache
                 ClearUserIdCache();
                 
                 Debug.WriteLine("[SessionHelper] Token cleared");
@@ -740,15 +819,15 @@ namespace ovkdesktop
         }
 
         /// <summary>
-        /// Получает ID текущего пользователя из кэша или из API
+        /// Get current user ID from cache or API
         /// </summary>
-        /// <returns>ID пользователя или 0 в случае ошибки</returns>
+        /// <returns>User ID or 0 on error</returns>
         public static async Task<int> GetUserIdAsync()
         {
-            // используем существующий метод
+            // Use existing method
             int userId = await GetCurrentUserIdAsync();
             
-            // конвертируем -1 в 0 для совместимости с API OpenVK
+            // Convert -1 to 0 for OpenVK API compatibility
             return userId > 0 ? userId : 0;
         }
     }

@@ -15,10 +15,10 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         
-        <!-- Основной контент -->
+        <!-- Main content -->
         <Frame x:Name="ContentFrame" Grid.Row="0" />
         
-        <!-- Миниплеер будет добавляться в этот контейнер динамически -->
+        <!-- Mini player will be added to this container dynamically -->
         <Grid x:Name="MiniPlayerContainer" Grid.Row="1" HorizontalAlignment="Stretch" />
     </Grid>
 </Window>

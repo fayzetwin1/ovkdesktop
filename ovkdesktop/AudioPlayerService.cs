@@ -1151,13 +1151,13 @@ namespace ovkdesktop
                 // check the status of the like for audio
                 try
                 {
-                    bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
-                    
+                    bool isAdded = await SessionHelper.IsAudioAddedAsync(audio);
+
                     // if the status has changed, update it and notify the UI
-                    if (audio.IsAdded != isLiked)
+                    if (audio.IsAdded != isAdded)
                     {
-                        Debug.WriteLine($"[AudioPlayerService] Audio favorite status updated: {isLiked}");
-                        audio.IsAdded = isLiked;
+                        Debug.WriteLine($"[AudioPlayerService] Audio favorite status updated: {isAdded}");
+                        audio.IsAdded = isAdded;
                         FavoriteStatusChanged?.Invoke(this, audio);
                     }
                 }

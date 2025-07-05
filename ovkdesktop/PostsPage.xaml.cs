@@ -84,7 +84,7 @@ namespace ovkdesktop
         {
             base.OnNavigatedFrom(e);
 
-            // FIX: Очищаем все медиа-элементы для предотвращения сбоев
+            // Clear media elements to prevent crashes
             foreach (var mediaPlayerElement in _activeMediaPlayers)
             {
                 mediaPlayerElement.MediaPlayer?.Pause();
@@ -129,7 +129,7 @@ namespace ovkdesktop
                     // for groups (negative ID) - redirect to profile page
                     // TODO: create separate page for groups
                     Debug.WriteLine($"redirect to group page with ID = {profileId}");
-                this.Frame.Navigate(typeof(AnotherProfilePage), profileId);
+                    this.Frame.Navigate(typeof(AnotherProfilePage), profileId);
                 }
                 else
                 {
@@ -172,8 +172,8 @@ namespace ovkdesktop
             {
                 ErrorNewsPostsText.Visibility = Visibility.Collapsed;
 
-                // 1. Получаем основной список постов от API
-                // Примечание: GetNewsPostsAsync ожидает string, поэтому конвертируем nextFrom
+                // 1. Get the main list of posts from the API
+                // Note: GetNewsPostsAsync expects a string, so we convert nextFrom
                 var data = await apiService.GetNewsPostsAsync(token, nextFrom.ToString());
                 if (data?.Response?.Items == null)
                 {
@@ -182,20 +182,20 @@ namespace ovkdesktop
                     return;
                 }
 
-                // 2. Собираем ID ТОЛЬКО главных авторов постов
+                // 2. Collect ONLY the main authors' IDs of the posts
                 var authorIds = data.Response.Items.Select(p => p.FromId).Where(id => id != 0).ToHashSet();
 
-                // 3. Загружаем профили для этих авторов одним махом
+                // 3. Load profiles for these authors in one go
                 var authorsProfiles = new Dictionary<int, UserProfile>();
                 if (authorIds.Any())
                 {
                     authorsProfiles = await apiService.GetUsersAsync(token, authorIds);
                 }
 
-                // 4. Формируем коллекцию NewsPosts
-                // Если это первая загрузка (nextFrom == 0), очищаем список
-                // Эта логика теперь перенесена в LoadRepostProfilesAsync, чтобы избежать очистки перед добавлением.
-                // Здесь мы только добавляем новые посты.
+                // 4. Form the NewsPosts collection
+                // If this is the first load (nextFrom == 0), clear the list
+                // This logic is now moved to LoadRepostProfilesAsync to avoid clearing before adding.
+                // Here we only add new posts.
                 if (nextFrom == 0)
                 {
                     NewsPosts.Clear();
@@ -205,31 +205,31 @@ namespace ovkdesktop
                 {
                     if (post == null) continue;
 
-                    // Присваиваем профиль главному автору поста
+                    // Assign the profile to the main author of the post
                     if (authorsProfiles.TryGetValue(post.FromId, out var profile))
                     {
                         post.Profile = profile;
                     }
                     else
                     {
-                        // Заглушка, если профиль не нашелся
+                        // Fallback if the profile was not found
                         post.Profile = new UserProfile { Id = post.FromId, FirstName = (post.FromId > 0 ? "Пользователь" : "Группа"), LastName = post.FromId.ToString() };
                     }
 
                     NewsPosts.Add(post);
                 }
 
-                // 5. Обновляем "next_from" для следующей страницы
+                // 5. Update "next_from" for the next page
                 if (long.TryParse(data.Response.NextFrom, out long parsedNextFrom) && parsedNextFrom > 0)
                 {
                     nextFrom = parsedNextFrom;
                 }
                 else
                 {
-                    nextFrom = 0; // Конец ленты
+                    nextFrom = 0; // End of the feed
                 }
 
-                // 6. ПЕРЕДАЕМ ЭСТАФЕТУ методу, который займется репостами
+                // 6. PASS THE BATON to the method that will handle reposts
                 await LoadRepostProfilesAsync(token);
             }
             catch (Exception ex)
@@ -519,7 +519,7 @@ namespace ovkdesktop
         {
             try
             {
-                // Очистка контейнера должна происходить перед этим методом, например, в LoadRepostProfilesAsync.
+                // Container cleanup should happen before this method
                 PostsContainer.Children.Clear();
 
                 // determine colors depending on current theme
@@ -628,16 +628,16 @@ namespace ovkdesktop
                         postCard.Children.Add(textElement);
                     }
 
-                    // --- Content Panel (для репостов и вложений) ---
+                    // --- Content Panel ---
                     var contentPanel = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
 
-                    // 1. СНАЧАЛА добавляем репост, если он есть
+                    // 1. Add repost if exists
                     if (post.CopyHistory != null && post.CopyHistory.Any())
                     {
                         AddRepostContent(contentPanel, post);
                     }
 
-                    // 2. ПОТОМ добавляем вложения самого поста
+                    // 2. Add post attachments
                     if (post.Attachments != null && post.Attachments.Any())
                     {
                         bool hasVideo = false;
@@ -669,7 +669,7 @@ namespace ovkdesktop
                     Grid.SetRow(contentPanel, 2);
                     postCard.Children.Add(contentPanel);
 
-                    // --- Actions Panel (Лайки и комментарии) ---
+                    // --- Actions Panel ---
                     var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
 
                     var likeButton = new Button { Tag = post, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 10, 0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(4) };
@@ -987,10 +987,10 @@ namespace ovkdesktop
                 container.Children.Add(webViewContainer);
                 await webView.EnsureCoreWebView2Async();
 
-                // FIX: Устанавливаем источник только ПОСЛЕ успешной инициализации
+                // Set source only AFTER successful initialization
                 webView.Source = new Uri(videoUrl);
 
-                // FIX: Регистрируем созданный WebView для последующей очистки
+                // Register created WebView for subsequent cleanup
                 _activeWebViews.Add(webView);
 
             }
@@ -1148,7 +1148,7 @@ namespace ovkdesktop
             }
         }
 
-        // Метод для добавления аудио в пост
+        // Method for adding audio to post
         private void AddAudioContent(StackPanel container, NewsFeedPost post)
         {
             try
@@ -1159,7 +1159,7 @@ namespace ovkdesktop
                     return;
                 }
                 
-                // Добавляем заголовок для аудио
+                // Add header for audio
                 if (post.Audios.Count > 0)
                 {
                     var audioLabel = new TextBlock
@@ -1170,16 +1170,16 @@ namespace ovkdesktop
                     };
                     container.Children.Add(audioLabel);
                     
-                    // Создаем отдельный контейнер для аудио
+                    // Create separate container for audio
                     var audioContainer = new StackPanel
                     {
                         Margin = new Thickness(0, 0, 0, 10)
                     };
                     
-                    // Добавляем каждое аудио
+                    // Add each audio
                     foreach (var audio in post.Audios)
                     {
-                        // Создаем элемент для аудио
+                        // Create element for audio
                         var audioItem = CreateAudioElement(audio);
                         audioContainer.Children.Add(audioItem);
                     }
@@ -1194,12 +1194,12 @@ namespace ovkdesktop
             }
         }
         
-        // Метод для создания элемента аудио
+        // Method for creating audio element
         private UIElement CreateAudioElement(Models.Audio audio)
         {
             try
             {
-                // Создаем Grid для аудио
+                // Create Grid for audio
                 var grid = new Grid
                 {
                     Margin = new Thickness(0, 5, 0, 5),
@@ -1207,12 +1207,12 @@ namespace ovkdesktop
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
                 };
                 
-                // Добавляем колонки
+                // Add columns
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 
-                // Кнопка воспроизведения
+                // Play button
                 var playButton = new Button
                 {
                     Width = 40,
@@ -1230,7 +1230,7 @@ namespace ovkdesktop
                 Grid.SetColumn(playButton, 0);
                 grid.Children.Add(playButton);
                 
-                // Информация о треке
+                // Track information
                 var infoPanel = new StackPanel
                 {
                     VerticalAlignment = VerticalAlignment.Center,
@@ -1259,7 +1259,7 @@ namespace ovkdesktop
                 Grid.SetColumn(infoPanel, 1);
                 grid.Children.Add(infoPanel);
                 
-                // Длительность
+                // Duration
                 var durationText = new TextBlock
                 {
                     Text = audio.FormattedDuration,
@@ -1280,7 +1280,7 @@ namespace ovkdesktop
             }
         }
         
-        // Обработчик нажатия на кнопку воспроизведения аудио
+        // Handler for clicking the audio play button
         private void PlayAudio_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1289,11 +1289,11 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine($"[PostsPage] Playing audio: {audio.Artist} - {audio.Title}");
                     
-                    // Получаем сервис аудиоплеера из App
+                    // Get audio player service from App
                     var audioService = App.AudioService;
                     if (audioService != null)
                     {
-                        // Создаем плейлист из одного трека и воспроизводим
+                        // Create playlist from one track and play
                         var playlist = new ObservableCollection<Models.Audio> { audio };
                         audioService.SetPlaylist(playlist, 0);
                         
@@ -1689,8 +1689,8 @@ namespace ovkdesktop
                 this.DispatcherQueue.TryEnqueue(() =>
                 {
                     Debug.WriteLine("[PostsPage] Recreating UI on the UI thread to reflect all profile changes.");
-                    // Не нужно очищать контейнер, если мы добавляем посты (в случае LoadMore)
-                    // Но в вашей текущей логике вы всегда перестраиваете все.
+                    // No need to clear container if we're adding posts (in case of LoadMore)
+                    // But in your current logic you always rebuild everything.
                     PostsContainer.Children.Clear();
                     CreatePostsUI();
                     LoadingProgressRingNewsPosts.IsActive = false;

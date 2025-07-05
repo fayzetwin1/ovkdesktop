@@ -15,13 +15,13 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Заголовок страницы -->
+        <!-- Page header -->
         <Grid Grid.Row="0" Margin="125,105,20,0">
             <TextBlock x:Name="NewPostMPLabel" Text="Новый пост" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" />
             <TextBlock x:Name="ErrorTextBlock" Margin="0,60,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
         </Grid>
 
-        <!-- Основное содержимое -->
+        <!-- Main content -->
         <Grid Grid.Row="1" Margin="125,25,20,20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -30,7 +30,7 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             
-            <!-- Кнопка добавления медиа -->
+            <!-- Media add button -->
             <DropDownButton Grid.Row="0" 
                            AnimatedIcon.State="Add" 
                            Content="Добавить" 
@@ -58,7 +58,7 @@
                 </DropDownButton.Flyout>
             </DropDownButton>
 
-            <!-- Поле для ввода текста -->
+            <!-- Text input field -->
             <TextBox Grid.Row="1" 
                     AutomationProperties.Name="multi-line TextBox" 
                     x:Name="NewPostTextBox"
@@ -71,7 +71,7 @@
                     VerticalAlignment="Stretch"
                     Margin="0,0,0,10" />
 
-            <!-- Предпросмотр изображения -->
+            <!-- Image preview -->
             <Image Grid.Row="2"
                   x:Name="SelectedImagePreview" 
                   MaxHeight="300" 
@@ -79,7 +79,7 @@
                   HorizontalAlignment="Left"
                   Margin="0,10,0,10"/>
 
-            <!-- Кнопки действий -->
+            <!-- Action buttons -->
             <StackPanel Grid.Row="3" 
                        Orientation="Horizontal" 
                        HorizontalAlignment="Left" 
@@ -90,7 +90,7 @@
             </StackPanel>
         </Grid>
         
-        <!-- Фрейм для навигации -->
+        <!-- Navigation frame -->
         <Frame x:Name="ContentNewPostFrame" Grid.RowSpan="2">
             <Frame.ContentTransitions>
                 <TransitionCollection>

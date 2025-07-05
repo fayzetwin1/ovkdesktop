@@ -266,13 +266,13 @@ namespace ovkdesktop
                     return;
                 }
 
-                // Отключаем кнопку на время отправки
+                // Disable button during sending
                 SendCommentButton.IsEnabled = false;
 
-                // Создаем комментарий
+                // Create comment
                 await CreateCommentAsync(commentText);
 
-                // Очищаем поле ввода после успешной отправки
+                // Clear input field after successful sending
                 CommentTextBox.Text = string.Empty;
             }
             catch (Exception ex)

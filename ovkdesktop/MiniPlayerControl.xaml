@@ -17,7 +17,7 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
         <converters:SecondsToTimeStringConverter x:Key="SecondsToTimeStringConverter"/>
         
-        <!-- Анимация появления плеера -->
+        <!-- Player appearance animation -->
         <Storyboard x:Name="ShowPlayerStoryboard">
             <DoubleAnimation
                 Storyboard.TargetName="RootGrid"
@@ -33,7 +33,7 @@
             </DoubleAnimation>
         </Storyboard>
         
-        <!-- Анимация скрытия плеера -->
+        <!-- Player hiding animation -->
         <Storyboard x:Name="HidePlayerStoryboard">
             <DoubleAnimation
                 Storyboard.TargetName="RootGrid"
@@ -49,7 +49,7 @@
             </DoubleAnimation>
         </Storyboard>
         
-        <!-- Стиль для большого слайдера перемотки -->
+        <!-- Style for large seek slider -->
         <Style x:Key="BigSliderStyle" TargetType="Slider">
             <Setter Property="Background" Value="{ThemeResource SliderTrackFill}"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -84,7 +84,7 @@
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             
-                            <!-- Трек слайдера -->
+                            <!-- Slider track -->
                             <Rectangle 
                                 x:Name="HorizontalTrackRect" 
                                 Grid.Row="0" 
@@ -94,7 +94,7 @@
                                 RadiusX="4" 
                                 RadiusY="4"/>
                             
-                            <!-- Заполненная часть трека -->
+                            <!-- Filled part of track -->
                             <Rectangle 
                                 x:Name="HorizontalDecreaseRect" 
                                 Grid.Row="0" 
@@ -103,7 +103,7 @@
                                 RadiusX="4" 
                                 RadiusY="4"/>
                             
-                            <!-- Ползунок -->
+                            <!-- Thumb -->
                             <Thumb 
                                 x:Name="HorizontalThumb" 
                                 Grid.Row="0" 
@@ -132,7 +132,7 @@
             <RowDefinition Height="40"/>
         </Grid.RowDefinitions>
 
-        <!-- Основная часть плеера -->
+        <!-- Main part of player -->
         <Grid Grid.Row="0" Margin="15,0,15,0">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -140,7 +140,7 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Информация о треке (левая часть) -->
+        <!-- Track information (left part) -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,0,0">
                 <Button x:Name="TrackImageButton" Style="{ThemeResource DefaultButtonStyle}" 
                         Width="60" Height="60" 
@@ -162,7 +162,7 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Кнопки управления (центральная часть) -->
+            <!-- Control buttons (center part) -->
             <StackPanel Grid.Column="1" 
                         Orientation="Horizontal" 
                         HorizontalAlignment="Center" 
@@ -187,7 +187,7 @@
                 </Button>
             </StackPanel>
             
-            <!-- Правая часть -->
+            <!-- Right part -->
             <StackPanel Grid.Column="2" 
                         Orientation="Horizontal" 
                         HorizontalAlignment="Right" 
@@ -221,7 +221,7 @@
                     <FontIcon x:Name="FavoriteIcon" Glyph="&#xE00B;" FontSize="20"/>
                 </Button>
                 
-                <!-- Добавляем блок с громкостью -->
+                <!-- Add volume block -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,0">
                     <Button x:Name="VolumeButton" Style="{StaticResource DefaultButtonStyle}"
                             Width="32" Height="32" Padding="0" Margin="0,0,4,0" Click="VolumeButton_Click">
@@ -238,9 +238,9 @@
             </StackPanel>
         </Grid>
 
-        <!-- Слайдер времени трека в отдельной строке с метками времени -->
+        <!-- Track time slider in separate row with time labels -->
         <Grid Grid.Row="1" Margin="20,4,20,8">
-            <!-- Слайдер позиции -->
+            <!-- Position slider -->
             <Slider x:Name="PositionSlider"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Stretch"
