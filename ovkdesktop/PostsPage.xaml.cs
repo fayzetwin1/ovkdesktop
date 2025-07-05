@@ -240,10 +240,28 @@ namespace ovkdesktop
             }
         }
 
-        private void ShowError(string message)
+        private async void ShowError(string message)
         {
-            ErrorNewsPostsText.Text = message;
-            ErrorNewsPostsText.Visibility = Visibility.Visible;
+            try
+            {
+                Debug.WriteLine($"[PostInfoPage] ERROR: {message}");
+
+                if (this.XamlRoot == null) return;
+
+                var dialog = new ContentDialog
+                {
+                    Title = "Ошибка",
+                    Content = message,
+                    CloseButtonText = "OK",
+
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[PostInfoPage] Error when show ContentDialog: {ex}");
+            }
         }
 
         private void HandleWebException(WebException ex, HttpWebResponse response)

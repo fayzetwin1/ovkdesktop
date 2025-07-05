@@ -17,6 +17,8 @@
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
         <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
         <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
+        <converters:IsYouTubeToVisibilityConverter x:Key="YouTubeVisibilityConverter"/>
+        <converters:IsYouTubeToVisibilityConverter x:Key="NotYouTubeVisibilityConverter" IsReversed="True"/>
     </Page.Resources>
 
     <Grid>
@@ -202,17 +204,32 @@
 									   Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                 <!-- video -->
-                                <Grid Grid.Row="3" 
-                                      Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                      Margin="0,0,0,10">
-                                    <MediaPlayerElement 
-                                        Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
-                                        MaxHeight="400" 
-                                        HorizontalAlignment="Left"
-                                        AreTransportControlsEnabled="True"/>
-                                </Grid>
+                                    <Grid Grid.Row="3" 
+                                          Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
+                                          Margin="0,0,0,10">
+                                        
+                                        <!-- not youtube -->
+                                        <MediaPlayerElement 
+                                            Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                                            Visibility="{Binding MainVideo.Player, Converter={StaticResource NotYouTubeVisibilityConverter}}"
+                                            MaxHeight="400" 
+                                            HorizontalAlignment="Left"
+                                            AreTransportControlsEnabled="True"/>
 
-                                <!-- gif -->
+                                        <!-- youtube -->
+                                        <StackPanel Visibility="{Binding MainVideo.Player, Converter={StaticResource YouTubeVisibilityConverter}}">
+                                            <TextBlock Text="Видео с YouTube" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                            <Button Click="PlayVideo_Click" Tag="{Binding}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <FontIcon Glyph="" />
+                                                    <TextBlock Text="Открыть в браузере"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+
+                                    </Grid>
+
+                                    <!-- gif -->
                                 <Image Grid.Row="4"
                                        Source="{Binding GifUrl}"
                                        Stretch="Uniform" MaxHeight="400"
@@ -233,14 +250,13 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 
-                                                <!-- Кнопка воспроизведения -->
                                                 <Button Grid.Column="0" Width="40" Height="40" 
                                                         Padding="0" Background="Transparent"
                                                         Tag="{Binding}" Click="PlayAudio_Click">
                                                     <FontIcon Glyph="&#xE768;" FontSize="16"/>
                                                 </Button>
                                                 
-                                                <!-- Информация о треке -->
+                                                <!-- info about track -->
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
                                                     <TextBlock Text="{Binding Title}" 
                                                                TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
@@ -250,7 +266,7 @@
                                                                Opacity="0.8" FontSize="12"/>
                                                 </StackPanel>
                                                 
-                                                <!-- Длительность -->
+                                                <!-- duration -->
                                                 <TextBlock Grid.Column="2" Text="{Binding FormattedDuration}" 
                                                            VerticalAlignment="Center" Margin="10,0,0,0"
                                                            Opacity="0.8" FontSize="12"/>
@@ -259,7 +275,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <!-- Репост -->
+                                <!-- repost -->
                                     <Border Grid.Row="6" 
                                         Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
                                         Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
@@ -321,7 +337,7 @@
 
                                     <!-- likes and comments count - moved after the repost content -->
                                 <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="15" Margin="0,10,0,0">
-                                    <!-- Кнопка лайка -->
+                                    <!-- like -->
                                     <Button Tag="{Binding}" Click="LikeButton_Click" 
                                            Background="Transparent" BorderThickness="0" Padding="5,2">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
@@ -331,8 +347,8 @@
                                         </StackPanel>
                                     </Button>
 
-                                    <!-- Кнопка комментариев -->
-                                    <Button Tag="{Binding}" Tapped="ShowPostComments_Tapped" 
+                                    <!-- comment -->
+                                    <Button Tag="{Binding}" Tapped="CommentsButton_Click" 
                                            Background="Transparent" BorderThickness="0" Padding="5,2">
                                         <StackPanel Orientation="Horizontal" Spacing="5">
                                             <TextBlock Text="💬" />

@@ -805,13 +805,7 @@ namespace ovkdesktop
             Frame.GoBack();
         }
 
-        private void ShowPostComments_Tapped(object sender, TappedRoutedEventArgs e)
-        {
-            if (sender is Button button && button.Tag is UserWallPost post)
-            {
-                Frame.Navigate(typeof(PostInfoPage), new object[] { post, userProfile });
-            }
-        }
+        
 
         private void ShowError(string message)
         {
@@ -929,10 +923,30 @@ namespace ovkdesktop
         {
             if (sender is FrameworkElement element && element.DataContext is UserWallPost post)
             {
-                ShowPostComments_Tapped(sender, e);
+                var navParams = new PostInfoPage.PostInfoParameters
+                {
+                    PostId = post.Id,
+                    OwnerId = post.OwnerId
+                };
+
+                Frame.Navigate(typeof(PostInfoPage), navParams);
             }
         }
-        
+
+        private void CommentsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is UserWallPost post)
+            {
+                var navParams = new PostInfoPage.PostInfoParameters
+                {
+                    PostId = post.Id,
+                    OwnerId = post.OwnerId
+                };
+
+                Frame.Navigate(typeof(PostInfoPage), navParams);
+            }
+        }
+
         private FrameworkElement CreateFormattedTextWithLinks(string text)
         {
             try

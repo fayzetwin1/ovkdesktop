@@ -130,8 +130,14 @@ namespace ovkdesktop.Models
             {
                 foreach (var att in Attachments)
                 {
-                    if (att.Type == "doc" && att.Doc != null && att.Doc.Ext == "gif")
+                    if (att.Type == "doc" &&
+                        att.Doc != null &&
+                        att.Doc.Ext == "gif" &&
+                        !string.IsNullOrEmpty(att.Doc.Url) && 
+                        att.Doc.Url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
+                    {
                         return att.Doc.Url;
+                    }
                 }
             }
             return null;
@@ -552,6 +558,7 @@ namespace ovkdesktop.Models
         public string Description { get; set; }
 
         [JsonPropertyName("duration")]
+        [JsonConverter(typeof(FlexibleIntJsonConverter))] 
         public int Duration { get; set; }
 
         [JsonPropertyName("image")]

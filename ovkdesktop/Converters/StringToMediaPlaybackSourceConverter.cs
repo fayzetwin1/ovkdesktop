@@ -14,93 +14,27 @@ namespace ovkdesktop.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
+            if (value is not string url || string.IsNullOrEmpty(url))
+            {
+                return null;
+            }
+
+            if (url.Contains("youtube.com") || url.Contains("youtu.be"))
+            {
+                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] YouTube URL detected, returning null to prevent crash: {url}");
+                return null;
+            }
+
+
             try
             {
-                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Call StringToMediaPlaybackSourceConverter with value={value}");
-                
-                if (value is string url && !string.IsNullOrEmpty(url))
-                {
-                    Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Processing URL: {url}");
-                    
-                    // check URL format
-                    if (!url.StartsWith("http://") && !url.StartsWith("https://"))
-                    {
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Wrong URL: {url}");
-                        return null;
-                    }
-                    
-                    // check length of url
-                    if (url.Length > 2000)
-                    {
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] URL too long ({url.Length}), cut it to 2000");
-                        url = url.Substring(0, 2000);
-                    }
-
-                    try
-                    {
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Creating Uri from URL");
-                        Uri uri;
-                        try
-                        {
-                            uri = new Uri(url);
-                        }
-                        catch (UriFormatException ex)
-                        {
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Error of URI format: {ex.Message}");
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Trying create URI");
-                            string escapedUrl = Uri.EscapeDataString(url);
-                            uri = new Uri(escapedUrl);
-                        }
-                        
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Creating MediaSource from Uri");
-                        try
-                        {
-                            var mediaSource = MediaSource.CreateFromUri(uri);
-                            
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Creating MediaPlaybackItem from MediaSource");
-                            var result = new MediaPlaybackItem(mediaSource);
-                            
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Succesfully MediaPlaybackItem");
-                            return result;
-                        }
-                        catch (ArgumentException ex)
-                        {
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] ArgumentException when creating MediaSource: {ex.Message}");
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Return null without MediaPlaybackItem");
-                            return null;
-                        }
-                    }
-                    catch (UriFormatException ex)
-                    {
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Error of URI format: {ex.Message}");
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Stack trace: {ex.StackTrace}");
-                        return null;
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Error when creating media: {ex.Message}");
-                        Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Stack trace: {ex.StackTrace}");
-                        if (ex.InnerException != null)
-                        {
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Inner exception: {ex.InnerException.Message}");
-                            Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Inner stack trace: {ex.InnerException.StackTrace}");
-                        }
-                        return null;
-                    }
-                }
-                
-                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] null or empty string");
-                return null;
+                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Processing direct media URL: {url}");
+                var mediaSource = MediaSource.CreateFromUri(new Uri(url));
+                return new MediaPlaybackItem(mediaSource);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] General error in converter: {ex.Message}");
-                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Inner exception: {ex.InnerException.Message}");
-                    Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Inner stack trace: {ex.InnerException.StackTrace}");
-                }
+                Debug.WriteLine($"[StringToMediaPlaybackSourceConverter] Error creating MediaPlaybackItem: {ex.Message} for URL: {url}");
                 return null;
             }
         }
