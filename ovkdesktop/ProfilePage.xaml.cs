@@ -30,6 +30,9 @@ namespace ovkdesktop
         private string userId;
         private string instanceUrl;
 
+        private readonly List<MediaPlayerElement> _activeMediaPlayers = new List<MediaPlayerElement>();
+        private readonly List<WebView2> _activeWebViews = new List<WebView2>();
+
         public ProfilePage()
         {
             this.InitializeComponent();
@@ -53,6 +56,26 @@ namespace ovkdesktop
                 Debug.WriteLine($"[ProfilePage] Error initializing: {ex.Message}");
                 ShowError($"Ошибка инициализации: {ex.Message}");
             }
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+
+            // FIX: Очищаем все медиа-элементы для предотвращения сбоев
+            foreach (var mediaPlayerElement in _activeMediaPlayers)
+            {
+                mediaPlayerElement.MediaPlayer?.Pause();
+                mediaPlayerElement.MediaPlayer?.Dispose();
+                mediaPlayerElement.SetMediaPlayer(null);
+            }
+            _activeMediaPlayers.Clear();
+
+            foreach (var webView in _activeWebViews)
+            {
+                webView.Close();
+            }
+            _activeWebViews.Clear();
         }
 
         private async Task<OVKDataBody> LoadTokenAsync()
@@ -425,85 +448,88 @@ namespace ovkdesktop
                                     }
 
                                     // Process reposts (copy_history)
-                                    if (item.TryGetProperty("copy_history", out JsonElement copyHistoryElement) && 
+                                    if (item.TryGetProperty("copy_history", out JsonElement copyHistoryElement) &&
                                         copyHistoryElement.ValueKind == JsonValueKind.Array &&
                                         copyHistoryElement.GetArrayLength() > 0)
                                     {
-                                        post.CopyHistory = new List<UserWallPost>();
-                                        
+                                        // FIX 1: Initialize the list with the correct type 'RepostedPost'.
+                                        post.CopyHistory = new List<RepostedPost>();
+
                                         foreach (JsonElement repostElement in copyHistoryElement.EnumerateArray())
                                         {
-                                            var repost = new UserWallPost();
-                                            
+                                            // FIX 2: Create the repost object with the correct type 'RepostedPost'.
+                                            var repost = new RepostedPost();
+
                                             // Extract basic repost properties
                                             if (repostElement.TryGetProperty("id", out JsonElement repostIdElement))
                                                 repost.Id = repostIdElement.GetInt32();
-                                                
+
                                             if (repostElement.TryGetProperty("from_id", out JsonElement repostFromIdElement))
                                                 repost.FromId = repostFromIdElement.GetInt32();
-                                                
+
                                             if (repostElement.TryGetProperty("owner_id", out JsonElement repostOwnerIdElement))
                                                 repost.OwnerId = repostOwnerIdElement.GetInt32();
-                                                
+
                                             if (repostElement.TryGetProperty("date", out JsonElement repostDateElement))
                                                 repost.Date = repostDateElement.GetInt64();
-                                                
+
                                             if (repostElement.TryGetProperty("text", out JsonElement repostTextElement))
                                                 repost.Text = repostTextElement.GetString();
-                                                
+
                                             // Process repost attachments
-                                            if (repostElement.TryGetProperty("attachments", out JsonElement repostAttachmentsElement) && 
+                                            if (repostElement.TryGetProperty("attachments", out JsonElement repostAttachmentsElement) &&
                                                 repostAttachmentsElement.ValueKind == JsonValueKind.Array)
                                             {
                                                 repost.Attachments = new List<Attachment>();
-                                                
+
                                                 foreach (JsonElement repostAttachmentElement in repostAttachmentsElement.EnumerateArray())
                                                 {
                                                     var repostAttachment = new Attachment();
-                                                    
+
                                                     if (repostAttachmentElement.TryGetProperty("type", out JsonElement repostTypeElement))
                                                         repostAttachment.Type = repostTypeElement.GetString();
-                                                        
+
                                                     // Process repost photos
-                                                    if (repostAttachment.Type == "photo" && 
+                                                    if (repostAttachment.Type == "photo" &&
                                                         repostAttachmentElement.TryGetProperty("photo", out JsonElement repostPhotoElement))
                                                     {
                                                         var photo = new Photo();
-                                                        
+
                                                         if (repostPhotoElement.TryGetProperty("id", out JsonElement photoIdElement))
                                                             photo.Id = photoIdElement.GetInt32();
-                                                            
-                                                        if (repostPhotoElement.TryGetProperty("sizes", out JsonElement photoSizesElement) && 
+
+                                                        if (repostPhotoElement.TryGetProperty("sizes", out JsonElement photoSizesElement) &&
                                                             photoSizesElement.ValueKind == JsonValueKind.Array)
                                                         {
                                                             photo.Sizes = new List<PhotoSize>();
-                                                            
+
                                                             foreach (JsonElement sizeElement in photoSizesElement.EnumerateArray())
                                                             {
                                                                 var size = new PhotoSize();
-                                                                
+
                                                                 if (sizeElement.TryGetProperty("type", out JsonElement sizeTypeElement))
                                                                     size.Type = sizeTypeElement.GetString();
-                                                                    
+
                                                                 if (sizeElement.TryGetProperty("url", out JsonElement sizeUrlElement))
                                                                     size.Url = sizeUrlElement.GetString();
-                                                                    
+
                                                                 photo.Sizes.Add(size);
                                                             }
                                                         }
-                                                        
+
                                                         repostAttachment.Photo = photo;
                                                     }
-                                                    
+
                                                     // Add other attachment types as needed (video, audio, etc.)
-                                                    
+
                                                     repost.Attachments.Add(repostAttachment);
                                                 }
                                             }
-                                            
+
+                                            // This will now work correctly.
                                             post.CopyHistory.Add(repost);
                                         }
-                                        
+
                                         Debug.WriteLine($"[ProfilePage] Processed repost for post ID {post.Id}, found {post.CopyHistory.Count} reposts");
                                     }
 
@@ -849,7 +875,7 @@ namespace ovkdesktop
         }
         
         // method for adding WebView2 for YouTube
-        private void AddYouTubePlayer(StackPanel container, string videoUrl)
+        private async void AddYouTubePlayer(StackPanel container, string videoUrl)
         {
             try
             {
@@ -906,6 +932,14 @@ namespace ovkdesktop
                 // add element to container
                 webViewContainer.Children.Add(webView);
                 container.Children.Add(webViewContainer);
+
+                await webView.EnsureCoreWebView2Async();
+
+                // FIX: Устанавливаем источник ПОСЛЕ
+                webView.Source = new Uri(videoUrl);
+
+                // FIX: Регистрируем WebView
+                _activeWebViews.Add(webView);
             }
             catch (Exception ex)
             {
@@ -1003,6 +1037,8 @@ namespace ovkdesktop
                 // add element to container
                 videoContainer.Children.Add(mediaPlayer);
                 container.Children.Add(videoContainer);
+
+                _activeMediaPlayers.Add(mediaPlayer);
             }
             catch (Exception ex)
             {

@@ -91,6 +91,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <!-- Дата поста -->
@@ -247,7 +248,7 @@
                                 </Border>
 
                                 <!-- Лайки и комментарии -->
-                                <StackPanel Grid.Row="6" 
+                                <StackPanel Grid.Row="7" 
                                           Orientation="Horizontal" 
                                           Spacing="15" 
                                           Margin="0,20,0,0"

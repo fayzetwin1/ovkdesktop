@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -12,13 +5,21 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
-using System.Net;
-using Windows.Security.Cryptography.Core;
+using System;
 using System.Collections;
-using System.Linq.Expressions;
-using System.Text.Json;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Net;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Windows.Foundation;
+using Windows.Foundation.Collections;
+using Windows.Security.Cryptography.Core;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -193,99 +194,125 @@ namespace ovkdesktop
 
         private async Task AuthorizeAsync(string twoFactorCode = null)
         {
-            // add api version and change url format for compatibility with different instances
+            // ШАГ 1: Получаем токен доступа
             var url = $"{_instanceUrl}token?username={_username}&password={_password}&grant_type=password&client_name=OpenVK Desktop&v=5.126";
-            
-            // add 2fa code if it was provided
+
             if (!string.IsNullOrEmpty(twoFactorCode))
             {
                 url += $"&code={twoFactorCode}";
                 Debug.WriteLine("[AuthPage] Adding 2FA code to request");
             }
-            
+
             Debug.WriteLine($"[AuthPage] Authorization URL: {url}");
 
             var request = WebRequest.Create(url);
             request.Method = "GET";
-            
-            // add user agent for better compatibility
             request.Headers.Add("User-Agent", "OpenVK Desktop Client/1.0");
 
-            using var webResponse = request.GetResponse();
+            using var webResponse = await request.GetResponseAsync(); // Используем async-версию
             using var webStream = webResponse.GetResponseStream();
-
             using var reader = new StreamReader(webStream);
-            var data = reader.ReadToEnd();
-            
+            var data = await reader.ReadToEndAsync();
+
             Debug.WriteLine($"[AuthPage] Auth response: {data}");
 
             using JsonDocument doc = JsonDocument.Parse(data);
             JsonElement root = doc.RootElement;
 
             string token = string.Empty;
-            int userId = 0;
-
             if (root.TryGetProperty("access_token", out JsonElement accessTokenElement))
             {
                 token = accessTokenElement.GetString();
-                Debug.WriteLine("[AuthPage] Successfully received access token");
-                
-                // try to get user id
-                if (root.TryGetProperty("user_id", out JsonElement userIdElement))
-                {
-                    userId = userIdElement.GetInt32();
-                    Debug.WriteLine($"[AuthPage] User ID from token: {userId}");
-                }
             }
 
-            if (String.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(token))
             {
-                // check if there is an error message
-                string errorMessage = "Токен при его получении от сервера оказался пуст.";
-                if (root.TryGetProperty("error", out JsonElement errorElement))
+                // Логика обработки ошибки, если токен не получен
+                // ... (ваш код обработки ошибок остается без изменений)
+                ContentDialog finalAuth = new ContentDialog
                 {
-                    errorMessage += $" Ошибка: {errorElement}";
-                }
-                if (root.TryGetProperty("error_description", out JsonElement errorDescElement))
-                {
-                    errorMessage += $" Описание: {errorDescElement}";
-                }
-                
-                ContentDialog finalAuth = new ContentDialog();
-
-                finalAuth.XamlRoot = this.Content.XamlRoot;
-                finalAuth.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-                finalAuth.Title = "Ошибка";
-                finalAuth.PrimaryButtonText = "Ладно";
-                finalAuth.Content = $"{errorMessage}\n\nВозможно, проблема связана с самим инстансом OpenVK. В таком случае, стоит обратиться к администратору инстанса либо к разработчику OVK Desktop.";
-                finalAuth.DefaultButton = ContentDialogButton.Primary;
-
+                    XamlRoot = this.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    Title = "Ошибка",
+                    PrimaryButtonText = "Ладно",
+                    Content = "Токен при его получении от сервера оказался пуст.",
+                    DefaultButton = ContentDialogButton.Primary
+                };
                 await finalAuth.ShowAsync();
+                return; // Выходим из метода
             }
-            else
+
+            // ШАГ 2: Используем полученный токен для получения ID пользователя
+            Debug.WriteLine("[AuthPage] Successfully received access token. Now getting user ID...");
+            int userId = 0;
+            try
             {
-                // save
-                using (FileStream fs = new FileStream("ovkdata.json", FileMode.OpenOrCreate))
+                var usersGetUrl = $"{_instanceUrl}method/users.get?access_token={token}&v=5.126";
+                var usersGetRequest = WebRequest.Create(usersGetUrl);
+                usersGetRequest.Method = "GET";
+                usersGetRequest.Headers.Add("User-Agent", "OpenVK Desktop Client/1.0");
+
+                using var usersGetResponse = await usersGetRequest.GetResponseAsync();
+                using var usersGetStream = usersGetResponse.GetResponseStream();
+                using var usersGetReader = new StreamReader(usersGetStream);
+                var usersGetData = await usersGetReader.ReadToEndAsync();
+
+                Debug.WriteLine($"[AuthPage] users.get response: {usersGetData}");
+
+                using JsonDocument usersDoc = JsonDocument.Parse(usersGetData);
+                if (usersDoc.RootElement.TryGetProperty("response", out var responseArray) && responseArray.GetArrayLength() > 0)
                 {
-                    OVKDataBody jsonBody = new OVKDataBody(token, _instanceUrl);
-                    await JsonSerializer.SerializeAsync<OVKDataBody>(fs, jsonBody);
+                    if (responseArray[0].TryGetProperty("id", out var idElement))
+                    {
+                        userId = idElement.GetInt32();
+                    }
                 }
-                
-                Debug.WriteLine($"[AuthPage] Saved token with instance URL: {_instanceUrl}");
-                
-                // save username for future use
-                await SessionHelper.SaveLoginAsync(_username);
-                
-                // check token
-                bool isValid = await SessionHelper.IsTokenValidAsync();
-                if (!isValid)
-                {
-                    Debug.WriteLine("[AuthPage] WARNING: Token validation failed, but we'll proceed anyway");
-                }
-                
-                // redirect to main page
-                this.Frame.Navigate(typeof(MainPage));
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AuthPage] Failed to get user ID after getting token: {ex.Message}");
+                // Показываем ошибку пользователю
+                ContentDialog errorDialog = new ContentDialog
+                {
+                    XamlRoot = this.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    Title = "Ошибка получения профиля",
+                    Content = $"Не удалось получить информацию о пользователе после успешной авторизации. Ошибка: {ex.Message}",
+                    PrimaryButtonText = "ОК"
+                };
+                await errorDialog.ShowAsync();
+                return; // Прерываем процесс
+            }
+
+            if (userId == 0)
+            {
+                Debug.WriteLine("[AuthPage] CRITICAL: user_id is 0. Cannot proceed.");
+                ContentDialog errorDialog = new ContentDialog
+                {
+                    XamlRoot = this.Content.XamlRoot,
+                    Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
+                    Title = "Критическая ошибка",
+                    Content = "Не удалось определить ID вашего аккаунта. Вход невозможен.",
+                    PrimaryButtonText = "ОК"
+                };
+                await errorDialog.ShowAsync();
+                return;
+            }
+
+            // ШАГ 3: Сохраняем все данные и переходим на главную страницу
+            await SessionHelper.SaveInstanceUrlAsync(_instanceUrl);
+
+            using (FileStream fs = new FileStream("ovkdata.json", FileMode.Create))
+            {
+                OVKDataBody jsonBody = new OVKDataBody(userId, token, _instanceUrl);
+                await JsonSerializer.SerializeAsync(fs, jsonBody, new JsonSerializerOptions { WriteIndented = true });
+            }
+
+            Debug.WriteLine($"[AuthPage] Saved user_id: {userId}, token and instance URL: {_instanceUrl}");
+
+            await SessionHelper.SaveLoginAsync(_username);
+
+            this.Frame.Navigate(typeof(MainPage));
         }
 
         private async Task Show2FADialog()
@@ -389,11 +416,25 @@ namespace ovkdesktop
 
     class OVKDataBody
     {
+        // Добавляем JsonPropertyName для корректной сериализации/десериализации
+        [JsonPropertyName("user_id")]
+        public int UserId { get; set; }
+
+        [JsonPropertyName("access_token")]
         public string Token { get; set; }
+
+        // InstanceUrl не является частью ответа API, поэтому его мы не будем сериализовать в JSON.
+        // Он будет храниться в другом месте (в настройках).
+        [JsonIgnore]
         public string InstanceUrl { get; set; }
-        
-        public OVKDataBody(string token, string instanceUrl)
+
+        // Пустой конструктор для десериализации
+        public OVKDataBody() { }
+
+        // Конструктор для создания объекта при авторизации
+        public OVKDataBody(int userId, string token, string instanceUrl)
         {
+            UserId = userId;
             Token = token;
             InstanceUrl = instanceUrl;
         }

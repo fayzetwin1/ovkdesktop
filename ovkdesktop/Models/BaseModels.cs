@@ -160,49 +160,49 @@ namespace ovkdesktop.Models
             }
             return null;
         }
-    }
 
-    public class UserWallPost : BasePost
-    {
         [JsonPropertyName("copy_history")]
-        public List<UserWallPost> CopyHistory { get; set; }
+        public List<RepostedPost> CopyHistory { get; set; }
+
+        [JsonPropertyName("profile")] // Если API возвращает профиль сразу
+        public UserProfile Profile { get; set; }
 
         [JsonIgnore]
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
 
         [JsonIgnore]
-        public UserWallPost Repost => HasRepost ? CopyHistory[0] : null;
+        public RepostedPost Repost => HasRepost ? CopyHistory[0] : null;
 
         [JsonIgnore]
-        public string RepostOwnerText => HasRepost ? FormatRepostOwnerText() : "";
-        
-        [JsonIgnore]
-        public UserProfile Profile { get; set; }
+        public string RepostOwnerText => FormatRepostOwnerText();
 
         private string FormatRepostOwnerText()
         {
-            if (Repost == null) return "";
-            
+            if (!HasRepost || Repost == null) return "";
+
+            // Если профиль автора репоста уже загружен
             if (Repost.Profile != null)
             {
-                // If it's a group (negative ID), only show FirstName (which contains the group name)
-                if (Repost.FromId < 0)
+                if (Repost.Profile.IsGroup)
                 {
-                    return Repost.Profile.FirstName;
+                    return Repost.Profile.FirstName; // Для групп имя в FirstName
                 }
-                
-                // Otherwise it's a user, show first and last name
-                return $"{Repost.Profile.FirstName} {Repost.Profile.LastName}";
+                return $"{Repost.Profile.FirstName} {Repost.Profile.LastName}".Trim();
             }
-            
-            // If profile is not available, use fallback
+
+            // Запасной вариант, если профиль по какой-то причине не загрузился
             if (Repost.FromId < 0)
             {
                 return $"Группа {Math.Abs(Repost.FromId)}";
             }
-            
+
             return $"Пользователь {Repost.FromId}";
         }
+    }
+    public class RepostedPost : BasePost { }
+
+    public class UserWallPost : BasePost
+    {
     }
 
     public class ProfileWallPost : BasePost
@@ -250,89 +250,10 @@ namespace ovkdesktop.Models
 
     public class NewsFeedPost : BasePost
     {
-        [JsonIgnore]
-        public new Comments Comments => CommentsNews;
 
-        [JsonPropertyName("comments")]
-        public Comments CommentsNews { get; set; }
+        
 
-        [JsonIgnore]
-        public new Likes Likes => LikesNews;
-
-        [JsonPropertyName("likes")]
-        public Likes LikesNews { get; set; }
-
-        [JsonIgnore]
-        public new Reposts Reposts => RepostsNews;
-
-        [JsonPropertyName("reposts")]
-        public Reposts RepostsNews { get; set; }
-
-        [JsonIgnore]
-        public int LikesCount => LikesNews?.Count ?? 0;
-
-        [JsonIgnore]
-        public int CommentsCount => CommentsNews?.Count ?? 0;
-
-        [JsonIgnore]
-        public int RepostsCount => RepostsNews?.Count ?? 0;
-
-        [JsonIgnore]
-        public UserProfile Profile { get; set; }
-
-        [JsonIgnore]
-        public string AuthorFullName => $"{Profile?.FirstName ?? ""} {Profile?.LastName ?? ""}";
-
-        [JsonIgnore]
-        public string AuthorAvatar => Profile?.Photo200;
-
-        [JsonIgnore]
-        public string AuthorNickname => Profile?.Nickname;
-
-        [JsonPropertyName("copy_history")]
-        public List<NewsFeedPost> CopyHistory { get; set; }
-
-        [JsonIgnore]
-        public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
-
-        [JsonIgnore]
-        public NewsFeedPost Repost => HasRepost ? CopyHistory[0] : null;
-
-        [JsonIgnore]
-        public string RepostText => Repost?.Text;
-
-        [JsonIgnore]
-        public string RepostAuthorFirstName => Repost?.Profile?.FirstName ?? "";
-
-        [JsonIgnore]
-        public string RepostAuthorLastName => Repost?.Profile?.LastName ?? "";
-
-        [JsonIgnore]
-        public string RepostAuthorNickname => Repost?.Profile?.Nickname ?? "";
-
-        [JsonIgnore]
-        public int RepostLikesCount => Repost?.LikesCount ?? 0;
-
-        [JsonIgnore]
-        public int RepostCommentsCount => Repost?.CommentsCount ?? 0;
-
-        [JsonIgnore]
-        public bool RepostHasImage => Repost?.HasImage ?? false;
-
-        [JsonIgnore]
-        public string RepostMainImageUrl => Repost?.MainImageUrl;
-
-        [JsonIgnore]
-        public bool RepostHasGif => Repost?.HasGif ?? false;
-
-        [JsonIgnore]
-        public string RepostGifUrl => Repost?.GifUrl;
-
-        [JsonIgnore]
-        public bool RepostHasVideo => Repost?.HasVideo ?? false;
-
-        [JsonIgnore]
-        public Video RepostMainVideo => Repost?.MainVideo;
+        
         
         [JsonIgnore]
         public string SafeMainImageUrl 
@@ -455,7 +376,13 @@ namespace ovkdesktop.Models
         public List<T> Items { get; set; }
 
         [JsonPropertyName("next_from")]
-        public long NextFrom { get; set; }
+        public string NextFrom { get; set; }
+
+        [JsonPropertyName("profiles")]
+        public List<UserProfile> Profiles { get; set; }
+
+        [JsonPropertyName("groups")]
+        public List<GroupProfile> Groups { get; set; }
     }
 
     public class NewsFeedResponse
@@ -496,11 +423,20 @@ namespace ovkdesktop.Models
         [JsonPropertyName("photo_200")]
         public string Photo200 { get; set; }
 
+        [JsonPropertyName("photo_50")]
+        public string Photo50 { get; set; }
+
+        [JsonPropertyName("photo_100")]
+        public string Photo100 { get; set; }
+
         [JsonPropertyName("from_id")]
         public int FromId { get; set; }
         
         [JsonIgnore]
         public bool IsGroup { get; set; }
+
+        [JsonIgnore]
+        public string BestAvailablePhoto => Photo200 ?? Photo100 ?? Photo50;
     }
 
     public class UsersGetResponse
@@ -540,6 +476,19 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("site")]
         public string Site { get; set; }
+
+        public UserProfile ToUserProfile()
+        {
+            return new UserProfile
+            {
+                Id = -this.Id, // Важно: ID группы делаем отрицательным
+                FirstName = this.Name,
+                LastName = "", // У групп нет фамилии
+                Nickname = this.ScreenName,
+                Photo200 = this.Photo200,
+                IsGroup = true
+            };
+        }
     }
 
     public class OVKDataBody

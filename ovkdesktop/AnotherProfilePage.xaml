@@ -128,13 +128,14 @@
                                     Margin="50,5,0,10" Padding="15">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/> <!-- Row 0: Date -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 1: Text -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 2: Image -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 3: Video -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 4: GIF -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 5: Audio -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 6: Repost -->
+                                    <RowDefinition Height="Auto"/> <!-- Row 7: Likes/Comments -->
                                 </Grid.RowDefinitions>
 
                                 <!-- date of post -->
@@ -214,82 +215,66 @@
                                 </ItemsControl>
 
                                 <!-- Репост -->
-                                <Border Grid.Row="6" 
-                                       Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
-                                       Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                       BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                       BorderThickness="1" CornerRadius="4"
-                                       Padding="10" Margin="0,0,0,10"
-                                       HorizontalAlignment="Stretch">
-                                    <StackPanel>
-                                        <!-- Repost author header with avatar and info -->
-                                        <Grid Margin="0,0,0,10">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            
-                                            <!-- Author avatar -->
-                                            <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
-                                                <Ellipse.Fill>
-                                                    <ImageBrush ImageSource="{Binding Repost.Profile.Photo200}" 
-                                                                Stretch="UniformToFill"/>
-                                                </Ellipse.Fill>
-                                            </Ellipse>
-                                            
-                                            <!-- Author info -->
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <!-- Clickable repost owner text -->
-                                                <Button x:Name="RepostAuthorButton"
-                                                        Background="Transparent" 
-                                                        BorderThickness="0"
-                                                        Padding="0,2" 
-                                                        Margin="0,0,0,0"
-                                                        HorizontalAlignment="Left"
-                                                        HorizontalContentAlignment="Left"
-                                                        Tag="{Binding Repost.FromId}"
-                                                        Click="RepostAuthor_Click">
-                                                    <TextBlock Text="{Binding RepostOwnerText}" 
-                                                              Opacity="1.0" 
-                                                              Margin="0,0,0,0"
-                                                              Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                                              FontWeight="SemiBold"/>
-                                                </Button>
-                                                
-                                                <!-- Post date -->
-                                                <TextBlock Text="{Binding Repost.FormattedDate}"
-                                                           Opacity="0.7" 
-                                                           FontSize="12"/>
-                                            </StackPanel>
-                                        </Grid>
-                                        
-                                        <!-- Repost content -->
-                                        <TextBlock Text="{Binding Repost.Text}" 
-                                                  TextWrapping="Wrap" Margin="0,0,0,10"
-                                                  Foreground="{ThemeResource TextFillColorPrimary}"/>
-                                        
-                                        <Image Source="{Binding Repost.MainImageUrl}"
-                                              Stretch="Uniform" MaxHeight="300"
-                                              HorizontalAlignment="Left" Margin="0,0,0,10"
-                                              Visibility="{Binding Repost.HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                              
-                                        <Image Source="{Binding Repost.GifUrl}"
-                                              Stretch="Uniform" MaxHeight="300"
-                                              HorizontalAlignment="Left" Margin="0,0,0,10"
-                                              Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                              
-                                        <Grid Visibility="{Binding Repost.HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                             Margin="0,0,0,0"
-                                             HorizontalAlignment="Left">
-                                            <MediaPlayerElement 
-                                                Source="{Binding Repost.MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
-                                                MaxHeight="300" 
-                                                AreTransportControlsEnabled="True"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Border>
+                                    <Border Grid.Row="6" 
+                                        Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
+                                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1" CornerRadius="4"
+                                        Padding="10" Margin="0,0,0,10"
+                                        HorizontalAlignment="Stretch">
+                                        <StackPanel>
+                                            <!-- Author header with avatar and info -->
+                                            <Grid Margin="0,0,0,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
 
-                                <!-- likes and comments count - moved after the repost content -->
+                                                <!-- Author avatar -->
+                                                <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                                                    <Ellipse.Fill>
+                                                        <ImageBrush ImageSource="{Binding Repost.Profile.BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                                    </Ellipse.Fill>
+                                                </Ellipse>
+
+                                                <!-- Author info -->
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <Button x:Name="RepostAuthorButton" Background="Transparent" BorderThickness="0"
+                                                        Padding="0,2" Margin="0" HorizontalAlignment="Left"
+                                                        HorizontalContentAlignment="Left" Tag="{Binding Repost.FromId}"
+                                                        Click="RepostAuthor_Click">
+                                                        <TextBlock Text="{Binding RepostOwnerText}" Opacity="1.0" 
+                                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                           FontWeight="SemiBold"/>
+                                                    </Button>
+                                                    <TextBlock Text="{Binding Repost.FormattedDate}" Opacity="0.7" FontSize="12"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Repost content -->
+                                            <TextBlock Text="{Binding Repost.Text}" TextWrapping="Wrap" Margin="0,0,0,10"
+                                                  Foreground="{ThemeResource TextFillColorPrimary}"/>
+
+                                            <Image Source="{Binding Repost.MainImageUrl}" Stretch="Uniform" MaxHeight="300"
+                                                  HorizontalAlignment="Left" Margin="0,0,0,10"
+                                                  Visibility="{Binding Repost.HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                            <Image Source="{Binding Repost.GifUrl}" Stretch="Uniform" MaxHeight="300"
+                                                  HorizontalAlignment="Left" Margin="0,0,0,10"
+                                                  Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                            <Grid Visibility="{Binding Repost.HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                 Margin="0,0,0,0" HorizontalAlignment="Left">
+                                            <MediaPlayerElement Source="{Binding Repost.MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                                                    MaxHeight="300" AreTransportControlsEnabled="True"/>
+                                            </Grid>
+
+                                            
+
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- likes and comments count - moved after the repost content -->
                                 <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="15" Margin="0,10,0,0">
                                     <!-- Кнопка лайка -->
                                     <Button Tag="{Binding}" Click="LikeButton_Click" 

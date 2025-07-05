@@ -37,6 +37,9 @@ namespace ovkdesktop
     {
         private long nextFrom = 0;
         private readonly Dictionary<long, APIResponse<WallResponse<NewsFeedPost>>> _cache = new();
+
+        private readonly List<MediaPlayerElement> _activeMediaPlayers = new List<MediaPlayerElement>();
+        private readonly List<WebView2> _activeWebViews = new List<WebView2>();
         public ObservableCollection<NewsFeedPost> NewsPosts { get; } = new();
         private readonly APIServiceNewsPosts apiService = new();
         
@@ -75,6 +78,26 @@ namespace ovkdesktop
             
             // show error message to user
             ShowError($"Произошла необработанная ошибка: {e.Exception.Message}");
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+
+            // FIX: Очищаем все медиа-элементы для предотвращения сбоев
+            foreach (var mediaPlayerElement in _activeMediaPlayers)
+            {
+                mediaPlayerElement.MediaPlayer?.Pause();
+                mediaPlayerElement.MediaPlayer?.Dispose();
+                mediaPlayerElement.SetMediaPlayer(null);
+            }
+            _activeMediaPlayers.Clear();
+
+            foreach (var webView in _activeWebViews)
+            {
+                webView.Close();
+            }
+            _activeWebViews.Clear();
         }
 
         private async Task<OVKDataBody> LoadTokenAsync()
@@ -147,293 +170,72 @@ namespace ovkdesktop
             LoadingProgressRingNewsPosts.IsActive = true;
             try
             {
-                // clear previous error messages
                 ErrorNewsPostsText.Visibility = Visibility.Collapsed;
-                ShowDebugInfo(string.Empty);
-                
-                // get news feed data
-                APIResponse<WallResponse<NewsFeedPost>> data = null;
-                try
-                {
-                    data = await apiService.GetNewsPostsAsync(token, nextFrom);
-                    
-                    // check if data is null
-                    if (data == null)
-                    {
-                        ShowError("Не удалось получить данные от сервера.");
-                        ShowDebugInfo("Метод GetNewsPostsAsync вернул null");
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"CRITICAL ERROR when receiving news: {ex.Message}");
-                    Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                    if (ex.InnerException != null)
-                    {
-                        Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                        Debug.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
-                    }
-                    ShowError($"Ошибка при получении новостей: {ex.Message}");
-                    ShowDebugInfo($"Ошибка при получении новостей: {ex.Message}\nStack trace: {ex.StackTrace}");
-                    return;
-                }
-                
+
+                // 1. Получаем основной список постов от API
+                // Примечание: GetNewsPostsAsync ожидает string, поэтому конвертируем nextFrom
+                var data = await apiService.GetNewsPostsAsync(token, nextFrom.ToString());
                 if (data?.Response?.Items == null)
                 {
-                    ShowError("Не удалось загрузить посты.");
-                    ShowDebugInfo("Не удалось загрузить посты. Response или Items равны null.");
+                    ShowError("Не удалось загрузить посты. Ответ от сервера пуст.");
+                    LoadingProgressRingNewsPosts.IsActive = false;
                     return;
                 }
-                
-                // check if there are posts
-                if (data.Response.Items.Count == 0)
+
+                // 2. Собираем ID ТОЛЬКО главных авторов постов
+                var authorIds = data.Response.Items.Select(p => p.FromId).Where(id => id != 0).ToHashSet();
+
+                // 3. Загружаем профили для этих авторов одним махом
+                var authorsProfiles = new Dictionary<int, UserProfile>();
+                if (authorIds.Any())
                 {
-                    ShowError("Нет новых постов для отображения.");
-                    return;
+                    authorsProfiles = await apiService.GetUsersAsync(token, authorIds);
                 }
-                
-                // collect user IDs for request information
-                var userIds = new HashSet<int>();
-                try
+
+                // 4. Формируем коллекцию NewsPosts
+                // Если это первая загрузка (nextFrom == 0), очищаем список
+                // Эта логика теперь перенесена в LoadRepostProfilesAsync, чтобы избежать очистки перед добавлением.
+                // Здесь мы только добавляем новые посты.
+                if (nextFrom == 0)
                 {
-                    foreach (var post in data.Response.Items)
+                    NewsPosts.Clear();
+                }
+
+                foreach (var post in data.Response.Items)
+                {
+                    if (post == null) continue;
+
+                    // Присваиваем профиль главному автору поста
+                    if (authorsProfiles.TryGetValue(post.FromId, out var profile))
                     {
-                        try
-                    {
-                        if (post?.FromId != 0)
-                        {
-                            userIds.Add(post.FromId);
-                        }
-                            
-                            // add IDs from reposts if they exist
-                            if (post?.CopyHistory != null && post.CopyHistory.Any())
-                            {
-                                foreach (var repost in post.CopyHistory)
-                                {
-                                    if (repost?.FromId != 0)
-                                    {
-                                        userIds.Add(repost.FromId);
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception postEx)
-                        {
-                            Debug.WriteLine($"Error when processing user ID of post: {postEx.Message}");
-                            // continue with other posts
-                        }
+                        post.Profile = profile;
                     }
-                    
-                    Debug.WriteLine($"Collected {userIds.Count} unique user IDs");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error when collecting user IDs: {ex.Message}");
-                    ShowDebugInfo($"Error when collecting user IDs: {ex.Message}");
-                }
-                
-                // get information about users
-                Dictionary<int, UserProfile> usersDict = new Dictionary<int, UserProfile>();
-                if (userIds.Count > 0)
-                {
-                    try
+                    else
                     {
-                        usersDict = await apiService.GetUsersAsync(token, userIds);
-                        
-                        // check if data is null
-                        if (usersDict == null)
-                        {
-                            Debug.WriteLine("Method GetUsersAsync returned null");
-                            usersDict = new Dictionary<int, UserProfile>();
-                        }
+                        // Заглушка, если профиль не нашелся
+                        post.Profile = new UserProfile { Id = post.FromId, FirstName = (post.FromId > 0 ? "Пользователь" : "Группа"), LastName = post.FromId.ToString() };
                     }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error when receiving information about users: {ex.Message}");
-                        Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                        // continue working even without information about users
-                        usersDict = new Dictionary<int, UserProfile>();
-                    }
+
+                    NewsPosts.Add(post);
                 }
-                
-                // process each post
-                try
+
+                // 5. Обновляем "next_from" для следующей страницы
+                if (long.TryParse(data.Response.NextFrom, out long parsedNextFrom) && parsedNextFrom > 0)
                 {
-                    NewsPosts.Clear(); // clear collection before adding new posts
-                    
-                    foreach (var post in data.Response.Items)
-                    {
-                        try
-                        {
-                            if (post == null) continue;
-                            
-                            // check and initialize post properties
-                            if (post.LikesNews == null)
-                            {
-                                post.LikesNews = new Models.Likes { Count = 0, UserLikes = 0 };
-                            }
-                            
-                            if (post.CommentsNews == null)
-                            {
-                                post.CommentsNews = new Models.Comments { Count = 0 };
-                            }
-                            
-                            if (post.RepostsNews == null)
-                            {
-                                post.RepostsNews = new Models.Reposts { Count = 0 };
-                            }
-                            
-                            if (post.Attachments == null)
-                            {
-                                post.Attachments = new List<Attachment>();
-                            }
-                            
-                            // set user profile
-                            if (post.FromId != 0 && usersDict.TryGetValue(post.FromId, out var user))
-                            {
-                                post.Profile = new UserProfile
-                                {
-                                    Id = user.Id,
-                                    FirstName = user.FirstName ?? string.Empty,
-                                    LastName = user.LastName ?? string.Empty,
-                                    Nickname = user.Nickname ?? string.Empty,
-                                    Photo200 = user.Photo200 ?? string.Empty,
-                                    FromId = user.FromId
-                                };
-                            }
-                            else
-                            {
-                                // create empty profile if user not found
-                                post.Profile = new UserProfile
-                                {
-                                    Id = post.FromId,
-                                    FirstName = "Пользователь",
-                                    LastName = post.FromId.ToString(),
-                                    Photo200 = string.Empty
-                                };
-                            }
-                            
-                            // Set profile information for reposts
-                            if (post.CopyHistory != null && post.CopyHistory.Count > 0)
-                            {
-                                foreach (var repost in post.CopyHistory)
-                                {
-                                    if (repost.FromId != 0 && usersDict.TryGetValue(repost.FromId, out var repostUser))
-                                    {
-                                        repost.Profile = new UserProfile
-                                        {
-                                            Id = repostUser.Id,
-                                            FirstName = repostUser.FirstName ?? string.Empty,
-                                            LastName = repostUser.LastName ?? string.Empty,
-                                            Nickname = repostUser.Nickname ?? string.Empty,
-                                            Photo200 = repostUser.Photo200 ?? string.Empty,
-                                            FromId = repostUser.FromId,
-                                            IsGroup = repostUser.IsGroup
-                                        };
-                                        
-                                        Debug.WriteLine($"[PostsPage] Assigned profile to repost: {repost.Id}, Name: {repostUser.FirstName} {repostUser.LastName}, Photo: {repostUser.Photo200?.Substring(0, Math.Min(repostUser.Photo200?.Length ?? 0, 30))}...");
-                                    }
-                                    else if (repost.FromId < 0)
-                                    {
-                                        // Try to find group information
-                                        int groupId = Math.Abs(repost.FromId);
-                                        var groupProfile = await apiService.GetGroupInfoAsync(token, new List<int> { groupId });
-                                        
-                                        if (groupProfile != null && groupProfile.Count > 0)
-                                        {
-                                            var group = groupProfile[0];
-                                            repost.Profile = new UserProfile
-                                            {
-                                                Id = repost.FromId, // Keep negative ID
-                                                FirstName = group.Name ?? "Группа",
-                                                LastName = string.Empty, // Groups don't have last names
-                                                Nickname = group.ScreenName ?? string.Empty,
-                                                Photo200 = group.Photo200 ?? group.Photo100 ?? group.Photo50 ?? string.Empty,
-                                                IsGroup = true
-                                            };
-                                            
-                                            Debug.WriteLine($"[PostsPage] Assigned group profile to repost: {repost.Id}, Name: {group.Name}, Photo: {group.Photo200?.Substring(0, Math.Min(group.Photo200?.Length ?? 0, 30))}...");
-                                        }
-                                        else
-                                        {
-                                            // Fallback if group info can't be retrieved
-                                            repost.Profile = new UserProfile
-                                            {
-                                                Id = repost.FromId,
-                                                FirstName = "Группа",
-                                                LastName = Math.Abs(repost.FromId).ToString(),
-                                                Photo200 = string.Empty,
-                                                IsGroup = true
-                                            };
-                                            
-                                            Debug.WriteLine($"[PostsPage] Created fallback group profile for repost: {repost.Id}, ID: {repost.FromId}");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // Create placeholder for unknown user/group
-                                        repost.Profile = new UserProfile
-                                        {
-                                            Id = repost.FromId,
-                                            FirstName = repost.FromId > 0 ? "Пользователь" : "Группа",
-                                            LastName = Math.Abs(repost.FromId).ToString(),
-                                            Photo200 = string.Empty,
-                                            IsGroup = repost.FromId < 0
-                                        };
-                                        
-                                        Debug.WriteLine($"[PostsPage] Created placeholder profile for repost: {repost.Id}, ID: {repost.FromId}");
-                                    }
-                                }
-                            }
-                            
-                            // add post to collection
-                            NewsPosts.Add(post);
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Error when processing post: {ex.Message}");
-                            Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                            // continue with other posts
-                        }
-                    }
-                    
-                    // create UI elements manually instead of data binding
-                    CreatePostsUI();
-                    
-                    // Load profiles for reposts
-                    await LoadRepostProfilesAsync(token);
+                    nextFrom = parsedNextFrom;
                 }
-                catch (Exception ex)
+                else
                 {
-                    Debug.WriteLine($"General error when processing posts: {ex.Message}");
-                    Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                    ShowError($"Error when processing posts: {ex.Message}");
+                    nextFrom = 0; // Конец ленты
                 }
-                
-                // update parameter for next loading
-                nextFrom = data.Response.NextFrom;
-                LoadMoreNewsPageButton.Visibility = nextFrom > 0
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-            }
-            catch (WebException ex) when (ex.Response is HttpWebResponse response)
-            {
-                HandleWebException(ex, response);
+
+                // 6. ПЕРЕДАЕМ ЭСТАФЕТУ методу, который займется репостами
+                await LoadRepostProfilesAsync(token);
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка: {ex.Message}");
-                Debug.WriteLine($"Exception when loading posts: {ex.Message}");
-                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Debug.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                    Debug.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
-                }
-            }
-            finally
-            {
+                ShowError($"Критическая ошибка при загрузке постов: {ex.Message}");
+                Debug.WriteLine($"Exception in LoadNewsPostsListAsync: {ex.Message}\n{ex.StackTrace}");
                 LoadingProgressRingNewsPosts.IsActive = false;
             }
         }
@@ -617,7 +419,7 @@ namespace ovkdesktop
                     // check if post has Likes object
                     if (post.Likes == null)
                     {
-                        post.LikesNews = new Models.Likes { Count = 0, UserLikes = 0 };
+                        post.Likes = new Models.Likes { Count = 0, UserLikes = 0 };
                     }
                     
                     // determine if like should be added or removed
@@ -717,7 +519,7 @@ namespace ovkdesktop
         {
             try
             {
-                // clear container before adding new posts
+                // Очистка контейнера должна происходить перед этим методом, например, в LoadRepostProfilesAsync.
                 PostsContainer.Children.Clear();
 
                 // determine colors depending on current theme
@@ -726,7 +528,6 @@ namespace ovkdesktop
 
                 if (elementTheme == ElementTheme.Dark)
                 {
-                    // use dark gray color for card background in dark theme
                     cardBackground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 32, G = 32, B = 32 });
                     cardBorder = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 64, G = 64, B = 64 });
                     textColor = new SolidColorBrush(Microsoft.UI.Colors.White);
@@ -735,7 +536,6 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    // use light gray color for card background in light theme
                     cardBackground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 245, G = 245, B = 245 });
                     cardBorder = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 225, G = 225, B = 225 });
                     textColor = new SolidColorBrush(Microsoft.UI.Colors.Black);
@@ -759,371 +559,143 @@ namespace ovkdesktop
                     };
 
                     // define rows for card
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 0: Header
+                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 1: Text
+                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 2: Content (Attachments/Reposts)
+                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 3: Actions
 
-                    // create post header with author information
-                    var headerPanel = new StackPanel
-                    {
-                        Orientation = Orientation.Horizontal,
-                        Margin = new Thickness(0, 0, 0, 10)
-                    };
+                    // --- Header ---
+                    var headerPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
 
-                    // add author avatar
-                    var avatarContainer = new Grid
-                    {
-                        Width = 48,
-                        Height = 48,
-                        Margin = new Thickness(0, 0, 12, 0)
-                    };
-
-                    // if we have information about user, add handler of avatar click
+                    var avatarContainer = new Grid { Width = 48, Height = 48, Margin = new Thickness(0, 0, 12, 0) };
                     if (post.Profile != null)
                     {
                         avatarContainer.Tag = post.Profile.Id;
                         avatarContainer.Tapped += LoadProfileFromPost;
-
-                        // add visual effect on hover
-                        avatarContainer.PointerEntered += (s, e) =>
-                        {
-                            ((FrameworkElement)s).Opacity = 0.8;
-                        };
-                        avatarContainer.PointerExited += (s, e) =>
-                        {
-                            ((FrameworkElement)s).Opacity = 1.0;
-                        };
+                        avatarContainer.PointerEntered += (s, e) => { ((FrameworkElement)s).Opacity = 0.8; };
+                        avatarContainer.PointerExited += (s, e) => { ((FrameworkElement)s).Opacity = 1.0; };
                     }
-
-                    // create
-                    var avatarEllipse = new Ellipse
-                    {
-                        Width = 48,
-                        Height = 48
-                    };
-
-                    // if we have information about user, set his avatar
+                    var avatarEllipse = new Ellipse { Width = 48, Height = 48 };
                     if (post.Profile != null && !string.IsNullOrEmpty(post.Profile.Photo200))
                     {
                         try
                         {
-                            var imageBrush = new ImageBrush
-                            {
-                                ImageSource = new BitmapImage(new Uri(post.Profile.Photo200)),
-                                Stretch = Stretch.UniformToFill
-                            };
-
-                            avatarEllipse.Fill = imageBrush;
+                            avatarEllipse.Fill = new ImageBrush { ImageSource = new BitmapImage(new Uri(post.Profile.Photo200)), Stretch = Stretch.UniformToFill };
                             avatarContainer.Children.Add(avatarEllipse);
                         }
                         catch (Exception ex)
                         {
                             Debug.WriteLine($"[PostsPage] Error loading avatar: {ex.Message}");
-                            // use placeholder in case of error
-                            var authorAvatar = new PersonPicture
-                            {
-                                Width = 48,
-                                Height = 48
-                            };
-                            avatarContainer.Children.Add(authorAvatar);
+                            avatarContainer.Children.Add(new PersonPicture { Width = 48, Height = 48 });
                         }
                     }
                     else
                     {
-                        // use placeholder if there is no photo
-                        var authorAvatar = new PersonPicture
-                        {
-                            Width = 48,
-                            Height = 48
-                        };
-                        avatarContainer.Children.Add(authorAvatar);
+                        avatarContainer.Children.Add(new PersonPicture { Width = 48, Height = 48 });
                     }
-
                     headerPanel.Children.Add(avatarContainer);
 
-                    // add author information and publication date
-                    var authorInfoPanel = new StackPanel
-                    {
-                        VerticalAlignment = VerticalAlignment.Center
-                    };
-
-                    // author name
-                    var authorName = new TextBlock
-                    {
-                        FontWeight = FontWeights.SemiBold,
-                        FontSize = 16,
-                        Margin = new Thickness(0, 0, 0, 4),
-                        Foreground = textColor
-                    };
-
+                    var authorInfoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+                    var authorName = new TextBlock { FontWeight = FontWeights.SemiBold, FontSize = 16, Margin = new Thickness(0, 0, 0, 4), Foreground = textColor };
                     if (post.Profile != null)
                     {
                         authorName.Text = $"{post.Profile.FirstName} {post.Profile.LastName}";
-
-                        // create panel for all author information to make it clickable
                         var authorPanel = new Grid { Tag = post.Profile.Id };
-
-                        // add name and date to this panel
-                        var fullAuthorInfoPanel = new StackPanel
-                        {
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-
+                        var fullAuthorInfoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
                         fullAuthorInfoPanel.Children.Add(authorName);
-
-                        // publication date
-                        var postDate = new TextBlock
-                        {
-                            Text = post.SafeFormattedDate,
-                            FontSize = 13,
-                            Foreground = secondaryTextColor
-                        };
-                        fullAuthorInfoPanel.Children.Add(postDate);
-
-                        // add information to panel with user ID tag
+                        fullAuthorInfoPanel.Children.Add(new TextBlock { Text = post.SafeFormattedDate, FontSize = 13, Foreground = secondaryTextColor });
                         authorPanel.Children.Add(fullAuthorInfoPanel);
-
-                        // add handler of click to redirect to profile page
                         authorPanel.Tapped += LoadProfileFromPost;
-
-                        // set visual effect on hover
-                        authorPanel.PointerEntered += (s, e) =>
-                        {
-                            ((FrameworkElement)s).Opacity = 0.8;
-                        };
-                        authorPanel.PointerExited += (s, e) =>
-                        {
-                            ((FrameworkElement)s).Opacity = 1.0;
-                        };
-
-                        // add panel to container of author information
+                        authorPanel.PointerEntered += (s, e) => { ((FrameworkElement)s).Opacity = 0.8; };
+                        authorPanel.PointerExited += (s, e) => { ((FrameworkElement)s).Opacity = 1.0; };
                         authorInfoPanel.Children.Add(authorPanel);
                     }
                     else
                     {
                         authorName.Text = $"ID: {post.FromId}";
                         authorInfoPanel.Children.Add(authorName);
-
-                        // publication
-                        var postDate = new TextBlock
-                        {
-                            Text = post.SafeFormattedDate,
-                            FontSize = 13,
-                            Foreground = secondaryTextColor
-                        };
-                        authorInfoPanel.Children.Add(postDate);
+                        authorInfoPanel.Children.Add(new TextBlock { Text = post.SafeFormattedDate, FontSize = 13, Foreground = secondaryTextColor });
                     }
-
                     headerPanel.Children.Add(authorInfoPanel);
-
-                    // Add header to card
                     Grid.SetRow(headerPanel, 0);
                     postCard.Children.Add(headerPanel);
 
-                    // Add post text if available
+                    // --- Post Text ---
                     if (!string.IsNullOrEmpty(post.Text))
                     {
                         var textElement = CreateFormattedTextWithLinks(post.Text);
                         Grid.SetRow(textElement, 1);
                         postCard.Children.Add(textElement);
                     }
-                    
-                    // Create panel for attachments (images, videos, etc.)
-                    var attachmentsPanel = new StackPanel
+
+                    // --- Content Panel (для репостов и вложений) ---
+                    var contentPanel = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
+
+                    // 1. СНАЧАЛА добавляем репост, если он есть
+                    if (post.CopyHistory != null && post.CopyHistory.Any())
                     {
-                        Margin = new Thickness(0, 0, 0, 10)
-                    };
-
-                    // Process attachments
-                    bool hasVideo = false;
-                    if (post.Attachments != null && post.Attachments.Count > 0)
-                    {
-                        foreach (var attachment in post.Attachments)
-                        {
-                            try
-                            {
-                                if (attachment == null)
-                                {
-                                    Debug.WriteLine("[UI] warning: null attachment found");
-                                    continue;
-                                }
-
-                                // check attachment type
-                                if (string.IsNullOrEmpty(attachment.Type))
-                                {
-                                    Debug.WriteLine("[UI] warning: attachment type is null or empty");
-                                    continue;
-                                }
-
-                                if (attachment.Type == "photo" && attachment.Photo != null)
-                                {
-                                    // check if photo has sizes
-                                    if (attachment.Photo.Sizes == null || !attachment.Photo.Sizes.Any())
-                                    {
-                                        Debug.WriteLine("[UI] warning: photo has no sizes");
-                                        continue;
-                                    }
-
-                                    // select largest available image
-                                    string imageUrl = attachment.Photo.GetLargestPhotoUrl();
-                                    if (!string.IsNullOrEmpty(imageUrl))
-                                    {
-                                        try
-                                        {
-                                            var image = new Image
-                                            {
-                                                Source = new BitmapImage(new Uri(imageUrl)),
-                                                Stretch = Stretch.Uniform,
-                                                HorizontalAlignment = HorizontalAlignment.Left,
-                                                MaxHeight = 400,
-                                                Margin = new Thickness(0, 5, 0, 5)
-                                            };
-                                            attachmentsPanel.Children.Add(image);
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Debug.WriteLine($"[UI] error loading image: {ex.Message}");
-                                        }
-                                    }
-                                }
-                                else if (attachment.Type == "video" && attachment.Video != null)
-                                {
-                                    hasVideo = true;
-                                }
-                                else if (attachment.Type == "audio" && attachment.Audio != null)
-                                {
-                                    // Аудио будет обрабатываться отдельно после всех вложений
-                                    Debug.WriteLine($"[UI] Found audio attachment: {attachment.Audio.Artist} - {attachment.Audio.Title}");
-                                }
-                            }
-                            catch (Exception attachEx)
-                            {
-                                Debug.WriteLine($"[UI] error in attachment processing: {attachEx.Message}");
-                                Debug.WriteLine($"[UI] Stack trace: {attachEx.StackTrace}");
-                            }
-                        }
-
-                        // add
-                        if (hasVideo)
-                        {
-                            try
-                            {
-                                AddVideoButton(attachmentsPanel, post);
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[UI] Ошибка при добавлении кнопки видео: {ex.Message}");
-                            }
-                        }
-
-                        // Добавляем аудио, если они есть в посте
-                        if (post.HasAudio)
-                        {
-                            try
-                            {
-                                AddAudioContent(attachmentsPanel, post);
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[UI] Ошибка при добавлении аудио: {ex.Message}");
-                            }
-                        }
-
-                        // Добавляем репосты, если они есть в посте
-                        if (post.CopyHistory != null && post.CopyHistory.Count > 0)
-                        {
-                            try
-                            {
-                                Debug.WriteLine($"[PostsPage] Adding repost content for post ID: {post.Id}, repost count: {post.CopyHistory.Count}");
-                                AddRepostContent(attachmentsPanel, post);
-                                Debug.WriteLine($"[PostsPage] Successfully added repost content");
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[PostsPage] Error adding repost content: {ex.Message}");
-                                Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
-                            }
-                        }
-
-                        Grid.SetRow(attachmentsPanel, 2);
-                        postCard.Children.Add(attachmentsPanel);
-
-                        // add panel with buttons (like, comments)
-                        var actionsPanel = new StackPanel
-                        {
-                            Orientation = Orientation.Horizontal,
-                            Margin = new Thickness(0, 5, 0, 0)
-                        };
-
-                        // like button
-                        var likeButton = new Button
-                        {
-                            Tag = post,
-                            Padding = new Thickness(10, 5, 10, 5),
-                            Margin = new Thickness(0, 0, 10, 0),
-                            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                            BorderThickness = new Thickness(0),
-                            CornerRadius = new CornerRadius(4)
-                        };
-
-                        var likeText = new TextBlock
-                        {
-                            Text = $"❤ {post.Likes?.Count ?? 0}",
-                            FontSize = 14
-                        };
-
-                        // set color depending on like presence
-                        if (post.Likes?.UserLikes > 0)
-                        {
-                            likeButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                            likeText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                        }
-                        else
-                        {
-                            likeButton.Foreground = likeButtonColor;
-                            likeText.Foreground = likeButtonColor;
-                        }
-
-                        likeButton.Content = likeText;
-                        likeButton.Click += LikeButton_Click;
-                        actionsPanel.Children.Add(likeButton);
-
-                        // comments button
-                        var commentButton = new Button
-                        {
-                            Tag = post,
-                            Padding = new Thickness(10, 5, 10, 5),
-                            Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent),
-                            BorderThickness = new Thickness(0),
-                            Foreground = likeButtonColor,
-                            CornerRadius = new CornerRadius(4)
-                        };
-
-                        var commentText = new TextBlock
-                        {
-                            Text = $"💬 {post.Comments?.Count ?? 0}",
-                            FontSize = 14,
-                            Foreground = likeButtonColor
-                        };
-
-                        commentButton.Content = commentText;
-                        commentButton.Tapped += ShowPostInfo_Tapped;
-                        actionsPanel.Children.Add(commentButton);
-
-                        Grid.SetRow(actionsPanel, 3);
-                        postCard.Children.Add(actionsPanel);
-
-                        // add card to container
-                        PostsContainer.Children.Add(postCard);
+                        AddRepostContent(contentPanel, post);
                     }
 
-                    // show "Load more" button if there is next page
-                    LoadMoreNewsPageButton.Visibility = nextFrom != 0 ? Visibility.Visible : Visibility.Collapsed;
+                    // 2. ПОТОМ добавляем вложения самого поста
+                    if (post.Attachments != null && post.Attachments.Any())
+                    {
+                        bool hasVideo = false;
+                        foreach (var attachment in post.Attachments)
+                        {
+                            if (attachment == null || string.IsNullOrEmpty(attachment.Type)) continue;
 
-                    // hide loading indicator
-                    LoadingProgressRingNewsPosts.IsActive = false;
+                            if (attachment.Type == "photo" && attachment.Photo != null)
+                            {
+                                string imageUrl = attachment.Photo.GetLargestPhotoUrl();
+                                if (!string.IsNullOrEmpty(imageUrl))
+                                {
+                                    try
+                                    {
+                                        var image = new Image { Source = new BitmapImage(new Uri(imageUrl)), Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left, MaxHeight = 400, Margin = new Thickness(0, 5, 0, 5) };
+                                        contentPanel.Children.Add(image);
+                                    }
+                                    catch (Exception ex) { Debug.WriteLine($"[UI] error loading image: {ex.Message}"); }
+                                }
+                            }
+                            else if (attachment.Type == "video" && attachment.Video != null)
+                            {
+                                hasVideo = true;
+                            }
+                        }
+                        if (hasVideo) AddVideoButton(contentPanel, post);
+                        if (post.HasAudio) AddAudioContent(contentPanel, post);
+                    }
+                    Grid.SetRow(contentPanel, 2);
+                    postCard.Children.Add(contentPanel);
+
+                    // --- Actions Panel (Лайки и комментарии) ---
+                    var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
+
+                    var likeButton = new Button { Tag = post, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 10, 0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(4) };
+                    var likeText = new TextBlock { Text = $"❤ {post.Likes?.Count ?? 0}", FontSize = 14 };
+                    if (post.Likes?.UserLikes > 0) { likeButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); likeText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); }
+                    else { likeButton.Foreground = likeButtonColor; likeText.Foreground = likeButtonColor; }
+                    likeButton.Content = likeText;
+                    likeButton.Click += LikeButton_Click;
+                    actionsPanel.Children.Add(likeButton);
+
+                    var commentButton = new Button { Tag = post, Padding = new Thickness(10, 5, 10, 5), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), Foreground = likeButtonColor, CornerRadius = new CornerRadius(4) };
+                    var commentText = new TextBlock { Text = $"💬 {post.Comments?.Count ?? 0}", FontSize = 14, Foreground = likeButtonColor };
+                    commentButton.Content = commentText;
+                    commentButton.Tapped += ShowPostInfo_Tapped;
+                    actionsPanel.Children.Add(commentButton);
+
+                    Grid.SetRow(actionsPanel, 3);
+                    postCard.Children.Add(actionsPanel);
+
+                    // --- Add card to container ---
+                    PostsContainer.Children.Add(postCard);
                 }
+
+                // --- Final UI updates ---
+                LoadMoreNewsPageButton.Visibility = (nextFrom > 0) ? Visibility.Visible : Visibility.Collapsed;
+                LoadingProgressRingNewsPosts.IsActive = false;
             }
             catch (Exception ex)
             {
@@ -1133,7 +705,7 @@ namespace ovkdesktop
                 LoadingProgressRingNewsPosts.IsActive = false;
             }
         }
-        
+
         // method to create text block with formatted links
         private FrameworkElement CreateFormattedTextWithLinks(string text)
         {
@@ -1356,7 +928,7 @@ namespace ovkdesktop
         }
         
         // method to add WebView2 for YouTube
-        private void AddYouTubePlayer(StackPanel container, string videoUrl)
+        private async void AddYouTubePlayer(StackPanel container, string videoUrl)
         {
             try
             {
@@ -1413,6 +985,14 @@ namespace ovkdesktop
                 // add element to container
                 webViewContainer.Children.Add(webView);
                 container.Children.Add(webViewContainer);
+                await webView.EnsureCoreWebView2Async();
+
+                // FIX: Устанавливаем источник только ПОСЛЕ успешной инициализации
+                webView.Source = new Uri(videoUrl);
+
+                // FIX: Регистрируем созданный WebView для последующей очистки
+                _activeWebViews.Add(webView);
+
             }
             catch (Exception ex)
             {
@@ -1510,6 +1090,8 @@ namespace ovkdesktop
                 // add element to container
                 videoContainer.Children.Add(mediaPlayer);
                 container.Children.Add(videoContainer);
+
+                _activeMediaPlayers.Add(mediaPlayer);
             }
             catch (Exception ex)
             {
@@ -2055,207 +1637,73 @@ namespace ovkdesktop
         {
             try
             {
-                Debug.WriteLine("[PostsPage] Starting to load repost profiles");
-                
-                // Collect all user IDs from reposts
+                Debug.WriteLine("[PostsPage] Starting to load repost profiles...");
+
                 var userIds = new HashSet<int>();
                 var groupIds = new HashSet<int>();
-                
+
                 foreach (var post in NewsPosts)
                 {
-                    if (post?.CopyHistory != null && post.CopyHistory.Count > 0)
+                    if (post?.CopyHistory != null && post.CopyHistory.Any())
                     {
                         foreach (var repost in post.CopyHistory)
                         {
                             if (repost == null) continue;
-                            
-                            if (repost.FromId > 0)
-                            {
-                                userIds.Add(repost.FromId);
-                            }
-                            else if (repost.FromId < 0)
-                            {
-                                groupIds.Add(Math.Abs(repost.FromId));
-                            }
+                            if (repost.FromId > 0) userIds.Add(repost.FromId);
+                            else if (repost.FromId < 0) groupIds.Add(Math.Abs(repost.FromId));
                         }
                     }
                 }
-                
-                Debug.WriteLine($"[PostsPage] Found {userIds.Count} user IDs and {groupIds.Count} group IDs in reposts");
-                
-                if (userIds.Count == 0 && groupIds.Count == 0)
+
+                Debug.WriteLine($"[PostsPage] Found {userIds.Count} user IDs and {groupIds.Count} group IDs in reposts for processing.");
+
+                if (!userIds.Any() && !groupIds.Any())
                 {
-                    Debug.WriteLine("[PostsPage] No profiles to load for reposts");
+                    Debug.WriteLine("[PostsPage] No reposts found in this batch. Building UI now.");
+                    this.DispatcherQueue.TryEnqueue(() => {
+                        CreatePostsUI();
+                        LoadingProgressRingNewsPosts.IsActive = false;
+                    });
                     return;
                 }
-                
-                // Fetch group profiles first
-                var groupProfiles = new Dictionary<int, UserProfile>();
-                if (groupIds.Count > 0)
-                {
-                    try
-                    {
-                        var groups = await apiService.GetGroupInfoAsync(token, groupIds.ToList());
-                        
-                        if (groups != null)
-                        {
-                            foreach (var group in groups)
-                            {
-                                var profile = new UserProfile
-                                {
-                                    Id = group.Id,
-                                    FirstName = group.Name ?? $"Группа {group.Id}",
-                                    LastName = string.Empty,
-                                    Nickname = group.ScreenName ?? string.Empty,
-                                    Photo200 = group.Photo200 ?? group.Photo100 ?? group.Photo50 ?? string.Empty,
-                                    IsGroup = true
-                                };
-                                
-                                groupProfiles[group.Id] = profile;
-                                Debug.WriteLine($"[PostsPage] Added group profile: {group.Name}, ID: {group.Id}, Photo: {profile.Photo200?.Substring(0, Math.Min(profile.Photo200?.Length ?? 0, 50) )}...");
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[PostsPage] Error fetching group profiles: {ex.Message}");
-                        Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
-                    }
-                }
-                
-                // Fetch user profiles
-                var userProfiles = new Dictionary<int, UserProfile>();
-                if (userIds.Count > 0)
-                {
-                    try
-                    {
-                        var users = await apiService.GetUsersAsync(token, userIds);
-                        
-                        if (users != null)
-                        {
-                            foreach (var kvp in users)
-                            {
-                                userProfiles[kvp.Key] = kvp.Value;
-                                Debug.WriteLine($"[PostsPage] Added user profile: {kvp.Value.FirstName} {kvp.Value.LastName}, ID: {kvp.Key}, Photo: {kvp.Value.Photo200?.Substring(0, Math.Min(kvp.Value.Photo200?.Length ?? 0, 50))}...");
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[PostsPage] Error fetching user profiles: {ex.Message}");
-                        Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
-                    }
-                }
-                
-                // Assign profiles to reposts
-                int updatedCount = 0;
+
+                var allIds = userIds.Concat(groupIds.Select(id => -id));
+                var profiles = await apiService.GetUsersAsync(token, allIds);
+
+                Debug.WriteLine($"[PostsPage] Loaded a total of {profiles.Count} profiles for reposts.");
+
                 foreach (var post in NewsPosts)
                 {
-                    if (post?.CopyHistory != null && post.CopyHistory.Count > 0)
+                    if (post?.CopyHistory != null)
                     {
                         foreach (var repost in post.CopyHistory)
                         {
-                            try
+                            if (repost != null && profiles.TryGetValue(repost.FromId, out var profile))
                             {
-                                if (repost == null) continue;
-                                
-                                if (repost.FromId < 0)
-                                {
-                                    int groupId = Math.Abs(repost.FromId);
-                                    if (groupProfiles.TryGetValue(groupId, out var groupProfile))
-                                    {
-                                        // Create a deep copy of the profile instead of using the same reference
-                                        repost.Profile = new UserProfile
-                                        {
-                                            Id = groupProfile.Id,
-                                            FirstName = groupProfile.FirstName ?? $"Группа {groupId}",
-                                            LastName = groupProfile.LastName ?? string.Empty,
-                                            Nickname = groupProfile.Nickname ?? string.Empty,
-                                            Photo200 = groupProfile.Photo200 ?? string.Empty,
-                                            IsGroup = true
-                                        };
-                                        
-                                        Debug.WriteLine($"[PostsPage] Assigned group profile '{groupProfile.FirstName}' to repost {repost.Id}, Photo: {groupProfile.Photo200?.Substring(0, Math.Min(groupProfile.Photo200?.Length ?? 0, 50))}...");
-                                        updatedCount++;
-                                    }
-                                    else
-                                    {
-                                        Debug.WriteLine($"[PostsPage] No group profile found for ID={groupId}");
-                                        
-                                        // Create a fallback profile
-                                        repost.Profile = new UserProfile
-                                        {
-                                            Id = groupId,
-                                            FirstName = $"Группа {groupId}",
-                                            LastName = string.Empty,
-                                            Photo200 = string.Empty,
-                                            IsGroup = true
-                                        };
-                                    }
-                                }
-                                else if (repost.FromId > 0)
-                                {
-                                    if (userProfiles.TryGetValue(repost.FromId, out var userProfile))
-                                    {
-                                        // Create a deep copy of the profile instead of using the same reference
-                                        repost.Profile = new UserProfile
-                                        {
-                                            Id = userProfile.Id,
-                                            FirstName = userProfile.FirstName ?? string.Empty,
-                                            LastName = userProfile.LastName ?? string.Empty,
-                                            Nickname = userProfile.Nickname ?? string.Empty,
-                                            Photo200 = userProfile.Photo200 ?? string.Empty,
-                                            IsGroup = false
-                                        };
-                                        
-                                        Debug.WriteLine($"[PostsPage] Assigned user profile '{userProfile.FirstName} {userProfile.LastName}' to repost {repost.Id}, Photo: {userProfile.Photo200?.Substring(0, Math.Min(userProfile.Photo200?.Length ?? 0, 50))}...");
-                                        updatedCount++;
-                                    }
-                                    else
-                                    {
-                                        Debug.WriteLine($"[PostsPage] No user profile found for ID={repost.FromId}");
-                                        
-                                        // Create a fallback profile
-                                        repost.Profile = new UserProfile
-                                        {
-                                            Id = repost.FromId,
-                                            FirstName = $"Пользователь {repost.FromId}",
-                                            LastName = string.Empty,
-                                            Photo200 = string.Empty,
-                                            IsGroup = false
-                                        };
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"[PostsPage] Error assigning profile to repost: {ex.Message}");
+                                repost.Profile = profile;
                             }
                         }
                     }
                 }
-                
-                Debug.WriteLine($"[PostsPage] Updated {updatedCount} reposts with profile information");
-                
-                // Recreate UI to reflect the changes
-                if (updatedCount > 0)
+
+                this.DispatcherQueue.TryEnqueue(() =>
                 {
-                    try
-                    {
-                        Debug.WriteLine("[PostsPage] Recreating UI to reflect profile changes");
-                        PostsContainer.Children.Clear();
-                        CreatePostsUI();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[PostsPage] Error recreating UI: {ex.Message}");
-                    }
-                }
+                    Debug.WriteLine("[PostsPage] Recreating UI on the UI thread to reflect all profile changes.");
+                    // Не нужно очищать контейнер, если мы добавляем посты (в случае LoadMore)
+                    // Но в вашей текущей логике вы всегда перестраиваете все.
+                    PostsContainer.Children.Clear();
+                    CreatePostsUI();
+                    LoadingProgressRingNewsPosts.IsActive = false;
+                });
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[PostsPage] Error in LoadRepostProfilesAsync: {ex.Message}");
-                Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
+                Debug.WriteLine($"[PostsPage] A critical error occurred in LoadRepostProfilesAsync: {ex.Message}");
+                this.DispatcherQueue.TryEnqueue(() => {
+                    ShowError($"Ошибка при загрузке данных репостов: {ex.Message}");
+                    CreatePostsUI();
+                    LoadingProgressRingNewsPosts.IsActive = false;
+                });
             }
         }
     }
@@ -2263,7 +1711,7 @@ namespace ovkdesktop
     public class APIServiceNewsPosts
     {
         private HttpClient httpClient;
-        private readonly Dictionary<long, (DateTimeOffset CreatedAt, APIResponse<WallResponse<NewsFeedPost>> Response)> cache = new();
+        private readonly Dictionary<string, (DateTimeOffset CreatedAt, APIResponse<WallResponse<NewsFeedPost>> Response)> cache = new();
         private string instanceUrl;
 
         public APIServiceNewsPosts()
@@ -2750,7 +2198,7 @@ namespace ovkdesktop
             }
         }
 
-        public async Task<APIResponse<WallResponse<NewsFeedPost>>> GetNewsPostsAsync(string token, long startFrom = 0)
+        public async Task<APIResponse<WallResponse<NewsFeedPost>>> GetNewsPostsAsync(string token, string startFrom = "")
         {
             try
             {
@@ -2772,8 +2220,10 @@ namespace ovkdesktop
                 // use older API version for better compatibility
                 string url = $"method/newsfeed.getGlobal?access_token={token}&v=5.126";
                 Debug.WriteLine($"[APIServiceNewsPosts] GET {instanceUrl}{url}");
-                if (startFrom > 0)
+                if (!string.IsNullOrEmpty(startFrom))
+                {
                     url += $"&start_from={startFrom}";
+                }
 
                 HttpResponseMessage response;
                 try
@@ -2925,9 +2375,9 @@ namespace ovkdesktop
                             }
                             
                             // initialize counters if they are null
-                            post.LikesNews ??= new Likes { Count = 0 };
-                            post.CommentsNews ??= new Comments { Count = 0 };
-                            post.RepostsNews ??= new Reposts { Count = 0 };
+                            post.Likes ??= new Likes { Count = 0 };
+                            post.Comments ??= new Comments { Count = 0 };
+                            post.Reposts ??= new Reposts { Count = 0 };
                             
                             post.Profile ??= new UserProfile
                             {
@@ -2956,9 +2406,9 @@ namespace ovkdesktop
                                         repost.Attachments ??= new List<Attachment>();
                                         
                                         // initialize counters of repost if they are null
-                                        repost.LikesNews ??= new Likes { Count = 0 };
-                                        repost.CommentsNews ??= new Comments { Count = 0 };
-                                        repost.RepostsNews ??= new Reposts { Count = 0 };
+                                        repost.Likes ??= new Likes { Count = 0 };
+                                        repost.Comments ??= new Comments { Count = 0 };
+                                        repost.Reposts ??= new Reposts { Count = 0 };
                                         
                                         // Initialize Profile with a placeholder to avoid null reference exceptions
                                         repost.Profile ??= new UserProfile

@@ -111,7 +111,8 @@ namespace ovkdesktop
 
         public ObservableCollection<Models.Friends> Friends { get; } = new();
         public ObservableCollection<Models.FriendRequest> FriendRequests { get; } = new();
-        private readonly APIServiceFriends apiService = new();
+        
+        private APIServiceFriends apiService;
         private string id;
 
         private Models.Friends selectedFriend;
@@ -120,10 +121,36 @@ namespace ovkdesktop
         public FriendsPage()
         {
             this.InitializeComponent();
-            LoadFriendsDataAsync();
+            this.Loaded += Page_Loaded;
         }
 
-        private async void LoadFriendsDataAsync()
+
+        private async void Page_Loaded(object sender, RoutedEventArgs e)
+        {
+            // 3. Unsubscribe to prevent it from running more than once.
+            this.Loaded -= Page_Loaded;
+
+            try
+            {
+                // 4. Create the dependencies and the service.
+                string instanceUrl = await SessionHelper.GetInstanceUrlAsync();
+                HttpClient httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
+
+                // This now works because the constructor is public.
+                apiService = new APIServiceFriends(httpClient, instanceUrl);
+
+                // 5. Now, load the page data.
+                await LoadFriendsDataAsync();
+            }
+            catch (Exception ex)
+            {
+                ShowError("A critical error occurred during initialization: " + ex.Message);
+                LoadingProgressRingFriends.IsActive = false;
+            }
+        }
+
+
+        private async Task LoadFriendsDataAsync()
         {
             try
             {
@@ -437,32 +464,30 @@ namespace ovkdesktop
 
         public class APIServiceFriends
         {
-            private HttpClient httpClient;
-            private string instanceUrl;
+            private readonly HttpClient httpClient;
+            private readonly string instanceUrl;
             
-            public APIServiceFriends()
+            public APIServiceFriends(HttpClient client, string url)
             {
-                InitializeHttpClientAsync();
+                this.httpClient = client ?? throw new ArgumentNullException(nameof(client));
+                this.instanceUrl = url ?? throw new ArgumentNullException(nameof(url));
+                Debug.WriteLine($"[APIServiceFriends] Service created with instance URL: {this.instanceUrl}");
             }
-            
-            private async void InitializeHttpClientAsync()
+
+
+            public static async Task<APIServiceFriends> CreateAsync()
             {
                 try
                 {
-                    instanceUrl = await SessionHelper.GetInstanceUrlAsync();
-                    httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
-                    
-                    Debug.WriteLine($"[APIServiceFriends] Initialized with instance URL: {instanceUrl}");
+                    string url = await SessionHelper.GetInstanceUrlAsync();
+                    HttpClient client = await SessionHelper.GetConfiguredHttpClientAsync();
+                    Debug.WriteLine($"[APIServiceFriends] Initialized with instance URL: {url}");
+                    return new APIServiceFriends(client, url);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[APIServiceFriends] Error initializing: {ex.Message}");
-                    
-                    // use default URL in case of error
-                    instanceUrl = "https://ovk.to/";
-                    httpClient = new HttpClient { BaseAddress = new Uri(instanceUrl) };
-                    
-                    Debug.WriteLine($"[APIServiceFriends] Fallback to default URL: {instanceUrl}");
+                    Debug.WriteLine($"[APIServiceFriends] CRITICAL: Failed to initialize: {ex.Message}");
+                    throw new InvalidOperationException("Failed to create APIServiceFriends.", ex);
                 }
             }
 
@@ -471,182 +496,72 @@ namespace ovkdesktop
             {
                 try
                 {
-                    // check if client is initialized
-                    if (httpClient == null)
-                    {
-                        await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // give time to initialize
-                    }
-                    
-                    // use older version of API for better compatibility
-                    string url = $"method/friends.delete?access_token={token}&user_id={friendId}&v=5.126";
-                    Debug.WriteLine($"[APIServiceFriends] DeleteFriend URL: {instanceUrl}{url}");
-
+                    string url = $"method/friends.delete?access_token={token}&user_id={friendId}";
                     var response = await httpClient.GetAsync(url);
                     response.EnsureSuccessStatusCode();
-
                     var content = await response.Content.ReadAsStringAsync();
                     using JsonDocument doc = JsonDocument.Parse(content);
-                    // check if response contains "response" with value 1 or success
-                    if (doc.RootElement.TryGetProperty("response", out JsonElement resp) &&
-                        resp.ValueKind == JsonValueKind.Number &&
-                        resp.GetInt32() == 1)
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement resp) && resp.TryGetInt32(out int val) && val == 1)
                     {
                         return true;
                     }
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] Exception in DeleteFriendAsync: {ex.Message}");
-                }
+                catch (Exception ex) { Debug.WriteLine($"[APIServiceFriends] Exception in DeleteFriendAsync: {ex.Message}"); }
                 return false;
             }
+
 
             public async Task<int> AddFriendAsync(string token, int userId)
             {
                 try
                 {
-                    // check if client is initialized
-                    if (httpClient == null)
-                    {
-                        await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // give time to initialize
-                    }
-                    
-                    // use older version of API for better compatibility
                     string url = $"method/friends.add?access_token={token}&user_id={userId}&v=5.126";
-                    Debug.WriteLine($"[APIServiceFriends] AddFriend URL: {instanceUrl}{url}");
-
                     var response = await httpClient.GetAsync(url);
                     response.EnsureSuccessStatusCode();
-
                     var content = await response.Content.ReadAsStringAsync();
                     using JsonDocument doc = JsonDocument.Parse(content);
-                    // check response status: 1 - request sent, 2 - request accepted
-                    if (doc.RootElement.TryGetProperty("response", out JsonElement resp) &&
-                        resp.ValueKind == JsonValueKind.Number)
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement resp) && resp.TryGetInt32(out int val))
                     {
-                        return resp.GetInt32();
+                        return val;
                     }
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] Exception in AddFriendAsync: {ex.Message}");
-                }
-                return 0; // Error or failure
+                catch (Exception ex) { Debug.WriteLine($"[APIServiceFriends] Exception in AddFriendAsync: {ex.Message}"); }
+                return 0;
             }
 
             public async Task<Models.APIResponseFriends> GetFriendsAsync(string token)
             {
                 try
                 {
-                    // check if client is initialized
-                    if (httpClient == null)
-                    {
-                        await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // give time to initialize
-                    }
-                    
-                    // use older version of API for better compatibility
                     string url = $"method/friends.get?access_token={token}&fields=photo_200&v=5.126";
-                    Debug.WriteLine($"[APIServiceFriends] GetFriends URL: {instanceUrl}{url}");
-
-                    var response = await httpClient.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
-
-                    var content = await response.Content.ReadAsStringAsync();
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-
-                    return JsonSerializer.Deserialize<Models.APIResponseFriends>(content, options);
+                    var content = await httpClient.GetStringAsync(url);
+                    return JsonSerializer.Deserialize<Models.APIResponseFriends>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 }
-                catch (HttpRequestException ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] HTTP exception: {ex.Message}");
-                    return null;
-                }
-                catch (JsonException ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] JSON exception: {ex.Message}");
-                    return null;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] General exception: {ex.Message}");
-                    return null;
-                }
+                catch (Exception ex) { Debug.WriteLine($"[APIServiceFriends] General exception in GetFriendsAsync: {ex.Message}"); }
+                return null;
             }
 
             public async Task<Models.APIResponseFriendRequests> GetFriendRequestsAsync(string token)
             {
                 try
                 {
-                    // check if client is initialized
-                    if (httpClient == null)
-                    {
-                        await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // give time to initialize
-                    }
-                    
-                    // use older version of API for better compatibility
                     string url = $"method/friends.getRequests?access_token={token}&fields=photo_200&extended=1&v=5.126";
-                    Debug.WriteLine($"[APIServiceFriends] GetFriendRequests URL: {instanceUrl}{url}");
-
-                    var response = await httpClient.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
-
-                    var content = await response.Content.ReadAsStringAsync();
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-
-                    return JsonSerializer.Deserialize<Models.APIResponseFriendRequests>(content, options);
+                    var content = await httpClient.GetStringAsync(url);
+                    return JsonSerializer.Deserialize<Models.APIResponseFriendRequests>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 }
-                catch (HttpRequestException ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] HTTP exception in GetFriendRequestsAsync: {ex.Message}");
-                    return null;
-                }
-                catch (JsonException ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] JSON exception in GetFriendRequestsAsync: {ex.Message}");
-                    return null;
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[APIServiceFriends] General exception in GetFriendRequestsAsync: {ex.Message}");
-                    return null;
-                }
+                catch (Exception ex) { Debug.WriteLine($"[APIServiceFriends] General exception in GetFriendRequestsAsync: {ex.Message}"); }
+                return null;
             }
 
             public async Task<List<Models.FriendStatus>> AreFriendsAsync(string token, string userIds)
             {
                 try
                 {
-                    // check if client is initialized
-                    if (httpClient == null)
-                    {
-                        await Task.Run(() => InitializeHttpClientAsync());
-                        await Task.Delay(500); // give time to initialize
-                    }
-                    
-                    // use older version of API for better compatibility
+                    // This method will no longer hang.
                     string url = $"method/friends.areFriends?access_token={token}&user_ids={userIds}&v=5.126";
-                    Debug.WriteLine($"[APIServiceFriends] AreFriends URL: {instanceUrl}{url}");
-
-                    var response = await httpClient.GetAsync(url);
-                    response.EnsureSuccessStatusCode();
-
-                    var content = await response.Content.ReadAsStringAsync();
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-
-                    var result = JsonSerializer.Deserialize<Models.FriendStatusResponse>(content, options);
+                    Debug.WriteLine($"[APIServiceFriends] Checking friendship with URL: {instanceUrl}{url}"); // Added log for debugging
+                    var content = await httpClient.GetStringAsync(url);
+                    var result = JsonSerializer.Deserialize<Models.FriendStatusResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     return result?.Response ?? new List<Models.FriendStatus>();
                 }
                 catch (Exception ex)
