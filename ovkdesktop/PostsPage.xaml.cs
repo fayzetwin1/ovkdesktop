@@ -42,16 +42,16 @@ namespace ovkdesktop
         private readonly List<WebView2> _activeWebViews = new List<WebView2>();
         public ObservableCollection<NewsFeedPost> NewsPosts { get; } = new();
         private readonly APIServiceNewsPosts apiService = new();
-        
+
         public PostsPage()
         {
             try
             {
                 this.InitializeComponent();
-                
+
                 // set global handler of unhandled exceptions
                 Application.Current.UnhandledException += UnhandledException_UnhandledException;
-                
+
                 LoadNewsPostsAsync();
             }
             catch (Exception ex)
@@ -61,21 +61,21 @@ namespace ovkdesktop
                 ShowError($"Critical error when initializing the page: {ex.Message}");
             }
         }
-        
+
         // global handler of unhandled exceptions
         private void UnhandledException_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
         {
             e.Handled = true; // mark exception as handled to prevent crash
-            
+
             Debug.WriteLine($"[UNHANDLED EXCEPTION] {e.Exception.Message}");
             Debug.WriteLine($"[UNHANDLED EXCEPTION] Stack trace: {e.Exception.StackTrace}");
-            
+
             if (e.Exception.InnerException != null)
             {
                 Debug.WriteLine($"[UNHANDLED EXCEPTION] Inner exception: {e.Exception.InnerException.Message}");
                 Debug.WriteLine($"[UNHANDLED EXCEPTION] Inner stack trace: {e.Exception.InnerException.StackTrace}");
             }
-            
+
             // show error message to user
             ShowError($"Произошла необработанная ошибка: {e.Exception.Message}");
         }
@@ -316,7 +316,7 @@ namespace ovkdesktop
             {
                 object dataContext = null;
                 object tag = null;
-                
+
                 // get DataContext and Tag depending on sender type
                 if (sender is Button button)
                 {
@@ -333,10 +333,10 @@ namespace ovkdesktop
                     Debug.WriteLine("[Video] unknown sender type");
                     return;
                 }
-                
+
                 string videoUrl = null;
                 NewsFeedPost post = null;
-                
+
                 // check Tag
                 if (tag is NewsFeedPost tagPost)
                 {
@@ -347,7 +347,7 @@ namespace ovkdesktop
                 {
                     post = contextPost;
                 }
-                
+
                 // get video URL
                 if (post != null && post.MainVideo != null)
                 {
@@ -355,7 +355,7 @@ namespace ovkdesktop
                     videoUrl = post.MainVideo.SafePlayerUrl;
                     Debug.WriteLine($"[Video] got video URL: {videoUrl ?? "null"}");
                 }
-                
+
                 // check URL and open it
                 if (!string.IsNullOrEmpty(videoUrl))
                 {
@@ -390,14 +390,14 @@ namespace ovkdesktop
                 if (button?.Tag is NewsFeedPost post)
                 {
                     Debug.WriteLine($"[PostsPage] open post info: ID={post.Id}, Owner={post.OwnerId}");
-                    
-                var parameters = new PostInfoPage.PostInfoParameters
-                {
-                    PostId = post.Id,
-                    OwnerId = post.OwnerId
-                };
-                    
-                this.Frame.Navigate(typeof(PostInfoPage), parameters);
+
+                    var parameters = new PostInfoPage.PostInfoParameters
+                    {
+                        PostId = post.Id,
+                        OwnerId = post.OwnerId
+                    };
+
+                    this.Frame.Navigate(typeof(PostInfoPage), parameters);
                 }
                 else
                 {
@@ -433,17 +433,17 @@ namespace ovkdesktop
                         button.IsEnabled = true;
                         return;
                     }
-                    
+
                     // check if post has Likes object
                     if (post.Likes == null)
                     {
                         post.Likes = new Models.Likes { Count = 0, UserLikes = 0 };
                     }
-                    
+
                     // determine if like should be added or removed
                     bool isLiked = post.Likes.UserLikes > 0;
                     bool success = false;
-                    
+
                     try
                     {
                         if (isLiked)
@@ -474,7 +474,7 @@ namespace ovkdesktop
                         button.IsEnabled = true;
                         return;
                     }
-                    
+
                     // update UI
                     if (success)
                     {
@@ -485,10 +485,10 @@ namespace ovkdesktop
                             if (textBlock != null)
                             {
                                 textBlock.Text = $"❤ {post.Likes.Count}";
-                                
+
                                 // determine color depending on theme
                                 var elementTheme = ((FrameworkElement)this.Content).ActualTheme;
-                                
+
                                 // change button style depending on like state
                                 if (post.Likes.UserLikes > 0)
                                 {
@@ -513,7 +513,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"[PostsPage] UI update error in LikeButton_Click: {uiEx.Message}");
                         }
                     }
-                    
+
                     // enable button again
                     button.IsEnabled = true;
                 }
@@ -523,7 +523,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[PostsPage] Error in LikeButton_Click: {ex.Message}");
                 Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
                 ShowError($"error in like processing: {ex.Message}");
-                
+
                 // enable button again in case of error
                 if (sender is Button btn)
                 {
@@ -796,16 +796,16 @@ namespace ovkdesktop
                         FontSize = 14
                     };
                 }
-                
+
                 // create container for text and links
                 var panel = new StackPanel
                 {
                     Margin = new Thickness(0, 10, 0, 10)
                 };
-                
+
                 // split
                 var parts = SplitTextWithUrls(text);
-                
+
                 foreach (var part in parts)
                 {
                     if (IsUrl(part))
@@ -819,9 +819,9 @@ namespace ovkdesktop
                             Padding = new Thickness(0),
                             FontSize = 14
                         };
-                        
+
                         // add handler to open in browser
-                        link.Click += (sender, e) => 
+                        link.Click += (sender, e) =>
                         {
                             try
                             {
@@ -832,7 +832,7 @@ namespace ovkdesktop
                                 Debug.WriteLine($"error opening link: {ex.Message}");
                             }
                         };
-                        
+
                         panel.Children.Add(link);
                     }
                     else
@@ -845,11 +845,11 @@ namespace ovkdesktop
                             FontWeight = FontWeights.Normal,
                             FontSize = 14
                         };
-                        
+
                         panel.Children.Add(textBlock);
                     }
                 }
-                
+
                 return panel;
             }
             catch (Exception ex)
@@ -866,49 +866,49 @@ namespace ovkdesktop
                 };
             }
         }
-        
+
         // method to check if text contains URL
         private bool ContainsUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
             return text.Contains("http://") || text.Contains("https://");
         }
-        
+
         // method to check if text is URL
         private bool IsUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
             return text.StartsWith("http://") || text.StartsWith("https://");
         }
-        
+
         // method to split text into parts, highlighting URLs
         private List<string> SplitTextWithUrls(string text)
         {
             var result = new List<string>();
-            
+
             if (string.IsNullOrEmpty(text))
                 return result;
-                
+
             // simple regular processing to highlight URLs
             int startIndex = 0;
             while (startIndex < text.Length)
             {
                 // find start of URL
                 int httpIndex = text.IndexOf("http", startIndex);
-                
+
                 if (httpIndex == -1)
                 {
-                        // if there is no more URL, add remaining text
+                    // if there is no more URL, add remaining text
                     result.Add(text.Substring(startIndex));
                     break;
                 }
-                
+
                 // add text before URL
                 if (httpIndex > startIndex)
                 {
                     result.Add(text.Substring(startIndex, httpIndex - startIndex));
                 }
-                
+
                 // find end of URL (space, line break or end of text)
                 int endIndex = text.IndexOfAny(new[] { ' ', '\n', '\r', '\t' }, httpIndex);
                 if (endIndex == -1)
@@ -924,20 +924,20 @@ namespace ovkdesktop
                     startIndex = endIndex;
                 }
             }
-            
+
             return result;
         }
-        
+
         // method to check if URL is YouTube link
         private bool IsYouTubeUrl(string url)
         {
             if (string.IsNullOrEmpty(url)) return false;
-            
-            return url.Contains("youtube.com") || 
-                   url.Contains("youtu.be") || 
+
+            return url.Contains("youtube.com") ||
+                   url.Contains("youtu.be") ||
                    url.Contains("youtube-nocookie.com");
         }
-        
+
         // method to add video button
         private void AddVideoButton(StackPanel container, NewsFeedPost post)
         {
@@ -948,15 +948,15 @@ namespace ovkdesktop
                     Debug.WriteLine("[PostsPage] failed to get video URL");
                     return;
                 }
-                
+
                 var videoUrl = post.MainVideo.Player;
                 Debug.WriteLine($"[PostsPage] add video with URL: {videoUrl}");
-                
+
                 var videoPanel = new StackPanel
                 {
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
+
                 // check if this is YouTube video
                 if (IsYouTubeUrl(videoUrl))
                 {
@@ -973,7 +973,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[PostsPage] error in adding video: {ex.Message}");
                 Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
-                
+
                 // add backup variant - button to open in browser
                 try
                 {
@@ -984,7 +984,7 @@ namespace ovkdesktop
                         Margin = new Thickness(0, 0, 0, 5)
                     };
                     container.Children.Add(videoLabel);
-                    
+
                     var videoButton = new HyperlinkButton
                     {
                         Content = "Открыть видео в браузере",
@@ -999,7 +999,7 @@ namespace ovkdesktop
                 }
             }
         }
-        
+
         // method to add WebView2 for YouTube
         private async void AddYouTubePlayer(StackPanel container, string videoUrl)
         {
@@ -1012,8 +1012,8 @@ namespace ovkdesktop
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
-                youtubeButton.Click += (sender, e) => 
+
+                youtubeButton.Click += (sender, e) =>
                 {
                     try
                     {
@@ -1024,7 +1024,7 @@ namespace ovkdesktop
                         Debug.WriteLine($"error opening YouTube: {innerEx.Message}");
                     }
                 };
-                
+
                 // add text label
                 var youtubeLabel = new TextBlock
                 {
@@ -1032,10 +1032,10 @@ namespace ovkdesktop
                     FontWeight = FontWeights.Bold,
                     Margin = new Thickness(0, 0, 0, 5)
                 };
-                
+
                 container.Children.Add(youtubeLabel);
                 container.Children.Add(youtubeButton);
-                
+
                 // create container for WebView2
                 var webViewContainer = new Grid
                 {
@@ -1044,7 +1044,7 @@ namespace ovkdesktop
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
+
                 // create WebView2
                 var webView = new WebView2
                 {
@@ -1054,7 +1054,7 @@ namespace ovkdesktop
                     MinHeight = 200,
                     MinWidth = 400
                 };
-                
+
                 // add element to container
                 webViewContainer.Children.Add(webView);
                 container.Children.Add(webViewContainer);
@@ -1071,7 +1071,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"error in creating WebView2 for YouTube: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
+
                 try
                 {
                     // in case of error, add button to open in browser
@@ -1080,8 +1080,8 @@ namespace ovkdesktop
                         Content = "Открыть видео с Youtube в браузере",
                         NavigateUri = new Uri(videoUrl)
                     };
-                    
-                    youtubeButton.Click += (sender, e) => 
+
+                    youtubeButton.Click += (sender, e) =>
                     {
                         try
                         {
@@ -1092,7 +1092,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"error opening YouTube: {innerEx.Message}");
                         }
                     };
-                    
+
                     container.Children.Add(youtubeButton);
                 }
                 catch (Exception innerEx)
@@ -1101,7 +1101,7 @@ namespace ovkdesktop
                 }
             }
         }
-        
+
         // method to add MediaPlayerElement
         private void AddMediaPlayer(StackPanel container, string videoUrl)
         {
@@ -1114,8 +1114,8 @@ namespace ovkdesktop
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
-                videoButton.Click += (sender, e) => 
+
+                videoButton.Click += (sender, e) =>
                 {
                     try
                     {
@@ -1126,7 +1126,7 @@ namespace ovkdesktop
                         Debug.WriteLine($"error opening video: {innerEx.Message}");
                     }
                 };
-                
+
                 // add text label
                 var videoLabel = new TextBlock
                 {
@@ -1134,10 +1134,10 @@ namespace ovkdesktop
                     FontWeight = FontWeights.Bold,
                     Margin = new Thickness(0, 0, 0, 5)
                 };
-                
+
                 container.Children.Add(videoLabel);
                 container.Children.Add(videoButton);
-                
+
                 // create container for video with fixed height
                 var videoContainer = new Grid
                 {
@@ -1146,7 +1146,7 @@ namespace ovkdesktop
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
+
                 // create MediaPlayerElement
                 var mediaPlayer = new MediaPlayerElement
                 {
@@ -1154,12 +1154,12 @@ namespace ovkdesktop
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
-                
+
                 // create MediaPlayer and set source
                 var player = new Windows.Media.Playback.MediaPlayer();
                 player.Source = Windows.Media.Core.MediaSource.CreateFromUri(new Uri(videoUrl));
                 mediaPlayer.SetMediaPlayer(player);
-                
+
                 // add element to container
                 videoContainer.Children.Add(mediaPlayer);
                 container.Children.Add(videoContainer);
@@ -1170,7 +1170,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"error in creating MediaPlayerElement: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
+
                 try
                 {
                     // in case of error, add button to open in browser
@@ -1179,8 +1179,8 @@ namespace ovkdesktop
                         Content = "Open video in browser",
                         NavigateUri = new Uri(videoUrl)
                     };
-                    
-                    videoButton.Click += (sender, e) => 
+
+                    videoButton.Click += (sender, e) =>
                     {
                         try
                         {
@@ -1191,7 +1191,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"error opening video: {innerEx.Message}");
                         }
                     };
-                    
+
                     container.Children.Add(videoButton);
                 }
                 catch (Exception innerEx)
@@ -1200,7 +1200,7 @@ namespace ovkdesktop
                 }
             }
         }
-        
+
         // helper method to find all child elements of a certain type
         private IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
         {
@@ -1208,12 +1208,12 @@ namespace ovkdesktop
             for (int i = 0; i < childCount; i++)
             {
                 DependencyObject child = VisualTreeHelper.GetChild(parent, i);
-                
+
                 if (child is T t)
                 {
                     yield return t;
                 }
-                
+
                 foreach (var childOfChild in FindVisualChildren<T>(child))
                 {
                     yield return childOfChild;
@@ -1231,7 +1231,7 @@ namespace ovkdesktop
                     Debug.WriteLine("[PostsPage] No audio attachments in post");
                     return;
                 }
-                
+
                 // Add header for audio
                 if (post.Audios.Count > 0)
                 {
@@ -1242,13 +1242,13 @@ namespace ovkdesktop
                         Margin = new Thickness(0, 10, 0, 5)
                     };
                     container.Children.Add(audioLabel);
-                    
+
                     // Create separate container for audio
                     var audioContainer = new StackPanel
                     {
                         Margin = new Thickness(0, 0, 0, 10)
                     };
-                    
+
                     // Add each audio
                     foreach (var audio in post.Audios)
                     {
@@ -1256,7 +1256,7 @@ namespace ovkdesktop
                         var audioItem = CreateAudioElement(audio);
                         audioContainer.Children.Add(audioItem);
                     }
-                    
+
                     container.Children.Add(audioContainer);
                     Debug.WriteLine($"[PostsPage] Added {post.Audios.Count} audio tracks to post");
                 }
@@ -1266,7 +1266,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[PostsPage] Error adding audio content: {ex.Message}");
             }
         }
-        
+
         // Method for creating audio element
         private UIElement CreateAudioElement(Models.Audio audio)
         {
@@ -1279,12 +1279,12 @@ namespace ovkdesktop
                     Height = 60,
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
                 };
-                
+
                 // Add columns
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                
+
                 // Play button
                 var playButton = new Button
                 {
@@ -1302,14 +1302,14 @@ namespace ovkdesktop
                 playButton.Click += PlayAudio_Click;
                 Grid.SetColumn(playButton, 0);
                 grid.Children.Add(playButton);
-                
+
                 // Track information
                 var infoPanel = new StackPanel
                 {
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(5, 0, 0, 0)
                 };
-                
+
                 var titleText = new TextBlock
                 {
                     Text = audio.Title,
@@ -1318,7 +1318,7 @@ namespace ovkdesktop
                     FontWeight = FontWeights.SemiBold
                 };
                 infoPanel.Children.Add(titleText);
-                
+
                 var artistText = new TextBlock
                 {
                     Text = audio.Artist,
@@ -1328,10 +1328,10 @@ namespace ovkdesktop
                     FontSize = 12
                 };
                 infoPanel.Children.Add(artistText);
-                
+
                 Grid.SetColumn(infoPanel, 1);
                 grid.Children.Add(infoPanel);
-                
+
                 // Duration
                 var durationText = new TextBlock
                 {
@@ -1343,7 +1343,7 @@ namespace ovkdesktop
                 };
                 Grid.SetColumn(durationText, 2);
                 grid.Children.Add(durationText);
-                
+
                 return grid;
             }
             catch (Exception ex)
@@ -1352,7 +1352,7 @@ namespace ovkdesktop
                 return new TextBlock { Text = $"{audio.Artist} - {audio.Title}" };
             }
         }
-        
+
         // Handler for clicking the audio play button
         private void PlayAudio_Click(object sender, RoutedEventArgs e)
         {
@@ -1361,7 +1361,7 @@ namespace ovkdesktop
                 if (sender is Button button && button.Tag is Models.Audio audio)
                 {
                     Debug.WriteLine($"[PostsPage] Playing audio: {audio.Artist} - {audio.Title}");
-                    
+
                     // Get audio player service from App
                     var audioService = App.AudioService;
                     if (audioService != null)
@@ -1369,7 +1369,7 @@ namespace ovkdesktop
                         // Create playlist from one track and play
                         var playlist = new ObservableCollection<Models.Audio> { audio };
                         audioService.SetPlaylist(playlist, 0);
-                        
+
                         Debug.WriteLine("[PostsPage] Audio playback started");
                     }
                     else
@@ -1392,7 +1392,7 @@ namespace ovkdesktop
                 Debug.WriteLine("[PostsPage] No copy history found for post");
                 return;
             }
-                
+
             foreach (var repost in post.CopyHistory)
             {
                 try
@@ -1402,9 +1402,9 @@ namespace ovkdesktop
                         Debug.WriteLine("[PostsPage] Null repost object found, skipping");
                         continue;
                     }
-                    
+
                     Debug.WriteLine($"[PostsPage] Processing repost with ID: {repost.Id}, FromId: {repost.FromId}");
-                    
+
                     // Create repost border with padding
                     var repostBorder = new Border
                     {
@@ -1415,16 +1415,16 @@ namespace ovkdesktop
                         Padding = new Thickness(10),
                         Margin = new Thickness(0, 0, 0, 10)
                     };
-                    
+
                     // Create stack panel for repost content
                     var repostPanel = new StackPanel();
-                    
+
                     // Create header grid for avatar and author info
                     var headerGrid = new Grid();
                     headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                     headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                     headerGrid.Margin = new Thickness(0, 0, 0, 10);
-                    
+
                     // Add avatar
                     var avatarEllipse = new Ellipse
                     {
@@ -1432,12 +1432,12 @@ namespace ovkdesktop
                         Height = 36,
                         Margin = new Thickness(0, 0, 10, 0)
                     };
-                    
+
                     var imageBrush = new ImageBrush
                     {
                         Stretch = Stretch.UniformToFill
                     };
-                    
+
                     // Use the photo from profile data
                     if (repost.Profile != null && !string.IsNullOrEmpty(repost.Profile.Photo200))
                     {
@@ -1472,17 +1472,17 @@ namespace ovkdesktop
                             Debug.WriteLine($"[PostsPage] Error setting fallback image: {ex.Message}");
                         }
                     }
-                    
+
                     avatarEllipse.Fill = imageBrush;
                     Grid.SetColumn(avatarEllipse, 0);
                     headerGrid.Children.Add(avatarEllipse);
-                    
+
                     // Add author info panel
                     var authorPanel = new StackPanel
                     {
                         VerticalAlignment = VerticalAlignment.Center
                     };
-                    
+
                     // Add clickable author button
                     var authorButton = new Button
                     {
@@ -1495,7 +1495,7 @@ namespace ovkdesktop
                         Tag = repost.FromId
                     };
                     authorButton.Click += RepostAuthor_Click;
-                    
+
                     // Get appropriate text for author button
                     string authorText = "";
                     if (repost.Profile != null)
@@ -1516,11 +1516,11 @@ namespace ovkdesktop
                     else
                     {
                         // Fallback if profile is not available
-                        authorText = repost.FromId < 0 
-                            ? $"Группа {Math.Abs(repost.FromId)}" 
+                        authorText = repost.FromId < 0
+                            ? $"Группа {Math.Abs(repost.FromId)}"
                             : $"Пользователь {repost.FromId}";
                     }
-                    
+
                     var authorTextBlock = new TextBlock
                     {
                         Text = authorText,
@@ -1528,10 +1528,10 @@ namespace ovkdesktop
                         FontWeight = FontWeights.SemiBold,
                         Foreground = (SolidColorBrush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"]
                     };
-                    
+
                     authorButton.Content = authorTextBlock;
                     authorPanel.Children.Add(authorButton);
-                    
+
                     // Add date text
                     var dateText = new TextBlock
                     {
@@ -1540,12 +1540,12 @@ namespace ovkdesktop
                         FontSize = 12
                     };
                     authorPanel.Children.Add(dateText);
-                    
+
                     Grid.SetColumn(authorPanel, 1);
                     headerGrid.Children.Add(authorPanel);
-                    
+
                     repostPanel.Children.Add(headerGrid);
-                    
+
                     // Add repost text if available
                     if (!string.IsNullOrEmpty(repost.Text))
                     {
@@ -1553,7 +1553,7 @@ namespace ovkdesktop
                         textElement.Margin = new Thickness(0, 0, 0, 10);
                         repostPanel.Children.Add(textElement);
                     }
-                    
+
                     // Add image if available
                     if (repost.HasImage && !string.IsNullOrEmpty(repost.MainImageUrl))
                     {
@@ -1567,7 +1567,7 @@ namespace ovkdesktop
                                 HorizontalAlignment = HorizontalAlignment.Left,
                                 Margin = new Thickness(0, 0, 0, 10)
                             };
-                            
+
                             try
                             {
                                 image.Source = new BitmapImage(new Uri(repost.MainImageUrl));
@@ -1583,7 +1583,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"[PostsPage] Error adding image to repost: {ex.Message}");
                         }
                     }
-                    
+
                     // Add gif if available
                     if (repost.HasGif && !string.IsNullOrEmpty(repost.GifUrl))
                     {
@@ -1597,7 +1597,7 @@ namespace ovkdesktop
                                 HorizontalAlignment = HorizontalAlignment.Left,
                                 Margin = new Thickness(0, 0, 0, 10)
                             };
-                            
+
                             try
                             {
                                 image.Source = new BitmapImage(new Uri(repost.GifUrl));
@@ -1613,7 +1613,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"[PostsPage] Error adding gif to repost: {ex.Message}");
                         }
                     }
-                    
+
                     // Add video if available
                     if (repost.HasVideo && repost.MainVideo != null && !string.IsNullOrEmpty(repost.MainVideo.Player))
                     {
@@ -1625,7 +1625,7 @@ namespace ovkdesktop
                                 HorizontalAlignment = HorizontalAlignment.Left,
                                 Margin = new Thickness(0, 0, 0, 10)
                             };
-                            
+
                             try
                             {
                                 var mediaElement = new MediaPlayerElement
@@ -1634,7 +1634,7 @@ namespace ovkdesktop
                                     MaxHeight = 300,
                                     AreTransportControlsEnabled = true
                                 };
-                                
+
                                 videoGrid.Children.Add(mediaElement);
                                 repostPanel.Children.Add(videoGrid);
                             }
@@ -1649,7 +1649,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
                         }
                     }
-                    
+
                     repostBorder.Child = repostPanel;
                     container.Children.Add(repostBorder);
                     Debug.WriteLine($"[PostsPage] Successfully added repost border to container");
@@ -1679,11 +1679,11 @@ namespace ovkdesktop
                     {
                         fromId = parsedId;
                     }
-                    
+
                     if (fromId != 0)
                     {
                         Debug.WriteLine($"[PostsPage] Navigating to profile with ID: {fromId}");
-                        
+
                         // Navigate to user profile or group page based on ID
                         Frame.Navigate(typeof(AnotherProfilePage), fromId);
                     }
@@ -1700,7 +1700,7 @@ namespace ovkdesktop
         {
             if (unixTime <= 0)
                 return "";
-            
+
             var dateTime = DateTimeOffset.FromUnixTimeSeconds(unixTime).ToLocalTime().DateTime;
             return dateTime.ToString("dd.MM.yyyy HH:mm");
         }
@@ -1791,24 +1791,24 @@ namespace ovkdesktop
         {
             InitializeHttpClientAsync();
         }
-        
+
         private async void InitializeHttpClientAsync()
         {
             try
             {
                 instanceUrl = await SessionHelper.GetInstanceUrlAsync();
                 httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
-                
+
                 Debug.WriteLine($"[APIServiceNewsPosts] Initialized with instance URL: {instanceUrl}");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[APIServiceNewsPosts] Error initializing: {ex.Message}");
-                
+
                 // use default URL in case of error
                 instanceUrl = "https://ovk.to/";
                 httpClient = new HttpClient { BaseAddress = new Uri(instanceUrl) };
-                
+
                 Debug.WriteLine($"[APIServiceNewsPosts] Fallback to default URL: {instanceUrl}");
             }
         }
@@ -1869,14 +1869,14 @@ namespace ovkdesktop
                     await Task.Run(() => InitializeHttpClientAsync());
                     await Task.Delay(500); // give time to initialize
                 }
-                
+
                 // form URL for API request likes.add
                 var url = $"method/likes.add?access_token={token}" +
                         $"&type={type}" +
                         $"&owner_id={ownerId}" +
                         $"&item_id={itemId}" +
                         $"&v=5.126";
-                
+
                 Debug.WriteLine($"[APIServiceNewsPosts] Like URL: {instanceUrl}{url}");
 
                 var response = await httpClient.GetAsync(url);
@@ -1884,7 +1884,7 @@ namespace ovkdesktop
 
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[APIServiceNewsPosts] Like response: {json}");
-                
+
                 // check response
                 using JsonDocument doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
@@ -1897,7 +1897,7 @@ namespace ovkdesktop
                         return true;
                     }
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -1918,14 +1918,14 @@ namespace ovkdesktop
                     await Task.Run(() => InitializeHttpClientAsync());
                     await Task.Delay(500); // give time to initialize
                 }
-                
+
                 // form URL for API request likes.delete
                 var url = $"method/likes.delete?access_token={token}" +
                         $"&type={type}" +
                         $"&owner_id={ownerId}" +
                         $"&item_id={itemId}" +
                         $"&v=5.126";
-                
+
                 Debug.WriteLine($"[APIServiceNewsPosts] Unlike URL: {instanceUrl}{url}");
 
                 var response = await httpClient.GetAsync(url);
@@ -1933,7 +1933,7 @@ namespace ovkdesktop
 
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[APIServiceNewsPosts] Unlike response: {json}");
-                
+
                 // check response
                 using JsonDocument doc = JsonDocument.Parse(json);
                 if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
@@ -1946,7 +1946,7 @@ namespace ovkdesktop
                         return true;
                     }
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -1966,20 +1966,20 @@ namespace ovkdesktop
                     await Task.Run(() => InitializeHttpClientAsync());
                     await Task.Delay(500); // give time to initialize
                 }
-                
+
                 // check input data
                 if (userIds == null || !userIds.Any())
                 {
                     Debug.WriteLine("[APIServiceNewsPosts] GetUsersAsync: userIds is null or empty");
                     return new Dictionary<int, UserProfile>();
                 }
-                
+
                 var result = new Dictionary<int, UserProfile>();
-                
+
                 // split user and group IDs
                 var userIdsToFetch = userIds.Where(id => id > 0).ToList();
                 var groupIdsToFetch = userIds.Where(id => id < 0).Select(id => Math.Abs(id)).ToList();
-                
+
                 // get information about users
                 if (userIdsToFetch.Any())
                 {
@@ -1992,7 +1992,7 @@ namespace ovkdesktop
                         }
                     }
                 }
-                
+
                 // get information about groups
                 if (groupIdsToFetch.Any())
                 {
@@ -2015,7 +2015,7 @@ namespace ovkdesktop
                         }
                     }
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -2032,20 +2032,20 @@ namespace ovkdesktop
             {
                 if (!userIds.Any())
                     return new List<UserProfile>();
-                
+
                 var idsParam = string.Join(",", userIds);
                 // use older API version for better compatibility
                 var url = $"method/users.get?access_token={token}" +
                         $"&user_ids={idsParam}" +
                         $"&fields=screen_name,photo_200&v=5.126";
-                
+
                 Debug.WriteLine($"[APIServiceNewsPosts] GetUserProfiles URL: {instanceUrl}{url}");
 
                 HttpResponseMessage response;
                 try
                 {
                     response = await httpClient.GetAsync(url);
-                response.EnsureSuccessStatusCode();
+                    response.EnsureSuccessStatusCode();
                 }
                 catch (HttpRequestException ex)
                 {
@@ -2063,22 +2063,22 @@ namespace ovkdesktop
                     Debug.WriteLine($"[APIServiceNewsPosts] Error reading response in GetUserProfilesAsync: {ex.Message}");
                     return new List<UserProfile>();
                 }
-                
+
                 if (string.IsNullOrEmpty(json))
                 {
                     Debug.WriteLine("[APIServiceNewsPosts] Empty response in GetUserProfilesAsync");
                     return new List<UserProfile>();
                 }
-                
+
                 try
                 {
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                };
-                options.Converters.Add(new Converters.FlexibleIntConverter());
-                options.Converters.Add(new Models.FlexibleStringJsonConverter());
-                var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    options.Converters.Add(new Converters.FlexibleIntConverter());
+                    options.Converters.Add(new Models.FlexibleStringJsonConverter());
+                    var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
 
                     return result?.Response ?? new List<UserProfile>();
                 }
@@ -2102,13 +2102,13 @@ namespace ovkdesktop
             {
                 if (!groupIds.Any())
                     return new List<GroupProfile>();
-                
+
                 var idsParam = string.Join(",", groupIds);
                 // use API method groups.getById to get information about groups
                 var url = $"method/groups.getById?access_token={token}" +
                         $"&group_ids={idsParam}" +
                         $"&fields=photo_50,photo_100,photo_200,photo_max,description,members_count,site,contacts&v=5.126";
-                
+
                 Debug.WriteLine($"[APIServiceNewsPosts] GetGroupInfo URL: {instanceUrl}{url}");
 
                 HttpResponseMessage response;
@@ -2128,13 +2128,13 @@ namespace ovkdesktop
                 {
                     json = await response.Content.ReadAsStringAsync();
                     Debug.WriteLine($"[APIServiceNewsPosts] GetGroupInfo response: {json}");
-                    
+
                     // additional output of JSON properties for debugging
                     try
                     {
                         using (JsonDocument debugDoc = JsonDocument.Parse(json))
                         {
-                            if (debugDoc.RootElement.TryGetProperty("response", out JsonElement debugResponseElement) && 
+                            if (debugDoc.RootElement.TryGetProperty("response", out JsonElement debugResponseElement) &&
                                 debugResponseElement.ValueKind == JsonValueKind.Array)
                             {
                                 Debug.WriteLine("[APIServiceNewsPosts] Available properties of groups:");
@@ -2163,13 +2163,13 @@ namespace ovkdesktop
                     Debug.WriteLine($"[APIServiceNewsPosts] Error reading response in GetGroupInfoAsync: {ex.Message}");
                     return new List<GroupProfile>();
                 }
-                
+
                 if (string.IsNullOrEmpty(json))
                 {
                     Debug.WriteLine("[APIServiceNewsPosts] Empty response in GetGroupInfoAsync");
                     return new List<GroupProfile>();
                 }
-                
+
                 try
                 {
                     var options = new JsonSerializerOptions
@@ -2178,26 +2178,26 @@ namespace ovkdesktop
                     };
                     options.Converters.Add(new Converters.FlexibleIntConverter());
                     options.Converters.Add(new Models.FlexibleStringJsonConverter());
-                    
+
                     using JsonDocument doc = JsonDocument.Parse(json);
-                    if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) &&
                         responseElement.ValueKind == JsonValueKind.Array)
                     {
                         var groups = new List<GroupProfile>();
-                        
+
                         foreach (JsonElement groupElement in responseElement.EnumerateArray())
                         {
                             var group = new GroupProfile();
-                            
+
                             if (groupElement.TryGetProperty("id", out JsonElement idElement))
                                 group.Id = idElement.GetInt32();
-                                
+
                             if (groupElement.TryGetProperty("name", out JsonElement nameElement))
                                 group.Name = nameElement.GetString();
-                                
+
                             if (groupElement.TryGetProperty("screen_name", out JsonElement screenNameElement))
                                 group.ScreenName = screenNameElement.GetString();
-                                
+
                             if (groupElement.TryGetProperty("photo_200", out JsonElement photoElement))
                             {
                                 group.Photo200 = photoElement.GetString();
@@ -2207,12 +2207,12 @@ namespace ovkdesktop
                             {
                                 Debug.WriteLine($"[APIServiceNewsPosts] photo_200 field not found for group {group.Id}, trying alternative fields");
                             }
-                            
+
                             if (groupElement.TryGetProperty("photo_max", out JsonElement photoMaxElement))
                             {
                                 group.PhotoMax = photoMaxElement.GetString();
                                 Debug.WriteLine($"[APIServiceNewsPosts] Received URL of group photo_max {group.Id}: {group.PhotoMax}");
-                                
+
                                 // if photo_200 is missing, use photo_max
                                 if (string.IsNullOrEmpty(group.Photo200))
                                 {
@@ -2220,12 +2220,12 @@ namespace ovkdesktop
                                     Debug.WriteLine($"[APIServiceNewsPosts] photo_200 set from photo_max for group {group.Id}");
                                 }
                             }
-                            
+
                             if (groupElement.TryGetProperty("photo_100", out JsonElement photo100Element))
                             {
                                 group.Photo100 = photo100Element.GetString();
                                 Debug.WriteLine($"[APIServiceNewsPosts] Received URL of group photo_100 {group.Id}: {group.Photo100}");
-                                
+
                                 // if photo_200 is missing, use photo_100
                                 if (string.IsNullOrEmpty(group.Photo200))
                                 {
@@ -2233,12 +2233,12 @@ namespace ovkdesktop
                                     Debug.WriteLine($"[APIServiceNewsPosts] photo_200 set from photo_100 for group {group.Id}");
                                 }
                             }
-                            
+
                             if (groupElement.TryGetProperty("photo_50", out JsonElement photo50Element))
                             {
                                 group.Photo50 = photo50Element.GetString();
                                 Debug.WriteLine($"[APIServiceNewsPosts] Received URL of group photo_50 {group.Id}: {group.Photo50}");
-                                
+
                                 // if photo_200 is missing, use photo_50
                                 if (string.IsNullOrEmpty(group.Photo200))
                                 {
@@ -2246,22 +2246,22 @@ namespace ovkdesktop
                                     Debug.WriteLine($"[APIServiceNewsPosts] photo_200 set from photo_50 for group {group.Id}");
                                 }
                             }
-                                
+
                             if (groupElement.TryGetProperty("description", out JsonElement descriptionElement))
                                 group.Description = descriptionElement.GetString();
-                                
+
                             if (groupElement.TryGetProperty("members_count", out JsonElement membersCountElement))
                                 group.MembersCount = membersCountElement.GetInt32();
-                                
+
                             if (groupElement.TryGetProperty("site", out JsonElement siteElement))
                                 group.Site = siteElement.GetString();
-                                
+
                             groups.Add(group);
                         }
-                        
+
                         return groups;
                     }
-                    
+
                     return new List<GroupProfile>();
                 }
                 catch (JsonException ex)
@@ -2288,11 +2288,11 @@ namespace ovkdesktop
                     await Task.Run(() => InitializeHttpClientAsync());
                     await Task.Delay(500); // give time to initialize
                 }
-                
+
                 // use older API version for better compatibility
                 var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200&v=5.126";
                 Debug.WriteLine($"[APIServiceNewsPosts] GetProfileInfo URL: {instanceUrl}{url}");
-                
+
                 var response = await httpClient.GetAsync(url);
                 Debug.WriteLine($"[APIServiceNewsPosts] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
                 response.EnsureSuccessStatusCode();
@@ -2326,7 +2326,7 @@ namespace ovkdesktop
                     await Task.Run(() => InitializeHttpClientAsync());
                     await Task.Delay(500); // give time to initialize
                 }
-                
+
                 if (cache.TryGetValue(startFrom, out var cachedTuple))
                 {
                     if (DateTimeOffset.UtcNow - cachedTuple.CreatedAt < TimeSpan.FromMinutes(5))
@@ -2347,8 +2347,8 @@ namespace ovkdesktop
                 try
                 {
                     response = await httpClient.GetAsync(url);
-                Debug.WriteLine($"[API] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
-                response.EnsureSuccessStatusCode();
+                    Debug.WriteLine($"[API] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
+                    response.EnsureSuccessStatusCode();
                 }
                 catch (HttpRequestException ex)
                 {
@@ -2361,20 +2361,23 @@ namespace ovkdesktop
                 {
                     content = await response.Content.ReadAsStringAsync();
                     Debug.WriteLine($"[API] Response length: {content.Length}");
-                    
+
                     // save JSON for analysis
-                    try {
+                    try
+                    {
                         System.IO.File.WriteAllText("debug_response.json", content);
                         Debug.WriteLine("[API] debug_response.json saved for analysis");
-                    } catch (Exception ex) {
+                    }
+                    catch (Exception ex)
+                    {
                         Debug.WriteLine($"[API] failed to save JSON for debugging: {ex.Message}");
                     }
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"[API] error reading response: {ex.Message}");
-                return null;
-            }
+                    return null;
+                }
 
                 // create object for result directly through deserialization
                 try
@@ -2385,33 +2388,33 @@ namespace ovkdesktop
                     };
                     options.Converters.Add(new Converters.FlexibleIntConverter());
                     options.Converters.Add(new Models.FlexibleStringJsonConverter());
-                    
+
                     Debug.WriteLine("[API] Starting JSON deserialization...");
-                    
+
                     // simple deserialization without complex processing
                     var result = JsonSerializer.Deserialize<APIResponse<WallResponse<NewsFeedPost>>>(content, options);
-                    
+
                     // check result
                     if (result == null)
                     {
                         Debug.WriteLine("[API] error: result of deserialization is null");
-                return null;
-            }
-                    
+                        return null;
+                    }
+
                     if (result.Response == null)
-            {
+                    {
                         Debug.WriteLine("[API] error: result.Response is null");
-                return null;
-            }
-                    
+                        return null;
+                    }
+
                     if (result.Response.Items == null)
                     {
                         Debug.WriteLine("[API] error: result.Response.Items is null");
                         return null;
                     }
-                    
+
                     Debug.WriteLine($"[API] successfully deserialized {result.Response.Items.Count} posts");
-                    
+
 
                     foreach (var post in result.Response.Items)
                     {
@@ -2422,7 +2425,7 @@ namespace ovkdesktop
                                 Debug.WriteLine("[API] warning: null post found in collection");
                                 continue;
                             }
-                            
+
                             Debug.WriteLine($"[API] processing post ID={post.Id}, OwnerId={post.OwnerId}");
 
                             // initialize collections if they are null
@@ -2432,43 +2435,43 @@ namespace ovkdesktop
                             // check and initialize attachments
                             foreach (var attachment in post.Attachments)
                             {
-                                try 
+                                try
                                 {
                                     if (attachment == null)
                                     {
                                         Debug.WriteLine("[API] warning: null attachment found");
                                         continue;
                                     }
-                                    
+
                                     // check attachment type
                                     if (string.IsNullOrEmpty(attachment.Type))
                                     {
                                         Debug.WriteLine("[API] warning: attachment type is null or empty");
                                         continue;
                                     }
-                                    
-                                if (attachment.Type == "video" && attachment.Video != null)
-                                {
-                                    Debug.WriteLine($"[API] found video: {attachment.Video.Id}");
-                                    
-                                    if (attachment.Video.Image == null)
+
+                                    if (attachment.Type == "video" && attachment.Video != null)
                                     {
-                                        Debug.WriteLine("[API] Video.Image is null, initializing empty list");
-                                        attachment.Video.Image = new List<PhotoSize>();
+                                        Debug.WriteLine($"[API] found video: {attachment.Video.Id}");
+
+                                        if (attachment.Video.Image == null)
+                                        {
+                                            Debug.WriteLine("[API] Video.Image is null, initializing empty list");
+                                            attachment.Video.Image = new List<PhotoSize>();
+                                        }
+
+                                        if (attachment.Video.FirstFrame == null)
+                                        {
+                                            Debug.WriteLine("[API] Video.FirstFrame is null, initializing empty list");
+                                            attachment.Video.FirstFrame = new List<PhotoSize>();
+                                        }
+
+                                        Debug.WriteLine($"[API] Video.Player = {attachment.Video.Player ?? "null"}");
                                     }
-                                    
-                                    if (attachment.Video.FirstFrame == null)
-                                    {
-                                        Debug.WriteLine("[API] Video.FirstFrame is null, initializing empty list");
-                                        attachment.Video.FirstFrame = new List<PhotoSize>();
-                                    }
-                                    
-                                    Debug.WriteLine($"[API] Video.Player = {attachment.Video.Player ?? "null"}");
-                                }
                                     else if (attachment.Type == "photo" && attachment.Photo != null)
                                     {
                                         Debug.WriteLine($"[API] found photo: {attachment.Photo.Id}");
-                                        
+
                                         if (attachment.Photo.Sizes == null)
                                         {
                                             Debug.WriteLine("[API] Photo.Sizes is null, initializing empty list");
@@ -2478,7 +2481,7 @@ namespace ovkdesktop
                                     else if (attachment.Type == "doc" && attachment.Doc != null)
                                     {
                                         Debug.WriteLine($"[API] found document: {attachment.Doc.Id}");
-                                        
+
                                         if (attachment.Doc.Preview == null)
                                         {
                                             Debug.WriteLine("[API] Doc.Preview is null");
@@ -2491,12 +2494,12 @@ namespace ovkdesktop
                                     Debug.WriteLine($"[API] Stack trace: {attachEx.StackTrace}");
                                 }
                             }
-                            
+
                             // initialize counters if they are null
                             post.Likes ??= new Likes { Count = 0 };
                             post.Comments ??= new Comments { Count = 0 };
                             post.Reposts ??= new Reposts { Count = 0 };
-                            
+
                             post.Profile ??= new UserProfile
                             {
                                 FirstName = "User",
@@ -2507,7 +2510,7 @@ namespace ovkdesktop
                             if (post.CopyHistory != null && post.CopyHistory.Count > 0)
                             {
                                 Debug.WriteLine($"[API] post {post.Id} contains {post.CopyHistory.Count} reposts");
-                                
+
                                 foreach (var repost in post.CopyHistory)
                                 {
                                     try
@@ -2517,17 +2520,17 @@ namespace ovkdesktop
                                             Debug.WriteLine("[API] warning: null repost found");
                                             continue;
                                         }
-                                        
+
                                         Debug.WriteLine($"[API] repost ID={repost.Id}, OwnerId={repost.OwnerId}, FromId={repost.FromId}");
-                                        
+
                                         // initialize repost attachments if they are null
                                         repost.Attachments ??= new List<Attachment>();
-                                        
+
                                         // initialize counters of repost if they are null
                                         repost.Likes ??= new Likes { Count = 0 };
                                         repost.Comments ??= new Comments { Count = 0 };
                                         repost.Reposts ??= new Reposts { Count = 0 };
-                                        
+
                                         // Initialize Profile with a placeholder to avoid null reference exceptions
                                         repost.Profile ??= new UserProfile
                                         {
@@ -2537,17 +2540,17 @@ namespace ovkdesktop
                                             Photo200 = "",
                                             IsGroup = repost.FromId < 0
                                         };
-                                        
+
                                         if (repost.MainVideo != null)
                                         {
                                             Debug.WriteLine($"[API] repost contains video: {repost.MainVideo.Player}");
-                                            
+
                                             if (repost.MainVideo.Image == null)
                                             {
                                                 Debug.WriteLine("[API] Repost.MainVideo.Image is null, initializing empty list");
                                                 repost.MainVideo.Image = new List<PhotoSize>();
                                             }
-                                            
+
                                             if (repost.MainVideo.FirstFrame == null)
                                             {
                                                 Debug.WriteLine("[API] Repost.MainVideo.FirstFrame is null, initializing empty list");
@@ -2587,10 +2590,10 @@ namespace ovkdesktop
                             // continue with other posts
                         }
                     }
-                    
+
                     // caching result
                     cache[startFrom] = (DateTimeOffset.UtcNow, result);
-                    
+
                     return result;
                 }
                 catch (JsonException ex)

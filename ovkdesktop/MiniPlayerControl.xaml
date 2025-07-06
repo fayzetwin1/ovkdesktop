@@ -252,6 +252,7 @@
                     PointerPressed="PositionSlider_PointerPressed"
                     PointerReleased="PositionSlider_PointerReleased"
                     Tapped="PositionSlider_Tapped"
+                    ThumbToolTipValueConverter="{StaticResource SecondsToTimeStringConverter}"
                     Foreground="{ThemeResource SystemAccentColor}"/>
         </Grid>
     </Grid>

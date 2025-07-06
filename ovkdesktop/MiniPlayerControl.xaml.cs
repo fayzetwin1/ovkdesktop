@@ -726,27 +726,30 @@ namespace ovkdesktop
             
             Debug.WriteLine($"[MiniPlayerControl] Updated favorite icon: {(isAdded ? "Added" : "Not added")}");
         }
-        
+
         // update the volume icon depending on the level
         private void UpdateVolumeIcon(float volumeLevel)
         {
             try
             {
                 if (volumeLevel > 0.7f)
-                    VolumeIcon.Glyph = "\uE767"; // high volume
+                    VolumeIcon.Glyph = "\uE767"; // high volume 
+
                 else if (volumeLevel > 0.1f)
-                    VolumeIcon.Glyph = "\uE768"; // medium volume
+                    VolumeIcon.Glyph = "\uE995"; // medium volume 
+
                 else if (volumeLevel > 0)
-                    VolumeIcon.Glyph = "\uE992"; // low volume
+                    VolumeIcon.Glyph = "\uE992"; // low volume 
+
                 else
-                VolumeIcon.Glyph = "\uE74F"; // no sound
+                    VolumeIcon.Glyph = "\uE74F"; // no sound (Mute)
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[MiniPlayerControl] Error updating volume icon: {ex.Message}");
             }
         }
-        
+
         private string FormatTimeSpan(TimeSpan timeSpan)
         {
             // formatting the time in the format MM:SS or H:MM:SS

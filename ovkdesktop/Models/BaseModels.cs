@@ -172,7 +172,7 @@ namespace ovkdesktop.Models
         }
 
         [JsonPropertyName("copy_history")]
-        public List<RepostedPost> CopyHistory { get; set; }
+        public List<UserWallPost> CopyHistory { get; set; }
 
         private UserProfile _profile;
 
@@ -187,7 +187,7 @@ namespace ovkdesktop.Models
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
 
         [JsonIgnore]
-        public RepostedPost Repost => HasRepost ? CopyHistory[0] : null;
+        public UserWallPost Repost => HasRepost ? CopyHistory[0] : null;
 
         [JsonIgnore]
         public string RepostOwnerText => FormatRepostOwnerText();
@@ -278,10 +278,11 @@ namespace ovkdesktop.Models
     public class NewsFeedPost : BasePost
     {
 
-        
+        [JsonPropertyName("copy_history")]
+        public new List<NewsFeedPost> CopyHistory { get; set; }
 
-        
-        
+
+
         [JsonIgnore]
         public string SafeMainImageUrl 
         { 
@@ -404,6 +405,7 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("next_from")]
         public string NextFrom { get; set; }
+
 
         [JsonPropertyName("profiles")]
         public List<UserProfile> Profiles { get; set; }

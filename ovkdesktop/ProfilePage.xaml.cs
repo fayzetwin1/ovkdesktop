@@ -226,66 +226,161 @@ namespace ovkdesktop
             }
         }
 
+
         private async Task<APIResponse<WallResponse<UserWallPost>>> GetPostsWithProfilesAsync(string apiToken, UserProfile pageOwnerProfile, CancellationToken cancellationToken)
         {
             try
             {
-                var url = $"method/wall.get?access_token={apiToken}&owner_id={pageOwnerProfile.Id}&extended=1&v=5.126";
-                var response = await httpClient.GetAsync(url, cancellationToken);
-                response.EnsureSuccessStatusCode();
-
-                var result = await response.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
-                if (result?.Response == null) return result;
-
-
-                // create dictionary for profiles
+                // === ФАЗА 1: ПОЛНЫЙ СБОР ВСЕХ ДАННЫХ ===
+                var allPostsById = new Dictionary<string, UserWallPost>();
                 var profilesDict = new Dictionary<long, UserProfile>();
+                var groupsDict = new Dictionary<long, GroupProfile>();
 
-                // add profile of owner
-                if (pageOwnerProfile != null)
+                var initialUrl = $"method/wall.get?access_token={apiToken}&owner_id={pageOwnerProfile.Id}&extended=1&v=5.126";
+                var initialResponse = await httpClient.GetAsync(initialUrl, cancellationToken);
+                initialResponse.EnsureSuccessStatusCode();
+                var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+                if (wallData?.Response == null) return wallData;
+
+                var pinnedPostSummary = wallData.Response.Items.FirstOrDefault(p => p.IsPinned);
+
+                if (pinnedPostSummary != null)
                 {
-                    profilesDict[pageOwnerProfile.Id] = pageOwnerProfile;
-                }
+                    Debug.WriteLine($"[ProfilePage] Pinned post found: {pinnedPostSummary.OwnerId}_{pinnedPostSummary.Id}. Fetching full version.");
 
-                // add other users
-                result.Response.Profiles?.ForEach(p => { p.IsGroup = false; profilesDict[p.Id] = p; });
+                    var pinnedPostId = $"{pinnedPostSummary.OwnerId}_{pinnedPostSummary.Id}";
+                    var getByIdUrl = $"method/wall.getById?access_token={apiToken}&posts={pinnedPostId}&extended=1&v=5.126";
+                    var hydratedResponse = await httpClient.GetAsync(getByIdUrl, cancellationToken);
 
-                // add groups
-                result.Response.Groups?.ForEach(g => profilesDict[-g.Id] = g.ToUserProfile());
-
-
-                //give profiles for every post
-                foreach (var post in result.Response.Items)
-                {
-                    if (profilesDict.TryGetValue(post.FromId, out var authorProfile))
+                    if (hydratedResponse.IsSuccessStatusCode)
                     {
-                        post.AuthorProfile = authorProfile;
-                    }
+                        var jsonResponse = await hydratedResponse.Content.ReadAsStringAsync();
+                        Debug.WriteLine($"[ProfilePage] Full Pinned Post JSON: {jsonResponse}");
 
-                    if (post.HasRepost && post.CopyHistory != null)
-                    {
-                        foreach (var repost in post.CopyHistory)
+                        var hydratedData = JsonSerializer.Deserialize<APIResponse<WallResponse<UserWallPost>>>(jsonResponse);
+
+
+                        var fullPinnedPost = hydratedData?.Response?.Items?.FirstOrDefault();
+
+                        if (fullPinnedPost != null)
                         {
-                            if (profilesDict.TryGetValue(repost.FromId, out var repostProfile))
+                            int index = wallData.Response.Items.FindIndex(p => p.Id == pinnedPostSummary.Id && p.OwnerId == pinnedPostSummary.OwnerId);
+                            if (index != -1)
                             {
-                                repost.Profile = repostProfile;
+                                wallData.Response.Items[index] = fullPinnedPost;
+                                Debug.WriteLine("[ProfilePage] Pinned post was successfully replaced with its full version.");
                             }
+                            if (fullPinnedPost.HasRepost)
+                            {
+                                foreach (var repostContent in fullPinnedPost.CopyHistory)
+                                {
+                                    var repostId = $"{repostContent.OwnerId}_{repostContent.Id}";
+                                    if (!allPostsById.ContainsKey(repostId))
+                                    {
+                                        allPostsById[repostId] = repostContent;
+                                    }
+                                }
+                            }
+
+                            foreach (var p in hydratedData.Response.Profiles ?? new()) if (!profilesDict.ContainsKey(p.Id)) profilesDict[p.Id] = p;
+                            foreach (var g in hydratedData.Response.Groups ?? new()) if (!groupsDict.ContainsKey(g.Id)) groupsDict[g.Id] = g;
                         }
                     }
                 }
 
-                return result;
+                var idsToFetch = new Queue<string>();
+                foreach (var post in wallData.Response.Items)
+                {
+                    allPostsById[$"{post.OwnerId}_{post.Id}"] = post;
+                    if (post.HasRepost)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            var repostId = $"{repost.OwnerId}_{repost.Id}";
+                            if (!allPostsById.ContainsKey(repostId))
+                            {
+                                idsToFetch.Enqueue(repostId);
+                            }
+                        }
+                    }
+                }
+                foreach (var p in wallData.Response.Profiles ?? new()) profilesDict[p.Id] = p;
+                foreach (var g in wallData.Response.Groups ?? new()) groupsDict[g.Id] = g;
+
+                var fetchedIds = new HashSet<string>(allPostsById.Keys);
+                while (idsToFetch.Count > 0)
+                {
+                    var currentId = idsToFetch.Dequeue();
+                    if (fetchedIds.Contains(currentId)) continue;
+
+                    var getByIdUrl = $"method/wall.getById?access_token={apiToken}&posts={currentId}&extended=1&v=5.126";
+                    var hydratedResponse = await httpClient.GetAsync(getByIdUrl, cancellationToken);
+                    if (!hydratedResponse.IsSuccessStatusCode) continue;
+
+                    var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+                    if (hydratedData?.Response?.Items?.FirstOrDefault() is UserWallPost fullPost)
+                    {
+                        allPostsById[currentId] = fullPost;
+                        fetchedIds.Add(currentId);
+                        foreach (var p in hydratedData.Response.Profiles ?? new()) if (!profilesDict.ContainsKey(p.Id)) profilesDict[p.Id] = p;
+                        foreach (var g in hydratedData.Response.Groups ?? new()) if (!groupsDict.ContainsKey(g.Id)) groupsDict[g.Id] = g;
+                        if (fullPost.HasRepost)
+                        {
+                            foreach (var nestedRepost in fullPost.CopyHistory)
+                            {
+                                var nestedId = $"{nestedRepost.OwnerId}_{nestedRepost.Id}";
+                                if (!fetchedIds.Contains(nestedId)) idsToFetch.Enqueue(nestedId);
+                            }
+                        }
+                    }
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var finalProfiles = profilesDict.Values.ToDictionary(p => (long)p.Id, p => p);
+                foreach (var g in groupsDict.Values) finalProfiles[-g.Id] = g.ToUserProfile();
+                finalProfiles[pageOwnerProfile.Id] = pageOwnerProfile;
+
+                // === ФАЗА 2: ПРИСВОЕНИЕ ПРОФИЛЕЙ (Первый цикл) ===
+                foreach (var post in allPostsById.Values)
+                {
+                    if (finalProfiles.TryGetValue(post.FromId, out var authorProfile))
+                    {
+                        post.AuthorProfile = authorProfile;
+                    }
+                }
+
+                // === ФАЗА 3: СБОРКА ИЕРАРХИИ (Второй, отдельный цикл) ===
+                foreach (var post in allPostsById.Values)
+                {
+                    if (post.HasRepost)
+                    {
+                        var newHistory = new List<UserWallPost>();
+                        foreach (var summary in post.CopyHistory)
+                        {
+                            if (allPostsById.TryGetValue($"{summary.OwnerId}_{summary.Id}", out var fullRepost))
+                            {
+                                newHistory.Add(fullRepost);
+                            }
+                        }
+                        post.CopyHistory = newHistory;
+                    }
+                }
+
+                return wallData;
             }
             catch (Exception ex)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                Debug.WriteLine($"[ProfilePage] Error getting posts with profiles: {ex.Message}");
-                ShowError($"Ошибка при загрузке постов: {ex.Message}");
+                if (ex is not OperationCanceledException)
+                {
+                    Debug.WriteLine($"[ProfilePage] Error getting posts with profiles: {ex.Message}\n{ex.StackTrace}");
+                    ShowError($"Ошибка при загрузке постов.");
+                }
                 return null;
             }
         }
 
-        
+
+
 
         private async Task LoadProfileAndPostsAsync(CancellationToken cancellationToken)
         {

@@ -19,6 +19,47 @@
         <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
         <converters:IsYouTubeToVisibilityConverter x:Key="YouTubeVisibilityConverter"/>
         <converters:IsYouTubeToVisibilityConverter x:Key="NotYouTubeVisibilityConverter" IsReversed="True"/>
+
+        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:UserWallPost">
+            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="4"
+                    Padding="10" Margin="0,5,0,0">
+                <StackPanel>
+                    <!-- Заголовок репоста (аватар, имя, дата) -->
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                            <Ellipse.Fill>
+                                <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Tag="{Binding FromId}" Click="RepostAuthor_Click">
+                                <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Button>
+                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- repost -->
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    <Image Source="{Binding MainImageUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Image Source="{Binding GifUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Grid Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,0" HorizontalAlignment="Left">
+                        <MediaPlayerElement Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}" MaxHeight="300" AreTransportControlsEnabled="True"/>
+                    </Grid>
+
+                    <!-- recursive -->
+                    <ItemsControl ItemsSource="{Binding CopyHistory}" 
+                                  ItemTemplate="{StaticResource RepostItemTemplate}" 
+                                  Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </Page.Resources>
 
     <Grid>
@@ -283,64 +324,11 @@
                                 </ItemsControl>
 
                                 <!-- repost -->
-                                    <Border Grid.Row="6" 
-                                        Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1" CornerRadius="4"
-                                        Padding="10" Margin="0,0,0,10"
-                                        HorizontalAlignment="Stretch">
-                                        <StackPanel>
-                                            <!-- Author header with avatar and info -->
-                                            <Grid Margin="0,0,0,10">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <!-- Author avatar -->
-                                                <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
-                                                    <Ellipse.Fill>
-                                                        <ImageBrush ImageSource="{Binding Repost.Profile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
-                                                    </Ellipse.Fill>
-                                                </Ellipse>
-
-                                                <!-- Author info -->
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <Button x:Name="RepostAuthorButton" Background="Transparent" BorderThickness="0"
-                                                        Padding="0,2" Margin="0" HorizontalAlignment="Left"
-                                                        HorizontalContentAlignment="Left" Tag="{Binding Repost.FromId}"
-                                                        Click="RepostAuthor_Click">
-                                                        <TextBlock Text="{Binding RepostOwnerText}" Opacity="1.0" 
-                                                           Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                                           FontWeight="SemiBold"/>
-                                                    </Button>
-                                                    <TextBlock Text="{Binding Repost.FormattedDate}" Opacity="0.7" FontSize="12"/>
-                                                </StackPanel>
-                                            </Grid>
-
-                                            <!-- Repost content -->
-                                            <TextBlock Text="{Binding Repost.Text}" TextWrapping="Wrap" Margin="0,0,0,10"
-                                                  Foreground="{ThemeResource TextFillColorPrimary}"/>
-
-                                            <Image Source="{Binding Repost.MainImageUrl}" Stretch="Uniform" MaxHeight="300"
-                                                  HorizontalAlignment="Left" Margin="0,0,0,10"
-                                                  Visibility="{Binding Repost.HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                                            <Image Source="{Binding Repost.GifUrl}" Stretch="Uniform" MaxHeight="300"
-                                                  HorizontalAlignment="Left" Margin="0,0,0,10"
-                                                  Visibility="{Binding Repost.HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                                            <Grid Visibility="{Binding Repost.HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                 Margin="0,0,0,0" HorizontalAlignment="Left">
-                                            <MediaPlayerElement Source="{Binding Repost.MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
-                                                    MaxHeight="300" AreTransportControlsEnabled="True"/>
-                                            </Grid>
-
-                                            
-
-                                        </StackPanel>
-                                    </Border>
+                                    <ItemsControl Grid.Row="6"
+                                          ItemsSource="{Binding CopyHistory}"
+                                          Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
+                                          ItemTemplate="{StaticResource RepostItemTemplate}"
+                                          Margin="0,0,0,10"/>
 
                                     <!-- likes and comments count - moved after the repost content -->
                                 <StackPanel Grid.Row="7" Orientation="Horizontal" Spacing="15" Margin="0,10,0,0">
