@@ -84,6 +84,14 @@
                                BorderThickness="1" CornerRadius="8"
                                Margin="0,5,0,10" Padding="15"
                                HorizontalAlignment="Stretch">
+
+                            <Border.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Репост" 
+                                        Click="RepostItem_Click"/>
+                                </MenuFlyout>
+                            </Border.ContextFlyout>
+                            
                             <Grid HorizontalAlignment="Stretch">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>

@@ -239,27 +239,23 @@ namespace ovkdesktop
 
         private void PostsListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
         {
-            if (args.InRecycleQueue) return;
+            if (args.InRecycleQueue)
+            {
+                var oldItemContainer = args.ItemContainer as ListViewItem;
+                if (oldItemContainer != null)
+                {
+                    oldItemContainer.RightTapped -= PostItem_RightTapped;
+                }
+                return;
+            }
 
             var itemContainer = args.ItemContainer as ListViewItem;
             if (itemContainer == null) return;
 
-            itemContainer.Loaded -= ItemContainer_Loaded;
-            itemContainer.Loaded += ItemContainer_Loaded;
+            itemContainer.RightTapped -= PostItem_RightTapped;
+            itemContainer.RightTapped += PostItem_RightTapped;
         }
 
-        private void ItemContainer_Loaded(object sender, RoutedEventArgs e)
-        {
-            var itemContainer = sender as ListViewItem;
-            if (itemContainer == null) return;
-
-            var rootGrid = FindVisualChild<Grid>(itemContainer);
-            if (rootGrid != null)
-            {
-                rootGrid.RightTapped -= PostItem_RightTapped;
-                rootGrid.RightTapped += PostItem_RightTapped;
-            }
-        }
 
 
 
@@ -280,22 +276,7 @@ namespace ovkdesktop
             flyout.ShowAt(element, e.GetPosition(element));
         }
 
-        private T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(obj, i);
-                if (child != null && child is T)
-                    return (T)child;
-                else
-                {
-                    T childOfChild = FindVisualChild<T>(child);
-                    if (childOfChild != null)
-                        return childOfChild;
-                }
-            }
-            return null;
-        }
+
 
 
 
@@ -837,6 +818,45 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error loading author/repost profiles: {ex.Message}");
+            }
+        }
+
+        private async void RepostItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuFlyoutItem flyoutItem)
+            {
+                return;
+            }
+            if (flyoutItem.DataContext is not UserWallPost post)
+            {
+                return;
+            }
+
+            try
+            {
+                OVKDataBody ovkToken = await LoadTokenAsync();
+                if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
+                {
+                    ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                    return;
+                }
+
+                string objectId = $"wall{post.OwnerId}_{post.Id}";
+                bool success = await RepostAsync(ovkToken.Token, objectId);
+
+                var dialog = new ContentDialog
+                {
+                    Title = success ? "Успех" : "Ошибка",
+                    Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                    CloseButtonText = "OK",
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfilePage] Error in RepostItem_Click: {ex.Message}");
+                ShowError($"Ошибка при репосте: {ex.Message}");
             }
         }
 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="ovkdesktop.CrashReportWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="OpenVK Desktop CrashService">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Произошла критическая ошибка" FontSize="24" FontWeight="Bold" Foreground="DarkRed"/>
+            <TextBlock Text="Поздравляю, у тебя (судя по всему) крашнулся клиент! Возможно, он даже сейчас у тебя будет спокойно работать, но все же, стоит отправить данный краш-лог в issue в репозитории проекта." TextWrapping="Wrap" Margin="0,10,0,0"/>
+            <HyperlinkButton x:Name="GitLabLink" Content="Перейти в GitLab репозиторий" Margin="0,10,0,0" NavigateUri="https://gitlab.com/your-repo/your-project/-/issues"/>
+            <TextBlock x:Name="ReportPathText" Text="Отчет также сохранен в файле:" TextWrapping="Wrap" Margin="0,10,0,0" IsTextSelectionEnabled="True"/>
+        </StackPanel>
+
+        <TextBlock Grid.Row="1" Text="Технические детали краша:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+
+        <TextBox Grid.Row="2"
+                 x:Name="CrashDetailsTextBox"
+                 IsReadOnly="True"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 ScrollViewer.VerticalScrollBarVisibility="Visible"
+                 FontFamily="Consolas"/>
+
+        <Button Grid.Row="3" Content="Закрыть" HorizontalAlignment="Right" Margin="0,20,0,0" Click="CloseButton_Click"/>
+    </Grid>
+</Window>

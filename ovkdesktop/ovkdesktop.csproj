@@ -32,6 +32,7 @@
     <None Remove="Assets\Images\openvklogo.png" />
     <None Remove="Assets\Images\openvklogoScaled.png" />
     <None Remove="AuthPage.xaml" />
+    <None Remove="CrashReportWindow.xaml" />
     <None Remove="FriendsPage.xaml" />
     <None Remove="MainPage.xaml" />
     <None Remove="MusicPage.xaml" />
@@ -138,6 +139,11 @@
     <TrimmerRootAssembly Include="Microsoft.Windows.AppLifecycle" />
     <TrimmerRootAssembly Include="Microsoft.WinUI" />
     <TrimmerRootAssembly Include="Microsoft.Windows.AppNotifications" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="CrashReportWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
 
   <!--

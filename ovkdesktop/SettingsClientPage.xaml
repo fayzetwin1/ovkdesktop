@@ -87,7 +87,31 @@
                HorizontalAlignment="Left"
                Margin="320,150,0,10"/>
         </Grid>
-        
+
+        <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="20" Spacing="10">
+            <TextBlock Text="Панель отладки и тестирования" FontWeight="Bold"/>
+
+            <Button x:Name="CrashUiThreadButton" 
+                    Content="Краш (UI-поток)" 
+                    Click="CrashUiThreadButton_Click"
+                    Background="IndianRed"/>
+
+            <Button x:Name="CrashBackgroundThreadButton" 
+                    Content="Краш (Фоновый поток)" 
+                    Click="CrashBackgroundThreadButton_Click"
+                    Background="IndianRed"/>
+
+            <Button x:Name="CrashWithInnerExceptionButton" 
+                    Content="Краш (с вложенным исключением)" 
+                    Click="CrashWithInnerExceptionButton_Click"
+                    Background="IndianRed"/>
+
+            <Button x:Name="CrashAsyncTaskButton"
+                    Content="Краш (Асинхронная задача)"
+                    Click="CrashAsyncTaskButton_Click"
+                    Background="IndianRed"/>
+
+        </StackPanel>
 
     </Grid>
 </Page>

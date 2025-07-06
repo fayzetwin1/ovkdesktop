@@ -129,7 +129,14 @@
 							BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
 							BorderThickness="1" CornerRadius="8"
                                     Margin="50,5,0,10" Padding="15">
-                            <Grid>
+
+                                <Border.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Репост" 
+                                        Click="RepostItem_Click"/>
+                                    </MenuFlyout>
+                                </Border.ContextFlyout>
+                                <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/> <!-- Row 0: Date -->
                                     <RowDefinition Height="Auto"/> <!-- Row 1: Text -->

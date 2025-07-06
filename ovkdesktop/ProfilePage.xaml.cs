@@ -122,53 +122,45 @@ namespace ovkdesktop
             }
         }
 
-        private void PostsListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+
+        private async void RepostItem_Click(object sender, RoutedEventArgs e)
         {
-            if (args.InRecycleQueue) return;
-
-            var itemContainer = args.ItemContainer as SelectorItem;
-            if (itemContainer == null) return;
-
-            var rootGrid = FindVisualChild<Grid>(itemContainer);
-            if (rootGrid != null)
-            {
-                rootGrid.RightTapped -= PostItem_RightTapped;
-                rootGrid.RightTapped += PostItem_RightTapped;
-            }
-        }
-
-        private void PostItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
-        {
-            if (sender is not FrameworkElement element || element.DataContext is not UserWallPost post)
+            if (sender is not MenuFlyoutItem flyoutItem)
             {
                 return;
             }
-            e.Handled = true;
 
-
-            var flyout = new MenuFlyout();
-            var repostItem = new MenuFlyoutItem { Text = "Репост", Tag = post };
-            repostItem.Click += RepostButton_Click; 
-            flyout.Items.Add(repostItem);
-
-            flyout.ShowAt(element, e.GetPosition(element));
-        }
-
-        private T FindVisualChild<T>(DependencyObject obj) where T : DependencyObject
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(obj); i++)
+            if (flyoutItem.DataContext is not UserWallPost post)
             {
-                DependencyObject child = VisualTreeHelper.GetChild(obj, i);
-                if (child != null && child is T)
-                    return (T)child;
-                else
-                {
-                    T childOfChild = FindVisualChild<T>(child);
-                    if (childOfChild != null)
-                        return childOfChild;
-                }
+                return;
             }
-            return null;
+
+            try
+            {
+                OVKDataBody ovkToken = await LoadTokenAsync();
+                if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
+                {
+                    ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                    return;
+                }
+
+                string objectId = $"wall{post.OwnerId}_{post.Id}";
+                bool success = await RepostAsync(ovkToken.Token, objectId);
+
+                var dialog = new ContentDialog
+                {
+                    Title = success ? "Успех" : "Ошибка",
+                    Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                    CloseButtonText = "OK",
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfilePage] Error in RepostItem_Click: {ex.Message}");
+                ShowError($"Ошибка при репосте: {ex.Message}");
+            }
         }
 
 
