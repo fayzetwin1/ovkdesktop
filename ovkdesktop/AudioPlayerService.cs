@@ -17,6 +17,12 @@ namespace ovkdesktop
 {
     public class AudioPlayerService : IDisposable
     {
+        // lastfm support
+        private readonly LastFmService _lastFmService;
+        private bool _hasScrobbledCurrentTrack = false;
+        private DateTime _currentTrackStartTime;
+
+
         // main player for audio playback
         private readonly MediaPlayer _mediaPlayer;
         
@@ -120,7 +126,14 @@ namespace ovkdesktop
                 _positionTimer = new DispatcherTimer();
                 _positionTimer.Interval = TimeSpan.FromMilliseconds(200); // reduce the interval for smoother update
                 _positionTimer.Tick += PositionTimer_Tick;
-                
+
+                _lastFmService = App.LastFmService;
+
+                if (_lastFmService == null)
+                {
+                    Debug.WriteLine("[AudioPlayerService] CRITICAL ERROR: App.LastFmService is null during initialization!");
+                }
+
                 Debug.WriteLine("[AudioPlayerService] Successfully initialized");
             }
             catch (Exception ex)
@@ -129,7 +142,26 @@ namespace ovkdesktop
                 throw;
             }
         }
-        
+        private async Task UpdateLastFmNowPlayingAsync(Models.Audio audio)
+        {
+            await _lastFmService.UpdateNowPlayingAsync(audio);
+        }
+
+        private async Task ScrobbleTrackIfNeededAsync(TimeSpan position, TimeSpan duration)
+        {
+
+            if (App.Settings.IsLastFmEnabled && !_hasScrobbledCurrentTrack && CurrentAudio != null && duration.TotalSeconds > 30)
+            {
+                bool shouldScrobble = position.TotalSeconds >= duration.TotalSeconds / 2 || position.TotalSeconds >= 240;
+
+                if (shouldScrobble)
+                {
+                    await _lastFmService.ScrobbleAsync(CurrentAudio, _currentTrackStartTime);
+                    _hasScrobbledCurrentTrack = true;
+                }
+            }
+        }
+
         // getting the MediaPlayer for binding to the MediaPlayerElement
         public MediaPlayer GetMediaPlayer()
         {
@@ -363,7 +395,13 @@ namespace ovkdesktop
                 
                 // set the current track
                 CurrentAudio = audio;
-                
+
+                _hasScrobbledCurrentTrack = false;
+                _currentTrackStartTime = DateTime.UtcNow;
+
+                // send "now playing" in lastfm
+                _ = _lastFmService.UpdateNowPlayingAsync(audio);
+
                 // check the status of the like for the current track
                 _ = CheckAudioFavoriteStatusAsync(audio);
                 
@@ -1097,6 +1135,17 @@ namespace ovkdesktop
                         
                         // update the UI with the current position
                         PositionChanged?.Invoke(this, position);
+
+                        if (App.Settings.IsLastFmEnabled && !_hasScrobbledCurrentTrack && CurrentAudio != null && duration.TotalSeconds > 30)
+                        {
+                            bool shouldScrobble = position.TotalSeconds >= duration.TotalSeconds / 2 || position.TotalSeconds >= 240;
+
+                            if (shouldScrobble)
+                            {
+                                _ = _lastFmService.ScrobbleAsync(CurrentAudio, _currentTrackStartTime);
+                                _hasScrobbledCurrentTrack = true; 
+                            }
+                        }
                     }
                     else
                     {
@@ -1151,14 +1200,22 @@ namespace ovkdesktop
                 // check the status of the like for audio
                 try
                 {
-                    bool isAdded = await SessionHelper.IsAudioAddedAsync(audio);
+                    bool? isAddedNullable = await SessionHelper.IsAudioAddedAsync(audio);
 
                     // if the status has changed, update it and notify the UI
-                    if (audio.IsAdded != isAdded)
+                    if (isAddedNullable.HasValue)
                     {
-                        Debug.WriteLine($"[AudioPlayerService] Audio favorite status updated: {isAdded}");
-                        audio.IsAdded = isAdded;
-                        FavoriteStatusChanged?.Invoke(this, audio);
+                        bool isAdded = isAddedNullable.Value;
+                        if (audio.IsAdded != isAdded)
+                        {
+                            Debug.WriteLine($"[AudioPlayerService] Audio favorite status updated: {isAdded}");
+                            audio.IsAdded = isAdded;
+                            FavoriteStatusChanged?.Invoke(this, audio);
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"[AudioPlayerService] Could not verify favorite status for audio ID {audio.Id}. Preserving current state (IsAdded={audio.IsAdded}).");
                     }
                 }
                 catch (Exception ex)

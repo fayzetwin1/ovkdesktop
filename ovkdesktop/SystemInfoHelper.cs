@@ -19,7 +19,7 @@ namespace ovkdesktop
             {
                 return $".NET {assemblyPath[netCoreAppIndex + 1]}";
             }
-            // Запасной вариант
+            // Fallback option
             return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
         }
 

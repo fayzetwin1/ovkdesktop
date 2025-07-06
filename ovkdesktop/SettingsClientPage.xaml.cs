@@ -26,11 +26,97 @@ namespace ovkdesktop
     /// </summary>
     public sealed partial class SettingsClientPage : Page
     {
+
         public SettingsClientPage()
         {
             this.InitializeComponent();
         }
 
+        private void Page_Loaded(object sender, RoutedEventArgs e)
+        {
+            LastFmApiKeyBox.Text = App.Settings.LastFmApiKey ?? "";
+            LastFmApiSecretBox.Password = App.Settings.LastFmApiSecret ?? "";
+
+            UpdateLastFmUi();
+
+            LoadingRing.IsActive = false;
+            LoadingRing.Visibility = Visibility.Collapsed;
+
+            SettingsScrollViewer.Visibility = Visibility.Visible;
+        }
+
+        private void UpdateLastFmUi()
+        {
+            bool keysAreSet = !string.IsNullOrEmpty(App.Settings.LastFmApiKey) && !string.IsNullOrEmpty(App.Settings.LastFmApiSecret);
+
+            LastFmToggle.IsEnabled = keysAreSet && !string.IsNullOrEmpty(App.Settings.LastFmSessionKey);
+            LastFmLoginButton.IsEnabled = keysAreSet;
+
+            LastFmToggle.IsOn = App.Settings.IsLastFmEnabled;
+            if (!LastFmToggle.IsEnabled)
+            {
+                LastFmToggle.IsOn = false;
+            }
+
+            if (!string.IsNullOrEmpty(App.Settings.LastFmSessionKey))
+            {
+                LastFmStatusText.Text = $"пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ {App.Settings.LastFmUsername}";
+                LastFmLoginButton.Content = "пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ Last.fm";
+            }
+            else
+            {
+                LastFmStatusText.Text = keysAreSet ? "пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ" : "пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ API";
+                LastFmLoginButton.Content = "пїЅпїЅпїЅпїЅпїЅ пїЅ Last.fm";
+            }
+        }
+
+        private async void LastFmSaveKeysButton_Click(object sender, RoutedEventArgs e)
+        {
+            App.Settings.LastFmApiKey = LastFmApiKeyBox.Text.Trim();
+            App.Settings.LastFmApiSecret = LastFmApiSecretBox.Password.Trim();
+
+            await App.Settings.SaveAsync();
+
+            LastFmKeysInfoBar.IsOpen = true;
+
+            UpdateLastFmUi();
+        }
+
+        private async void LastFmToggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            App.Settings.IsLastFmEnabled = LastFmToggle.IsOn;
+            await App.Settings.SaveAsync();
+        }
+
+        private async void LastFmLoginButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(App.Settings.LastFmSessionKey))
+            {
+                App.LastFmService.Logout();
+                await App.Settings.SaveAsync();
+            }
+            else
+            {
+                bool success = await App.LastFmService.AuthenticateAsync(this.XamlRoot);
+                if (success)
+                {
+                    await App.Settings.SaveAsync();
+                }
+                else
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = "пїЅпїЅпїЅпїЅпїЅпїЅ",
+                        Content = "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ Last.fm. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ API пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.",
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await dialog.ShowAsync();
+                }
+            }
+
+            UpdateLastFmUi();
+        }
 
         private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
@@ -46,57 +132,7 @@ namespace ovkdesktop
 
             // exit the application
             Environment.Exit(0);
-        }
 
-
-        public void ShowWelcomePage()
-        {
-            this.Content = new WelcomePage();
-        }
-
-        private void CrashUiThreadButton_Click(object sender, RoutedEventArgs e)
-        {
-            LoggerService.Instance.Log("TEST: Попытка вызвать сбой из UI потока...");
-            object o = null;
-            o.ToString();
-        }
-
-        private void CrashBackgroundThreadButton_Click(object sender, RoutedEventArgs e)
-        {
-            LoggerService.Instance.Log("TEST: Попытка вызвать сбой из фонового потока (Thread)...");
-            new Thread(() =>
-            {
-                Thread.Sleep(50);
-                throw new AccessViolationException("Тестовый сбой из фонового потока!");
-
-            }).Start();
-        }
-
-        private void CrashWithInnerExceptionButton_Click(object sender, RoutedEventArgs e)
-        {
-            LoggerService.Instance.Log("TEST: Попытка вызвать сбой с вложенным исключением...");
-            try
-            {
-                int x = 1;
-                int y = 0;
-                int z = x / y;
-            }
-            catch (Exception innerEx)
-            {
-
-                throw new InvalidOperationException("Ошибка при выполнении математической операции.", innerEx);
-            }
-        }
-
-        private void CrashAsyncTaskButton_Click(object sender, RoutedEventArgs e)
-        {
-            LoggerService.Instance.Log("TEST: Попытка вызвать сбой из асинхронной задачи (Task)...");
-
-            Task.Run(() =>
-            {
-                Thread.Sleep(50);
-                throw new ArgumentException("Тестовый сбой из 'забытой' задачи Task.Run!");
-            });
         }
 
     }

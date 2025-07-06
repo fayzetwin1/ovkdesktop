@@ -22,13 +22,13 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="Произошла критическая ошибка" FontSize="24" FontWeight="Bold" Foreground="DarkRed"/>
-            <TextBlock Text="Поздравляю, у тебя (судя по всему) крашнулся клиент! Возможно, он даже сейчас у тебя будет спокойно работать, но все же, стоит отправить данный краш-лог в issue в репозитории проекта." TextWrapping="Wrap" Margin="0,10,0,0"/>
-            <HyperlinkButton x:Name="GitLabLink" Content="Перейти в GitLab репозиторий" Margin="0,10,0,0" NavigateUri="https://gitlab.com/your-repo/your-project/-/issues"/>
-            <TextBlock x:Name="ReportPathText" Text="Отчет также сохранен в файле:" TextWrapping="Wrap" Margin="0,10,0,0" IsTextSelectionEnabled="True"/>
+            <TextBlock Text="Произощла критическая ошибка" FontSize="24" FontWeight="Bold" Foreground="DarkRed"/>
+            <TextBlock Text="Клиент к великому сожалению крашнулся. Возможно, даже после этого клиент у вас будет работать, но советуем краш-лог кинуть в наш репозиторий в issues." TextWrapping="Wrap" Margin="0,10,0,0"/>
+            <HyperlinkButton x:Name="GitLabLink" Content="Перейти в репозиторий" Margin="0,10,0,0" NavigateUri="https://github.com/fayzetwin1/ovkdesktop/issues"/>
+            <TextBlock x:Name="ReportPathText" Text="Краш-лог был также сохранен здесь:" TextWrapping="Wrap" Margin="0,10,0,0" IsTextSelectionEnabled="True"/>
         </StackPanel>
 
-        <TextBlock Grid.Row="1" Text="Технические детали краша:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+        <TextBlock Grid.Row="1" Text="Описание краша (краш-лог):" FontWeight="SemiBold" Margin="0,0,0,5"/>
 
         <TextBox Grid.Row="2"
                  x:Name="CrashDetailsTextBox"

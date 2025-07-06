@@ -48,8 +48,9 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="0,0,20,0"/>
                 <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz"/>
+                <HyperlinkButton Content="Telegram канал клиента" NavigateUri="https://t.me/ovkdesktop"/>
             </StackPanel>
-            <TextBlock Text="OVK Desktop, version: 0.8 Pre-release. Made with love by Fayzetwin :3." 
+            <TextBlock Text="OpenVK Desktop, version: 1.0 Release. Made with love by Fayzetwin :3." 
                        Margin="0,10,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"
                        HorizontalAlignment="Center"/>
         </StackPanel>

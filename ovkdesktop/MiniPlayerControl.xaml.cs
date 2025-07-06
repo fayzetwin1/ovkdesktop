@@ -237,26 +237,25 @@ namespace ovkdesktop
         
         private void AudioService_PlaybackStateChanged(object sender, bool isPlaying)
         {
-            try
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
-                if (_audioService == null) return;
-                
-                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+                try 
                 {
                     // update the icon depending on the playback state
                     PlayPauseIcon.Glyph = isPlaying ? "\uE769" : "\uE768";
-                    
+
                     // show or hide the player depending on the state and the presence of the current track
-                    if (isPlaying && _audioService.CurrentAudio != null)
+                    if (isPlaying && _audioService != null && _audioService.CurrentAudio != null)
                     {
                         Show();
                     }
-                });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[MiniPlayerControl] Error updating playback state: {ex.Message}");
-            }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[MiniPlayerControl] ERROR updating playback state in UI thread: {ex.GetType().FullName}: {ex.Message}");
+                    Debug.WriteLine($"[MiniPlayerControl] Stack trace: {ex.StackTrace}");
+                }
+            });
         }
         
         private void AudioService_PositionChanged(object sender, TimeSpan position)

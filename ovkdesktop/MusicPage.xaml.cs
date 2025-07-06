@@ -141,7 +141,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[MusicPage] Error initializing: {ex.Message}");
-                ShowError($"Ошибка инициализации: {ex.Message}");
+                ShowError($"Error initializing: {ex.Message}");
             }
         }
         
@@ -151,7 +151,7 @@ namespace ovkdesktop
             {
                 if (!File.Exists("ovkdata.json"))
                 {
-                    ShowError("Необходимо авторизоваться");
+                    ShowError("Unauthorized");
                     return null;
                 }
                 
@@ -165,7 +165,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[MusicPage] Error loading token: {ex.Message}");
-                ShowError($"Ошибка загрузки токена: {ex.Message}");
+                ShowError($"Error loading token: {ex.Message}");
                 return null;
             }
         }
@@ -213,7 +213,7 @@ namespace ovkdesktop
                 string token = await SessionHelper.GetTokenAsync();
                 if (string.IsNullOrEmpty(token))
                 {
-                    ShowError("Не удалось получить токен доступа");
+                    ShowError("Unable to get access token");
                     return;
                 }
                 
@@ -225,7 +225,7 @@ namespace ovkdesktop
                 var response = await httpClient.GetAsync(apiUrl);
                 if (!response.IsSuccessStatusCode)
                 {
-                    ShowError($"Ошибка запроса: {response.StatusCode}");
+                    ShowError($"Request error: {response.StatusCode}");
                     return;
                 }
                 
@@ -241,7 +241,7 @@ namespace ovkdesktop
                     if (responseObj == null)
                     {
                         Debug.WriteLine("[MusicPage] Response object is null or not a JSON object");
-                        ShowError("Некорректный ответ от API");
+                        ShowError("Invalid API response");
                         return;
                     }
                     
@@ -303,14 +303,14 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine($"[MusicPage] Error parsing response: {ex.GetType().FullName}: {ex.Message}");
                     Debug.WriteLine($"[MusicPage] Stack trace: {ex.StackTrace}");
-                    ShowError($"Ошибка обработки данных: {ex.Message}");
+                    ShowError($"Data processing error: {ex.Message}");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[MusicPage] Error in LoadPopularAudio: {ex.GetType().FullName}: {ex.Message}");
                 Debug.WriteLine($"[MusicPage] Stack trace: {ex.StackTrace}");
-                ShowError($"Ошибка загрузки популярных аудиозаписей: {ex.Message}");
+                ShowError($"Error loading popular audio: {ex.Message}");
             }
             finally
             {
@@ -370,7 +370,7 @@ namespace ovkdesktop
                     }
                     
                     // update counter and header
-                    MyAudioHeader.Text = $"Мои аудиозаписи ({_myAudioCollection.Count})";
+                    MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
                     
                     // update visibility of interface elements
                     UpdateUIVisibility(true);
@@ -380,7 +380,7 @@ namespace ovkdesktop
                     Debug.WriteLine("[MusicPage] No favorite audio tracks found");
                     
                     // update header with information about the absence of tracks
-                    MyAudioHeader.Text = "У вас нет сохраненных аудиозаписей";
+                    MyAudioHeader.Text = "You have no saved audios";
                     
                     // update visibility of interface elements
                     UpdateUIVisibility(false);
@@ -392,7 +392,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[MusicPage] Error loading favorite audios: {ex.Message}");
                 Debug.WriteLine($"[MusicPage] Stack trace: {ex.StackTrace}");
-                ShowError($"Ошибка загрузки аудиозаписей: {ex.Message}");
+                ShowError($"Error loading audios: {ex.Message}");
             }
             finally
             {
@@ -570,7 +570,7 @@ namespace ovkdesktop
                 switch (mode)
                 {
                     case AudioMode.MyAudio:
-                        MyAudioHeader.Text = $"Мои аудиозаписи ({_myAudioCollection.Count})";
+                        MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
                         break;
                     case AudioMode.Popular:
                         // Popular already has its own header
@@ -703,7 +703,7 @@ namespace ovkdesktop
                 if (_audioService == null)
                 {
                     Debug.WriteLine("[MusicPage] AudioPlayerService is null in FavoriteButton_Click");
-                    ShowError("Сервис недоступен");
+                    ShowError("Service unavailable");
                     return;
                 }
                 
@@ -712,7 +712,7 @@ namespace ovkdesktop
                 if (button == null || button.DataContext == null)
                 {
                     Debug.WriteLine("[MusicPage] Button or DataContext is null in FavoriteButton_Click");
-                    ShowError("Не удалось получить данные трека");
+                    ShowError("Unable to get track data");
                     return;
                 }
                 
@@ -720,7 +720,7 @@ namespace ovkdesktop
                 if (audio == null)
                 {
                     Debug.WriteLine("[MusicPage] Audio is null in FavoriteButton_Click");
-                    ShowError("Некорректные данные трека");
+                    ShowError("Invalid track data");
                     return;
                 }
                 
@@ -796,7 +796,7 @@ namespace ovkdesktop
                         
                         // show error
                         Debug.WriteLine("[MusicPage] FavoriteButton_Click: Operation failed");
-                        ShowError("Не удалось обновить статус избранного");
+                        ShowError("Unable to update favorite status");
                     }
                         }
                         catch (Exception ex)
@@ -811,7 +811,7 @@ namespace ovkdesktop
                             new SolidColorBrush(Microsoft.UI.Colors.White);
                     }
                     Debug.WriteLine($"[MusicPage] Error in favorite operation: {ex.Message}");
-                    ShowError($"Ошибка обновления избранного: {ex.Message}");
+                    ShowError($"Error updating favorite: {ex.Message}");
                     return;
                 }
                 
@@ -826,20 +826,20 @@ namespace ovkdesktop
                 // update header, if we are in "My Audio" section
                 if (_currentMode == AudioMode.MyAudio)
                 {
-                    MyAudioHeader.Text = $"Мои аудиозаписи ({_myAudioCollection.Count})";
+                    MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
                 }
             }
             catch (InvalidCastException icex)
             {
                 Debug.WriteLine($"[MusicPage] InvalidCastException in FavoriteButton_Click: {icex.Message}");
                 Debug.WriteLine($"[MusicPage] Stack trace: {icex.StackTrace}");
-                ShowError("Ошибка при обновлении избранного");
+                ShowError("Error updating favorite");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[MusicPage] Error in FavoriteButton_Click: {ex.Message}");
                 Debug.WriteLine($"[MusicPage] Stack trace: {ex.StackTrace}");
-                ShowError($"Ошибка: {ex.Message}");
+                ShowError($"Error: {ex.Message}");
             }
         }
         
@@ -855,7 +855,7 @@ namespace ovkdesktop
                 {
                     ContentDialog errorDialog = new ContentDialog()
                     {
-                        Title = "Ошибка",
+                        Title = "Error",
                         Content = message,
                         CloseButtonText = "OK",
                         XamlRoot = this.XamlRoot
@@ -1063,7 +1063,7 @@ namespace ovkdesktop
             {
                 if (string.IsNullOrEmpty(query))
                 {
-                    ShowError("Введите текст для поиска");
+                    ShowError("Enter text to search");
                     return;
                 }
                 
@@ -1078,7 +1078,7 @@ namespace ovkdesktop
                 string token = await SessionHelper.GetTokenAsync();
                 if (string.IsNullOrEmpty(token))
                 {
-                    ShowError("Не удалось получить токен доступа");
+                    ShowError("Unable to get access token");
                     LoadingProgressRing.IsActive = false;
                     SearchLoadingRing.IsActive = false;
                     return;
@@ -1094,7 +1094,7 @@ namespace ovkdesktop
                 var response = await httpClient.GetAsync(apiUrl);
                 if (!response.IsSuccessStatusCode)
                 {
-                    ShowError($"Ошибка поиска: {response.StatusCode}");
+                    ShowError($"Search error: {response.StatusCode}");
                     LoadingProgressRing.IsActive = false;
                     SearchLoadingRing.IsActive = false;
                     return;
@@ -1110,7 +1110,7 @@ namespace ovkdesktop
                     
                     if (responseObj == null)
                     {
-                        ShowError("Некорректный ответ от сервера");
+                        ShowError("Invalid API response");
                         LoadingProgressRing.IsActive = false;
                         SearchLoadingRing.IsActive = false;
                         return;
@@ -1133,7 +1133,7 @@ namespace ovkdesktop
                                 var headerTextBlock = grid?.Children.OfType<TextBlock>().FirstOrDefault();
                                 if (headerTextBlock != null)
                                 {
-                                    headerTextBlock.Text = $"Поиск: {query} (нет результатов)";
+                                    headerTextBlock.Text = $"Search: {query} (no results)";
                     }
                 }
             });
@@ -1168,7 +1168,7 @@ namespace ovkdesktop
                             var headerTextBlock = grid?.Children.OfType<TextBlock>().FirstOrDefault();
                             if (headerTextBlock != null)
                             {
-                                headerTextBlock.Text = $"Поиск: {query} (найдено: {searchResults.Count})";
+                                headerTextBlock.Text = $"Search: {query} (found: {searchResults.Count})";
                             }
                         }
                         
@@ -1179,7 +1179,7 @@ namespace ovkdesktop
                 }
                 catch (Exception ex)
                 {
-                    ShowError($"Ошибка обработки результатов поиска: {ex.Message}");
+                    ShowError($"Error processing search results: {ex.Message}");
                     Debug.WriteLine($"[MusicPage] Error processing search results: {ex.Message}");
                 }
                 finally
@@ -1192,7 +1192,7 @@ namespace ovkdesktop
             {
                 LoadingProgressRing.IsActive = false;
                 SearchLoadingRing.IsActive = false;
-                ShowError($"Ошибка поиска: {ex.Message}");
+                ShowError($"Search error: {ex.Message}");
                 Debug.WriteLine($"[MusicPage] Error in SearchAudio: {ex.Message}");
             }
         }
@@ -1211,7 +1211,7 @@ namespace ovkdesktop
                 string token = await SessionHelper.GetTokenAsync();
                 if (string.IsNullOrEmpty(token))
                 {
-                    ShowError("Не удалось получить токен доступа");
+                    ShowError("Unable to get access token");
                     SearchLoadingRing.IsActive = false;
                     return;
                 }
@@ -1224,7 +1224,7 @@ namespace ovkdesktop
                 var response = await httpClient.GetAsync(apiUrl);
                 if (!response.IsSuccessStatusCode)
                 {
-                    ShowError($"Ошибка загрузки рекомендаций: {response.StatusCode}");
+                    ShowError($"Error loading recommendations: {response.StatusCode}");
                     SearchLoadingRing.IsActive = false;
                     return;
                 }
@@ -1239,7 +1239,7 @@ namespace ovkdesktop
                     
                     if (responseObj == null)
                     {
-                        ShowError("Некорректный ответ от сервера");
+                        ShowError("Invalid API response");
                         SearchLoadingRing.IsActive = false;
                         return;
                     }
@@ -1278,13 +1278,13 @@ namespace ovkdesktop
                 }
                 catch (Exception ex)
                 {
-                    ShowError($"Ошибка обработки данных: {ex.Message}");
+                    ShowError($"Data processing error: {ex.Message}");
                     Debug.WriteLine($"[MusicPage] Error processing recommended audio data: {ex.Message}");
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка загрузки рекомендаций: {ex.Message}");
+                ShowError($"Error loading recommendations: {ex.Message}");
                 Debug.WriteLine($"[MusicPage] Error in LoadRecommendedAudio: {ex.Message}");
             }
             finally
@@ -1495,11 +1495,11 @@ namespace ovkdesktop
                                 // update header with the number of tracks
                                 if (_myAudioCollection.Count > 0)
                                 {
-                                    MyAudioHeader.Text = $"Мои аудиозаписи ({_myAudioCollection.Count})";
+                                    MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
                                 }
                                 else
                                 {
-                                    MyAudioHeader.Text = "У вас нет сохраненных аудиозаписей";
+                                    MyAudioHeader.Text = "You have no saved audios";
                                     UpdateUIVisibility(false);
                                 }
                                 
@@ -1515,7 +1515,7 @@ namespace ovkdesktop
                             _myAudioCollection.Add(audio);
                             
                             // update header with the number of tracks
-                            MyAudioHeader.Text = $"Мои аудиозаписи ({_myAudioCollection.Count})";
+                            MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
                             
                             // if this is the first track, update UI
                             if (_myAudioCollection.Count == 1)

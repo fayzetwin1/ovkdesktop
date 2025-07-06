@@ -99,11 +99,13 @@ namespace ovkdesktop
         {
             try
             {
-                if (!File.Exists("ovkdata.json"))
+                string filePath = Path.Combine(App.LocalFolderPath, "ovkdata.json");
+
+                if (!File.Exists(filePath))
                     return null;
-                using var fs = new FileStream("ovkdata.json", FileMode.Open, FileAccess.Read);
+                using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                 var data = await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
-                
+
                 // sync instance url from token and settings
                 if (data != null && !string.IsNullOrEmpty(data.InstanceUrl))
                 {
@@ -128,8 +130,11 @@ namespace ovkdesktop
 
         public static void RemoveToken()
         {
-            if (File.Exists("ovkdata.json"))
-                File.Delete("ovkdata.json");
+
+            string filePath = Path.Combine(App.LocalFolderPath, "ovkdata.json");
+
+            if (File.Exists(filePath))
+                File.Delete(filePath);
             
             // reset user ID cache when token is removed
             ClearUserIdCache();
@@ -201,14 +206,14 @@ namespace ovkdesktop
             return profiles;
         }
 
-        public static async Task<bool> IsAudioAddedAsync(Audio audio)
+        public static async Task<bool?> IsAudioAddedAsync(Audio audio)
         {
-            if (audio == null) return false;
+            if (audio == null) return null;
 
             try
             {
                 string token = await GetTokenAsync();
-                if (string.IsNullOrEmpty(token)) return false;
+                if (string.IsNullOrEmpty(token)) return null;
 
                 using var httpClient = await GetConfiguredHttpClientAsync();
                 string instanceUrl = await GetInstanceUrlAsync();
@@ -222,30 +227,36 @@ namespace ovkdesktop
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync failed with status: {response.StatusCode}");
-                    return false;
+                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync failed with status: {response.StatusCode}. Returning null to indicate unknown status.");
+                    return null; 
                 }
 
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync response: {json}");
 
                 using var doc = JsonDocument.Parse(json);
-                // Track found if response array has elements
-                if (doc.RootElement.TryGetProperty("response", out var responseElement) &&
-                    responseElement.ValueKind == JsonValueKind.Array &&
-                    responseElement.GetArrayLength() > 0)
+
+                if (doc.RootElement.TryGetProperty("error", out _))
                 {
-                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync result: true (audio is added)");
-                    return true;
+                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync received an API error in the response. Returning null.");
+                    return null;
                 }
 
-                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync result: false (audio is not added)");
+                if (doc.RootElement.TryGetProperty("response", out var responseElement) &&
+                    responseElement.ValueKind == JsonValueKind.Array)
+                {
+                    bool isAdded = responseElement.GetArrayLength() > 0;
+                    Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync result: {isAdded} (audio is {(isAdded ? "added" : "not added")})");
+                    return isAdded;
+                }
+
+                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync result: false (no valid response array found)");
                 return false;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync error: {ex.Message}");
-                return false;
+                Debug.WriteLine($"[SessionHelper] IsAudioAddedAsync exception: {ex.Message}. Returning null.");
+                return null; 
             }
         }
 
@@ -665,12 +676,12 @@ namespace ovkdesktop
         }
         
         /// <summary>
-        /// add like to specified object
+        /// Add like to specified object
         /// </summary>
-        /// <param name="type">type of object (post, comment, video, photo, note)</param>
+        /// <param name="type">Type of object (post, comment, video, photo, note)</param>
         /// <param name="ownerId">ID of object owner</param>
         /// <param name="itemId">ID of object</param>
-        /// <returns>number of likes after addition or -1 in case of error</returns>
+        /// <returns>Number of likes after addition or -1 in case of error</returns>
         public static async Task<int> AddLikeAsync(string type, int ownerId, int itemId)
         {
             try
@@ -801,12 +812,14 @@ namespace ovkdesktop
         {
             try
             {
-                if (File.Exists("ovkdata.json"))
+                string filePath = Path.Combine(App.LocalFolderPath, "ovkdata.json");
+
+                if (File.Exists(filePath))
                 {
-                    File.Delete("ovkdata.json");
+                    File.Delete(filePath);
                     Debug.WriteLine("[SessionHelper] Token file deleted");
                 }
-                
+
                 // Reset user ID cache
                 ClearUserIdCache();
                 

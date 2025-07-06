@@ -1134,7 +1134,7 @@ namespace ovkdesktop.Models
                 {
                     Id = token.Value<int>("id"),
                     OwnerId = token.Value<int>("owner_id"),
-                    Artist = token.Value<string>("artist") ?? "Неизвестен",
+                    Artist = token.Value<string>("artist") ?? "Неизвестный",
                     Title = token.Value<string>("title") ?? "Без названия",
                     Url = token.Value<string>("url") ?? string.Empty,
                     Duration = token.Value<int>("duration"),
@@ -1180,84 +1180,120 @@ namespace ovkdesktop.Models
         [JsonPropertyName("player")]
         public string Player { get; set; }
     }
+    public class LastFmConfig
+    {
+        [JsonPropertyName("enabled")]
+        public bool IsEnabled { get; set; } = false;
+
+        [JsonPropertyName("apiKey")]
+        public string ApiKey { get; set; }
+
+        [JsonPropertyName("apiSecret")]
+        public string ApiSecret { get; set; }
+
+        [JsonPropertyName("sessionKey")]
+        public string SessionKey { get; set; }
+
+        [JsonPropertyName("username")]
+        public string Username { get; set; }
+    }
 
     public class AppSettings
     {
         [JsonPropertyName("instance_url")]
         public string InstanceUrl { get; set; } = "https://ovk.to/";
-        
+
         [JsonPropertyName("theme")]
         public string Theme { get; set; } = "Light";
-        
+
         [JsonPropertyName("notifications_enabled")]
         public bool NotificationsEnabled { get; set; } = true;
-        
+
         [JsonPropertyName("auto_play_videos")]
         public bool AutoPlayVideos { get; set; } = false;
-        
+
         [JsonPropertyName("cache_images")]
         public bool CacheImages { get; set; } = true;
-        
+
         [JsonPropertyName("language")]
         public string Language { get; set; } = "ru";
-        
+
         [JsonPropertyName("last_login")]
         public string LastLogin { get; set; } = "";
 
-        [JsonIgnore]
-        private static readonly string SettingsFilePath = "ovkcfg.json";
-        
+        // New private static method to get full file path
+        private static string GetSettingsFilePath()
+        {
+            // Check if App path is initialized
+            if (string.IsNullOrEmpty(App.LocalFolderPath))
+            {
+                // This shouldn't happen if OnLaunched order is correct
+                // Adding check for reliability
+                throw new InvalidOperationException("App.LocalFolderPath is not initialized.");
+            }
+            return Path.Combine(App.LocalFolderPath, "ovkcfg.json");
+        }
+
         public static async Task<AppSettings> LoadAsync()
         {
             try
             {
-                if (File.Exists(SettingsFilePath))
+                // Use new method to get full path
+                string filePath = GetSettingsFilePath();
+
+                if (File.Exists(filePath))
                 {
-                    using var fs = new FileStream(SettingsFilePath, FileMode.Open, FileAccess.Read);
+                    using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                     var settings = await JsonSerializer.DeserializeAsync<AppSettings>(fs);
                     return settings ?? new AppSettings();
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка при загрузке настроек: {ex.Message}");
+                Debug.WriteLine($"Error loading settings: {ex.Message}");
             }
-            
+
             return new AppSettings();
         }
-        
+
         public async Task SaveAsync()
         {
             try
             {
-                using var fs = new FileStream(SettingsFilePath, FileMode.Create, FileAccess.Write);
+                // Use new method to get full path
+                string filePath = GetSettingsFilePath();
+
+                using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 await JsonSerializer.SerializeAsync(fs, this, options);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Ошибка при сохранении настроек: {ex.Message}");
+                Debug.WriteLine($"Error saving settings: {ex.Message}");
             }
         }
-        
+
+        // Other static methods remain unchanged
+        // as they already use LoadAsync and SaveAsync that we fixed
+
         public static async Task SaveInstanceUrlAsync(string instanceUrl)
         {
             var settings = await LoadAsync();
             settings.InstanceUrl = instanceUrl;
             await settings.SaveAsync();
         }
-        
+
         public static async Task<string> GetInstanceUrlAsync()
         {
             var settings = await LoadAsync();
             return settings.InstanceUrl;
         }
-        
+
         public static async Task SaveSettingAsync<T>(string propertyName, T value)
         {
             var settings = await LoadAsync();
             var property = typeof(AppSettings).GetProperty(propertyName);
-            
+
             if (property != null && property.CanWrite)
             {
                 property.SetValue(settings, value);
@@ -1265,22 +1301,22 @@ namespace ovkdesktop.Models
             }
             else
             {
-                Debug.WriteLine($"Ошибка: свойство {propertyName} не найдено или недоступно для записи");
+                Debug.WriteLine($"Error: property {propertyName} not found or not writable");
             }
         }
-        
+
         public static async Task<T> GetSettingAsync<T>(string propertyName, T defaultValue = default)
         {
             var settings = await LoadAsync();
             var property = typeof(AppSettings).GetProperty(propertyName);
-            
+
             if (property != null && property.CanRead)
             {
                 var value = property.GetValue(settings);
                 return value != null ? (T)value : defaultValue;
             }
-            
-            Debug.WriteLine($"Ошибка: свойство {propertyName} не найдено или недоступно для чтения");
+
+            Debug.WriteLine($"Error: property {propertyName} not found or not readable");
             return defaultValue;
         }
     }

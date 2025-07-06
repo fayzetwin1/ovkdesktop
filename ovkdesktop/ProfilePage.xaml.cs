@@ -78,7 +78,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[ProfilePage] Error initializing: {ex.Message}");
                 if (ErrorTextBlock != null) // Add null check
                 {
-                    ShowError($"Ошибка инициализации: {ex.Message}");
+                    ShowError($"Error loading profile: {ex.Message}");
                     LoadingProgressRing.IsActive = false;
                 }
             }
@@ -231,7 +231,7 @@ namespace ovkdesktop
         {
             try
             {
-                // === ФАЗА 1: ПОЛНЫЙ СБОР ВСЕХ ДАННЫХ ===
+                // Phase 1: Full data collection
                 var allPostsById = new Dictionary<string, UserWallPost>();
                 var profilesDict = new Dictionary<long, UserProfile>();
                 var groupsDict = new Dictionary<long, GroupProfile>();
@@ -340,7 +340,6 @@ namespace ovkdesktop
                 foreach (var g in groupsDict.Values) finalProfiles[-g.Id] = g.ToUserProfile();
                 finalProfiles[pageOwnerProfile.Id] = pageOwnerProfile;
 
-                // === ФАЗА 2: ПРИСВОЕНИЕ ПРОФИЛЕЙ (Первый цикл) ===
                 foreach (var post in allPostsById.Values)
                 {
                     if (finalProfiles.TryGetValue(post.FromId, out var authorProfile))
@@ -349,7 +348,6 @@ namespace ovkdesktop
                     }
                 }
 
-                // === ФАЗА 3: СБОРКА ИЕРАРХИИ (Второй, отдельный цикл) ===
                 foreach (var post in allPostsById.Values)
                 {
                     if (post.HasRepost)
@@ -373,7 +371,7 @@ namespace ovkdesktop
                 if (ex is not OperationCanceledException)
                 {
                     Debug.WriteLine($"[ProfilePage] Error getting posts with profiles: {ex.Message}\n{ex.StackTrace}");
-                    ShowError($"Ошибка при загрузке постов.");
+                    ShowError($"Error loading posts.");
                 }
                 return null;
             }
@@ -439,7 +437,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[ProfilePage] Error loading profile and posts: {ex.Message}");
-                ShowError($"Ошибка при загрузке профиля и постов: {ex.Message}");
+                ShowError($"Error loading profile and posts: {ex.Message}");
                 LoadingProgressRing.IsActive = false;
             }
         }
@@ -1017,7 +1015,7 @@ namespace ovkdesktop
                     if (responseElement.TryGetProperty("likes", out JsonElement likesElement))
                     {
                         int likes = likesElement.GetInt32();
-                        Debug.WriteLine($"[ProfilePage] Количество лайков после лайка: {likes}");
+                        Debug.WriteLine($"[ProfilePage] Number of likes after liking: {likes}");
                         return true;
                     }
                 }

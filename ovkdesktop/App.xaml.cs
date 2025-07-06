@@ -21,6 +21,8 @@ using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Microsoft.UI.Dispatching;
+using Windows.Storage;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -33,30 +35,31 @@ namespace ovkdesktop
     public partial class App : Application
     {
         // service for playing audio
+        public static DispatcherQueue Dispatcher { get; private set; }
         public static AudioPlayerService AudioService { get; private set; }
-        
+        public static LastFmService LastFmService { get; private set; }
+        public static SettingsHelper Settings { get; private set; }
+        public static string LocalFolderPath { get; private set; }
+
         // main window of the application
         public static Window MainWindow { get; private set; }
         public static MainWindow MainWindowInstance { get; internal set; }
-        
+
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
         public App()
         {
-            
+
 
             InitializeComponent();
-            
+
             // processing unhandled exceptions
             UnhandledException += App_UnhandledException;
             AppDomain.CurrentDomain.UnhandledException += AppDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
-            // initialize the global audio player service
-            AudioService = new AudioPlayerService();
-            
             Debug.WriteLine("[App] Initialized");
         }
 
@@ -75,43 +78,35 @@ namespace ovkdesktop
         {
             try
             {
-
                 LoggerService.Instance.Initialize();
 
-                // create the main window
-                MainWindow = new MainWindow();
-                MainWindowInstance = MainWindow as MainWindow;
-                
-                Frame rootFrame = MainWindow.Content as Frame ?? new Frame();
-                MainWindow.Content = rootFrame;
+                LocalFolderPath = AppContext.BaseDirectory;
+                Settings = await SettingsHelper.CreateAsync();
 
+                LastFmService = new LastFmService();
+                AudioService = new AudioPlayerService();
+
+                await LastFmService.InitializeAsync();
+
+                m_window = new MainWindow();
+                MainWindow = m_window;
+                MainWindowInstance = m_window as MainWindow;
+
+                Frame rootFrame = new Frame();
+                m_window.Content = rootFrame;
+
+                // --- Блок 3: Навигация и активация ---
                 bool isTokenValid = await SessionHelper.IsTokenValidAsync();
+                rootFrame.Navigate(isTokenValid ? typeof(MainPage) : typeof(WelcomePage));
 
-                if (isTokenValid)
-                {
-                    MainWindow.Activate();
-                    rootFrame.Navigate(typeof(MainPage));
-                }
-                else
-                    rootFrame.Navigate(typeof(WelcomePage));
+                m_window.ExtendsContentIntoTitleBar = true;
+                m_window.Activate();
 
-                MainWindow.ExtendsContentIntoTitleBar = true;
-                MainWindow.Activate();
-
-                this.DebugSettings.IsBindingTracingEnabled = true;    
-                this.DebugSettings.BindingFailed += (s, e) =>
-                {
-                    Debug.WriteLine($"XAML BindingFailed: {e.Message}");
-                };
-                
-                LoggerService.Instance.Log("[LoggerService] Application launched and main window activated.");
-                Debug.WriteLine("[App] Main window activated");
-
+                Debug.WriteLine("[App] OnLaunched complete.");
             }
             catch (Exception ex)
             {
                 HandleException(ex);
-                Debug.WriteLine($"[App] Error in OnLaunched: {ex.Message}");
             }
         }
 
@@ -123,7 +118,7 @@ namespace ovkdesktop
         private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
             HandleException(e.Exception);
-            e.SetObserved(); // Помечаем, что мы обработали исключение
+            e.SetObserved();
         }
 
         private void AppDomain_UnhandledException(object sender, System.UnhandledExceptionEventArgs e)

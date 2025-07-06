@@ -58,7 +58,7 @@ namespace ovkdesktop
             }
             else
             {
-                ShowError("Некорректные параметры для загрузки поста.");
+                ShowError("Invalid parameters for loading post.");
             }
         }
 
@@ -78,7 +78,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[PostInfoPage] Error initializing: {ex.Message}");
-                ShowError($"Ошибка инициализации: {ex.Message}");
+                ShowError($"Error loading post information: {ex.Message}");
             }
         }
 
@@ -106,7 +106,7 @@ namespace ovkdesktop
                 var tokenBody = await LoadTokenAsync();
                 if (tokenBody == null || string.IsNullOrEmpty(tokenBody.Token))
                 {
-                    ShowError("Токен не найден. Пожалуйста, авторизуйтесь."); // token not found, please authorize
+                    ShowError("Token not found. Please authorize.");
                     return;
                 }
 
@@ -120,7 +120,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[PostInfoPage] error loading post information: {ex}");
-                ShowError($"Ошибка загрузки информации о посте: {ex.Message}"); // error loading post information
+                ShowError($"Error loading post information: {ex.Message}");
             }
         }
 
@@ -156,7 +156,7 @@ namespace ovkdesktop
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    ShowError($"Ошибка получения комментариев: {response.StatusCode}");
+                    ShowError($"Failed to load comments: {response.StatusCode}");
                     return;
                 }
 
@@ -202,20 +202,20 @@ namespace ovkdesktop
                         Debug.WriteLine("[PostInfoPage] no comments in response."); // no comments in response
                         if (isInitialLoad)
                         {
-                            ShowError("Комментарии отсутствуют."); // comments are absent
+                            ShowError("No comments."); // comments are absent
                         }
                     }
                 }
                 else
                 {
                     Debug.WriteLine("[PostInfoPage] no 'response' property in JSON."); // no 'response' property in JSON
-                    ShowError("Не найдено свойство 'response' в ответе."); // no 'response' property in response
+                    ShowError("No 'response' property in response."); // no 'response' property in response
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[PostInfoPage] error loading comments: {ex}");
-                ShowError("Не удалось загрузить комментарии."); // error loading comments
+                ShowError("Failed to load comments."); // error loading comments
             }
             finally
             {
@@ -232,7 +232,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[PostInfoPage] ERROR: {message}");
                 var dialog = new ContentDialog
                 {
-                    Title = "Ошибка",
+                    Title = "Error",
                     Content = message,
                     CloseButtonText = "OK",
                     XamlRoot = this.Content.XamlRoot
@@ -262,7 +262,7 @@ namespace ovkdesktop
                 string commentText = CommentTextBox.Text.Trim();
                 if (string.IsNullOrEmpty(commentText))
                 {
-                    ShowError("Введите текст комментария");
+                    ShowError("Enter comment text");
                     return;
                 }
 
@@ -279,7 +279,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[PostInfoPage] error sending comment: {ex.Message}");
                 Debug.WriteLine($"[PostInfoPage] Stack trace: {ex.StackTrace}");
-                ShowError($"Не удалось отправить комментарий: {ex.Message}"); // error sending comment
+                ShowError($"Failed to send comment: {ex.Message}"); // error sending comment
             }
             finally
             {
@@ -342,8 +342,8 @@ namespace ovkdesktop
                 // show notification about successful sending
                 var successDialog = new ContentDialog
                 {
-                    Title = "Успешно",
-                    Content = "Комментарий успешно отправлен",
+                    Title = "Success",
+                    Content = "Comment sent successfully",
                     CloseButtonText = "OK",
                     XamlRoot = this.Content.XamlRoot
                 };

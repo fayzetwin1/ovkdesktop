@@ -7,111 +7,137 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    Loaded="Page_Loaded">
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- header -->
-            <RowDefinition Height="Auto"/> <!-- info about client -->
-            <RowDefinition Height="Auto"/> <!-- image and logout -->
-            <RowDefinition Height="*"/> <!-- info -->
-        </Grid.RowDefinitions>
-        
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="WideLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="720" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeaderPanel.Margin" Value="125,105,0,20"/>
+                        <Setter Target="ClientInfoPanel.Margin" Value="125,0,0,20"/>
+                        <Setter Target="SettingsScrollViewer.Margin" Value="125,20,125,0"/>
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="NarrowLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeaderPanel.Margin" Value="20,40,20,10"/>
+                        <Setter Target="ClientInfoPanel.Margin" Value="20,0,20,10"/>
+                        <Setter Target="ClientInfoLogo.Visibility" Value="Collapsed"/>
+                        <Setter Target="SettingsScrollViewer.Margin" Value="20,10,20,0"/>
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
 
-        <TextBlock Grid.Row="0"
-                  x:Name="SettingsClientLabel" 
-                  Text="Настройки клиента" 
-                  Style="{ThemeResource TitleLargeTextBlockStyle}" 
-                  FontSize="42"
-                  Margin="125,105,0,30"/>
-        
+        <Grid Margin="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- header -->
+                <RowDefinition Height="Auto"/>
+                <!-- info about client -->
+                <RowDefinition Height="*"/>
+                <!-- settings -->
+            </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="1" Margin="125,10,0,20">
-            <TextBlock x:Name="NameOfClientLabel" 
-                      Text="OpenVK Desktop" 
-                      Style="{ThemeResource SubtitleTextBlockStyle}" 
-                      FontSize="36"
-                      Margin="125,0,0,5"/>
-            
-            <TextBlock x:Name="VersionOfClientLabel" 
-                      Text="версия: Pre-release 0.8" 
-                      Style="{ThemeResource BodyTextBlockStyle}" 
-                      FontSize="16" 
-                      Opacity="0.7"
-                      Margin="125,0,0,5"/>
-            
-            <TextBlock x:Name="AuthorOfClientLabel" 
-                      Text="by Fayzetwin :3" 
-                      Style="{ThemeResource BodyStrongTextBlockStyle}" 
-                      FontSize="16" 
-                      Opacity="0.7" Margin="125,0,0,5"/>
-
-            <Image Source="/Assets/Images/openvklogoScaled.png" 
-              Height="100" 
-              HorizontalAlignment="Left"
-                   Margin="0,-100,0,5"/>
-        </StackPanel>
-        
-        <Grid Grid.Row="2" Margin="125,10,0,30">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            
-            <StackPanel Grid.Column="0" Spacing="20">
-
-                <Image Source="/Assets/Images/eastermeme.jpeg" 
-                      Height="200" 
-                      HorizontalAlignment="Left"/>
+            <!-- Header Panel -->
+            <StackPanel x:Name="HeaderPanel" Grid.Row="0">
+                <TextBlock x:Name="SettingsClientLabel" 
+                           Text="Настройки клиента" 
+                           Style="{ThemeResource TitleLargeTextBlockStyle}"/>
             </StackPanel>
 
-            <TextBlock Text="Пока что, тут ничего нету..." 
-               Style="{ThemeResource SubtitleTextBlockStyle}" 
-               FontSize="28"
-               TextWrapping="Wrap"
-               HorizontalAlignment="Center"
-                       Margin="225,50,0,10"/>
+            <!-- Client Info Panel -->
+            <Grid x:Name="ClientInfoPanel" Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Image x:Name="ClientInfoLogo" Source="/Assets/Images/openvklogoScaled.png" 
+                       Height="100" 
+                       VerticalAlignment="Top"
+                       Margin="0,0,25,0"/>
+                <StackPanel Grid.Column="1" Spacing="7">
+                    <TextBlock x:Name="NameOfClientLabel" 
+                               Text="OpenVK Desktop" 
+                               Style="{ThemeResource SubtitleTextBlockStyle}" 
+                               FontSize="28"/>
+                    <TextBlock x:Name="VersionOfClientLabel" 
+                               Text="версия: Release 1.0" 
+                               Style="{ThemeResource BodyTextBlockStyle}" 
+                               Opacity="0.7"/>
+                    <TextBlock x:Name="AuthorOfClientLabel" 
+                               Text="by Fayzetwin :3" 
+                               Style="{ThemeResource BodyStrongTextBlockStyle}" 
+                               Opacity="0.7"/>
+                </StackPanel>
+            </Grid>
 
-            <TextBlock Text="но надеюсь, что скоро тут что-то появится... :)" 
-               Style="{ThemeResource BodyTextBlockStyle}" 
-               FontSize="16" 
-               Opacity="0.7"
-               TextWrapping="Wrap"
-               HorizontalAlignment="Center"
-               Margin="220,95,0,10"/>
+            <!-- Settings Content -->
+            <Grid Grid.Row="2">
 
-            <Button 
-               Content="Выйти из аккаунта" 
-               Click="LogoutButton_Click"
-               VerticalAlignment="Top"
-               HorizontalAlignment="Left"
-               Margin="320,150,0,10"/>
+
+                <ScrollViewer x:Name="SettingsScrollViewer" Visibility="Collapsed">
+                    <StackPanel Spacing="20" Padding="0,0,0,20">
+
+                        <StackPanel Spacing="10" Padding="20" BorderBrush="{ThemeResource SmokeFillColorDefaultBrush}" Background="{ThemeResource SmokeFillColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                            <TextBlock Text="Интеграция с Last.fm" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            <TextBlock Text="Отправляйте информацию о прослушанных треках (скробблинг) в ваш профиль Last.fm." TextWrapping="Wrap" Opacity="0.8"/>
+
+                            <HyperlinkButton Content="Где взять API Key?" NavigateUri="https://www.last.fm/api/account/create"/>
+
+                            <TextBox x:Name="LastFmApiKeyBox" Header="Last.fm API Key"/>
+                            <PasswordBox x:Name="LastFmApiSecretBox" Header="Last.fm API Secret"/>
+
+                            <Button x:Name="LastFmSaveKeysButton"
+                                Content="Сохранить ключи API"
+                                Click="LastFmSaveKeysButton_Click"
+                                HorizontalAlignment="Left"/>
+
+                            <InfoBar x:Name="LastFmKeysInfoBar"
+                                 Title="Ключи сохранены"
+                                 Message="Теперь вы можете войти в свой аккаунт Last.fm."
+                                 Severity="Success"
+                                 IsOpen="False"
+                                 IsClosable="True"
+                                 Margin="0,10,0,0"/>
+
+                            <ToggleSwitch x:Name="LastFmToggle"
+                              Header="Включить скробблинг"
+                              Toggled="LastFmToggle_Toggled"
+                              Margin="0,20,0,0"/>
+
+                            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <Button x:Name="LastFmLoginButton"
+                            Content="Войти в Last.fm"
+                            Click="LastFmLoginButton_Click"/>
+                                <TextBlock x:Name="LastFmStatusText"
+                               Text="Статус: не выполнен вход"
+                               VerticalAlignment="Center"
+                               Style="{ThemeResource BodyTextBlockStyle}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Content="Выйти из аккаунта OpenVK" 
+                    Click="LogoutButton_Click"
+                    Margin="0,20,0,0"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <ProgressRing x:Name="LoadingRing" 
+                  IsActive="True"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Width="50" Height="50"/>
+            </Grid>
         </Grid>
-
-        <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="20" Spacing="10">
-            <TextBlock Text="Панель отладки и тестирования" FontWeight="Bold"/>
-
-            <Button x:Name="CrashUiThreadButton" 
-                    Content="Краш (UI-поток)" 
-                    Click="CrashUiThreadButton_Click"
-                    Background="IndianRed"/>
-
-            <Button x:Name="CrashBackgroundThreadButton" 
-                    Content="Краш (Фоновый поток)" 
-                    Click="CrashBackgroundThreadButton_Click"
-                    Background="IndianRed"/>
-
-            <Button x:Name="CrashWithInnerExceptionButton" 
-                    Content="Краш (с вложенным исключением)" 
-                    Click="CrashWithInnerExceptionButton_Click"
-                    Background="IndianRed"/>
-
-            <Button x:Name="CrashAsyncTaskButton"
-                    Content="Краш (Асинхронная задача)"
-                    Click="CrashAsyncTaskButton_Click"
-                    Background="IndianRed"/>
-
-        </StackPanel>
-
     </Grid>
 </Page>

@@ -125,7 +125,7 @@ namespace ovkdesktop
                 OVKDataBody ovkToken = await LoadTokenAsync();
                 if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
                 {
-                    ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                    ShowError("Failed to load user profile.");
                     return;
                 }
 
@@ -135,7 +135,7 @@ namespace ovkdesktop
                 userProfile = await GetProfileInfoAsync(ovkToken.Token, userId, token);
                 if (userProfile == null)
                 {
-                    ShowError("Не удалось загрузить профиль.");
+                    ShowError("Failed to load user profile.");
                     return;
                 }
 
@@ -154,7 +154,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error loading page data: {ex.Message}");
-                ShowError($"Произошла ошибка: {ex.Message}");
+                ShowError($"Error loading profile data: {ex.Message}");
             }
             finally
             {
@@ -201,7 +201,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error initializing dependencies: {ex.Message}");
-                ShowError($"Ошибка инициализации: {ex.Message}");
+                ShowError($"Error initializing: {ex.Message}");
                 return false;
             }
         }
@@ -219,7 +219,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error initializing: {ex.Message}");
-                ShowError($"Ошибка инициализации: {ex.Message}");
+                ShowError($"Error initializing: {ex.Message}");
             }
         }
 
@@ -476,7 +476,7 @@ namespace ovkdesktop
                 OVKDataBody token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
+                    ShowError("Failed to load user profile.");
                     return;
                 }
 
@@ -494,7 +494,7 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    ShowError("Не удалось загрузить профиль пользователя.");
+                    ShowError("Failed to load user profile.");
                 }
             }
             catch (OperationCanceledException)
@@ -503,7 +503,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка при загрузке данных профиля: {ex.Message}");
+                ShowError($"Error loading profile data: {ex.Message}");
                 Debug.WriteLine($"[AnotherProfilePage] LoadProfileDataAsync exception: {ex}");
             }
             finally
@@ -630,7 +630,7 @@ namespace ovkdesktop
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 Debug.WriteLine($"[AnotherProfilePage] Error getting posts: {ex.Message}");
-                ShowError("Ошибка при загрузке постов.");
+                ShowError("Error getting posts.");
                 return new List<UserWallPost>();
             }
         }
@@ -670,7 +670,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error loading posts: {ex.Message}");
-                ShowError($"Ошибка при загрузке постов: {ex.Message}");
+                ShowError($"Error when loading posts: {ex.Message}");
             }
         }
 
@@ -812,7 +812,7 @@ namespace ovkdesktop
                 if (ex is not OperationCanceledException)
                 {
                     Debug.WriteLine($"[AnotherProfilePage] Error getting posts with profiles: {ex.Message}\n{ex.StackTrace}");
-                    ShowError($"Ошибка при загрузке постов.");
+                    ShowError($"Error getting posts.");
                 }
                 return null;
             }
@@ -836,7 +836,7 @@ namespace ovkdesktop
                     OVKDataBody ovkToken = await LoadTokenAsync();
                     if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
                     {
-                        ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                        ShowError("Failed to load user profile.");
                         return;
                     }
 
@@ -846,7 +846,7 @@ namespace ovkdesktop
                     var dialog = new ContentDialog
                     {
                         Title = success ? "Успех" : "Ошибка",
-                        Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                        Content = success ? "Запись successfully reposted to your wall." : "Failed to make repost.",
                         CloseButtonText = "OK",
                         XamlRoot = this.XamlRoot
                     };
@@ -856,7 +856,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error in RepostButton_Click: {ex.Message}");
-                ShowError($"Ошибка при репосте: {ex.Message}");
+                ShowError($"Error when reposting: {ex.Message}");
             }
         }
         private async Task<bool> RepostAsync(string token, string objectId, string message = null)
@@ -979,7 +979,7 @@ namespace ovkdesktop
                 OVKDataBody ovkToken = await LoadTokenAsync();
                 if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
                 {
-                    ShowError("Не удалось загрузить токен. Пожалуйста, авторизуйтесь.");
+                    ShowError("Failed to load user profile.");
                     return;
                 }
 
@@ -989,7 +989,7 @@ namespace ovkdesktop
                 var dialog = new ContentDialog
                 {
                     Title = success ? "Успех" : "Ошибка",
-                    Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                    Content = success ? "Запись successfully reposted to your wall." : "Failed to make repost.",
                     CloseButtonText = "OK",
                     XamlRoot = this.XamlRoot
                 };
@@ -998,7 +998,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error in RepostItem_Click: {ex.Message}");
-                ShowError($"Ошибка при репосте: {ex.Message}");
+                ShowError($"Error when reposting: {ex.Message}");
             }
         }
 
@@ -1009,7 +1009,7 @@ namespace ovkdesktop
                 OVKDataBody token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
+                    ShowError("Failed to load user profile.");
                     return;
                 }
 
@@ -1037,12 +1037,12 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    ShowError("Не удалось отправить запрос в друзья.");
+                    ShowError("Failed to send friend request.");
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка: {ex.Message}");
+                ShowError($"Error: {ex.Message}");
                 Debug.WriteLine($"[AnotherProfilePage] AddFriend_Click exception: {ex}");
             }
             finally
@@ -1060,7 +1060,7 @@ namespace ovkdesktop
                 OVKDataBody token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("Не удалось загрузить токен. Пожалуйста, повторите попытку позже.");
+                    ShowError("Failed to load user profile.");
                     return;
                 }
 
@@ -1080,12 +1080,12 @@ namespace ovkdesktop
                 }
                 else
                 {
-                    ShowError("Не удалось удалить пользователя из друзей.");
+                    ShowError("Failed to remove user from friends.");
                 }
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка: {ex.Message}");
+                ShowError($"Error: {ex.Message}");
                 Debug.WriteLine($"[AnotherProfilePage] RemoveFriend_Click exception: {ex}");
             }
             finally
@@ -1139,7 +1139,7 @@ namespace ovkdesktop
                     requestParams = string.Join(" ", requestParamsElement);
                 }
 
-                ShowError($"{errorMsg} (Код: {errorCode})");
+                ShowError($"{errorMsg} (Code: {errorCode})");
             }
             catch (JsonException jsonEx)
             {
@@ -1721,7 +1721,7 @@ namespace ovkdesktop
                     catch (Exception apiEx)
                     {
                         Debug.WriteLine($"[AnotherProfilePage] API error in LikeButton_Click: {apiEx.Message}");
-                        ShowError($"Ошибка API при обработке лайка: {apiEx.Message}");
+                        ShowError($"API error when processing like: {apiEx.Message}");
                         button.IsEnabled = true;
                         return;
                     }
@@ -1763,7 +1763,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AnotherProfilePage] Error in LikeButton_Click: {ex.Message}");
-                ShowError($"Ошибка при обработке лайка: {ex.Message}");
+                ShowError($"Error when processing like: {ex.Message}");
             }
         }
 
