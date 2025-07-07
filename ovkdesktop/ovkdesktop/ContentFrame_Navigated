@@ -1,0 +1,43 @@
+        // Обработчик события навигации
+        private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
+        {
+            try
+            {
+                // Обновляем текущий тип страницы
+                _currentPageType = e.SourcePageType;
+                
+                // Обновляем выбранный элемент в NavigationView
+                if (e.SourcePageType == typeof(PostsPage))
+                {
+                    NavView.SelectedItem = NewsItem;
+                }
+                else if (e.SourcePageType == typeof(ProfilePage))
+                {
+                    NavView.SelectedItem = ProfileItem;
+                }
+                else if (e.SourcePageType == typeof(MusicPage))
+                {
+                    NavView.SelectedItem = MusicItem;
+                }
+                else if (e.SourcePageType == typeof(FriendsPage))
+                {
+                    NavView.SelectedItem = FriendsItem;
+                }
+                else if (e.SourcePageType == typeof(SettingsClientPage))
+                {
+                    NavView.SelectedItem = SettingsItem;
+                }
+                
+                Debug.WriteLine($"[MainPage] Navigated to {e.SourcePageType.Name}");
+                
+                // Показываем или скрываем мини-плеер в зависимости от страницы
+                UpdateMiniPlayerVisibility(e.SourcePageType);
+                
+                // После навигации проверяем, нужно ли подготовить мини-плеер для следующей страницы
+                PreparePlayerForNextNavigation(e.SourcePageType);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainPage] Error in ContentFrame_Navigated: {ex.Message}");
+            }
+        } 
