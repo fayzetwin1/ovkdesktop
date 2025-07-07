@@ -1,0 +1,36 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ovkdesktop", "ovkdesktop.csproj", "{2295B4F5-A48B-DE52-FFC8-2A038086C795}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM64 = Debug|ARM64
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|ARM64 = Release|ARM64
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Debug|ARM64.Build.0 = Debug|ARM64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Debug|x64.ActiveCfg = Debug|x64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Debug|x64.Build.0 = Debug|x64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Debug|x86.ActiveCfg = Debug|x86
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Debug|x86.Build.0 = Debug|x86
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Release|ARM64.ActiveCfg = Release|ARM64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Release|ARM64.Build.0 = Release|ARM64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Release|x64.ActiveCfg = Release|x64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Release|x64.Build.0 = Release|x64
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Release|x86.ActiveCfg = Release|x86
+		{2295B4F5-A48B-DE52-FFC8-2A038086C795}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		        SolutionGuid = {F472D544-7B00-4BAE-821B-02C36247211B}
+	EndGlobalSection
+EndGlobal

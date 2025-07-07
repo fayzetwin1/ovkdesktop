@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ovkdesktop (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "ovkdesktop (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

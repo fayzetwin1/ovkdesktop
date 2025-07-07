@@ -471,7 +471,6 @@ namespace ovkdesktop.Models
         [JsonIgnore]
         public string FullName => IsGroup ? FirstName : $"{FirstName} {LastName}".Trim();
 
-<<<<<<< HEAD
         [JsonIgnore]
         public string Description { get; set; } // To hold group description
 
@@ -484,8 +483,6 @@ namespace ovkdesktop.Models
         [JsonIgnore]
         public bool IsAdmin { get; set; }
 
-=======
->>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
 
     }
 
@@ -527,7 +524,6 @@ namespace ovkdesktop.Models
         [JsonPropertyName("site")]
         public string Site { get; set; }
 
-<<<<<<< HEAD
         [JsonPropertyName("is_member")]
         public bool IsMember { get; set; }
 
@@ -537,13 +533,10 @@ namespace ovkdesktop.Models
         [JsonPropertyName("is_admin")]
         public bool IsAdmin { get; set; }
 
-=======
->>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
         public UserProfile ToUserProfile()
         {
             return new UserProfile
             {
-<<<<<<< HEAD
                 Id = -this.Id, // make group ID negative
                 FirstName = this.Name,
                 LastName = "", // groups have no last names
@@ -562,16 +555,6 @@ namespace ovkdesktop.Models
 
         [JsonIgnore]
         public string BestAvailablePhoto => Photo200 ?? Photo100 ?? Photo50;
-=======
-                Id = -this.Id, // Make group ID negative
-                FirstName = this.Name,
-                LastName = "", // Groups have no last names
-                Nickname = this.ScreenName,
-                Photo200 = this.Photo200,
-                IsGroup = true
-            };
-        }
->>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
     }
 
     public class OVKDataBody
@@ -989,7 +972,6 @@ namespace ovkdesktop.Models
         public int Count { get; set; }
 
         [JsonPropertyName("user_likes")]
-<<<<<<< HEAD
         public bool UserLikes { get; set; } 
 
         [JsonPropertyName("can_like")]
@@ -997,16 +979,6 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("can_publish")]
         public bool CanPublish { get; set; } 
-=======
-        [JsonConverter(typeof(BoolAsIntJsonConverter))]
-        public int UserLikes { get; set; }
-
-        [JsonPropertyName("can_like")]
-        public int CanLike { get; set; }
-
-        [JsonPropertyName("can_publish")]
-        public int CanPublish { get; set; }
->>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
     }
 
     public class Comments
@@ -1093,12 +1065,7 @@ namespace ovkdesktop.Models
 
         private bool _isAdded;
 
-<<<<<<< HEAD
         [JsonPropertyName("is_added")] // Use converter for 1/0 values
-=======
-        [JsonPropertyName("is_added")]
-        [JsonConverter(typeof(IntAsBoolJsonConverter))] // Use converter for 1/0 values
->>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
         public bool IsAdded
         {
             get => _isAdded;
