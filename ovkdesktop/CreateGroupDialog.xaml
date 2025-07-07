@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="ovkdesktop.CreateGroupDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Создание нового сообщества"
+    PrimaryButtonText="Создать"
+    CloseButtonText="Отмена"
+    DefaultButton="Primary">
+
+    <StackPanel Spacing="10">
+        <TextBox x:Name="TitleTextBox" Header="Название"/>
+        <TextBox x:Name="DescriptionTextBox" Header="Описание (необязательно)" TextWrapping="Wrap" Height="100" AcceptsReturn="True"/>
+    </StackPanel>
+</ContentDialog>

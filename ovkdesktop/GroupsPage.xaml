@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="ovkdesktop.GroupsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:ovkdesktop.Models"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="WideLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="720" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeaderPanel.Margin" Value="125,105,0,20"/>
+                        <Setter Target="ContentScrollViewer.Margin" Value="105,-75,125,0"/>
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="NarrowLayout">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="HeaderPanel.Margin" Value="20,20,20,10"/>
+                        <Setter Target="ContentScrollViewer.Margin" Value="0"/>
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel x:Name="HeaderPanel" Grid.Row="0" Spacing="10">
+                <TextBlock Text="Мои сообщества" Style="{ThemeResource TitleLargeTextBlockStyle}" />
+                <Button x:Name="CreateGroupButton" Click="CreateGroupButton_Click">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph=""/>
+                        <TextBlock Text="Создать сообщество"/>
+                    </StackPanel>
+                </Button>
+                <TextBlock x:Name="ErrorTextBlock" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,10,0,0"/>
+            </StackPanel>
+
+            <ScrollViewer x:Name="ContentScrollViewer" Grid.Row="1">
+                <StackPanel Padding="20">
+                    <ProgressRing x:Name="LoadingProgressRing" IsActive="True" HorizontalAlignment="Center" Margin="0,20"/>
+
+                    <TextBlock x:Name="ManagedGroupsHeader" Text="Управляемые сообщества" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,0,0,5" Visibility="Collapsed"/>
+                    <ListView x:Name="ManagedGroupsListView" 
+                              ItemsSource="{x:Bind ManagedGroups}" 
+                              SelectionMode="None" 
+                              IsItemClickEnabled="True" 
+                              ItemClick="Group_ItemClick">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0,5,0,5"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:GroupProfile">
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="15">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="48" Height="48" Margin="0,0,15,0">
+                                            <Ellipse.Fill>
+                                                <ImageBrush ImageSource="{Binding BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                            </Ellipse.Fill>
+                                        </Ellipse>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Style="{ThemeResource BaseTextBlockStyle}"/>
+                                            <TextBlock Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}">
+                                                <Run Text="@"/>
+                                                <Run Text="{Binding ScreenName}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock x:Name="NoManagedGroupsText" Text="Вы не управляете ни одним сообществом." Visibility="Collapsed" Opacity="0.7" Margin="0,10"/>
+
+                    <TextBlock Text="Все подписки" Style="{ThemeResource SubtitleTextBlockStyle}" Margin="0,20,0,5"/>
+                    <ListView x:Name="MemberGroupsListView" 
+                              ItemsSource="{x:Bind MemberGroups}" 
+                              SelectionMode="None" 
+                              IsItemClickEnabled="True" 
+                              ItemClick="Group_ItemClick">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0,5,0,5"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="models:GroupProfile">
+                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="15">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="48" Height="48" Margin="0,0,15,0">
+                                            <Ellipse.Fill>
+                                                <ImageBrush ImageSource="{Binding BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                            </Ellipse.Fill>
+                                        </Ellipse>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Style="{ThemeResource BaseTextBlockStyle}"/>
+                                            <TextBlock Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}">
+                                                <Run Text="@"/>
+                                                <Run Text="{Binding ScreenName}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBlock x:Name="NoMemberGroupsText" Text="Вы не подписаны ни на одно сообщество." Visibility="Collapsed" Opacity="0.7" Margin="0,10"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</Page>

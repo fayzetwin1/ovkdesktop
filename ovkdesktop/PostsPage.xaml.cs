@@ -126,8 +126,16 @@ namespace ovkdesktop
                 // check if ID is negative (group) or positive (user)
                 if (profileId < 0)
                 {
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
                     // for groups (negative ID) - redirect to profile page
                     // TODO: create separate page for groups
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                    // for groups (negative ID) - redirect to profile page
+                    // TODO: create separate page for groups
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     Debug.WriteLine($"redirect to group page with ID = {profileId}");
                     this.Frame.Navigate(typeof(AnotherProfilePage), profileId);
                 }
@@ -172,8 +180,16 @@ namespace ovkdesktop
             {
                 ErrorNewsPostsText.Visibility = Visibility.Collapsed;
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
                 // 1. Get the main list of posts from the API
                 // Note: GetNewsPostsAsync expects a string, so we convert nextFrom
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                // 1. Get the main list of posts from the API
+                // Note: GetNewsPostsAsync expects a string, so we convert nextFrom
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 var data = await apiService.GetNewsPostsAsync(token, nextFrom.ToString());
                 if (data?.Response?.Items == null)
                 {
@@ -182,20 +198,40 @@ namespace ovkdesktop
                     return;
                 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+                var authorIds = data.Response.Items.Select(p => p.FromId).Where(id => id != 0).ToHashSet();
+
+=======
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 // 2. Collect ONLY the main authors' IDs of the posts
                 var authorIds = data.Response.Items.Select(p => p.FromId).Where(id => id != 0).ToHashSet();
 
                 // 3. Load profiles for these authors in one go
+<<<<<<< HEAD
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 var authorsProfiles = new Dictionary<int, UserProfile>();
                 if (authorIds.Any())
                 {
                     authorsProfiles = await apiService.GetUsersAsync(token, authorIds);
                 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 // 4. Form the NewsPosts collection
                 // If this is the first load (nextFrom == 0), clear the list
                 // This logic is now moved to LoadRepostProfilesAsync to avoid clearing before adding.
                 // Here we only add new posts.
+<<<<<<< HEAD
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 if (nextFrom == 0)
                 {
                     NewsPosts.Clear();
@@ -219,7 +255,14 @@ namespace ovkdesktop
                     NewsPosts.Add(post);
                 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
                 // 5. Update "next_from" for the next page
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                // 5. Update "next_from" for the next page
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 if (long.TryParse(data.Response.NextFrom, out long parsedNextFrom) && parsedNextFrom > 0)
                 {
                     nextFrom = parsedNextFrom;
@@ -229,7 +272,14 @@ namespace ovkdesktop
                     nextFrom = 0; // End of the feed
                 }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
                 // 6. PASS THE BATON to the method that will handle reposts
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                // 6. PASS THE BATON to the method that will handle reposts
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 await LoadRepostProfilesAsync(token);
             }
             catch (Exception ex)
@@ -437,11 +487,25 @@ namespace ovkdesktop
                     // check if post has Likes object
                     if (post.Likes == null)
                     {
+<<<<<<< HEAD
+<<<<<<< HEAD
+                        post.Likes = new Models.Likes { Count = 0, UserLikes = false };
+                    }
+
+                    // determine if like should be added or removed
+                    bool isLiked = post.Likes.UserLikes;
+=======
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                         post.Likes = new Models.Likes { Count = 0, UserLikes = 0 };
                     }
 
                     // determine if like should be added or removed
                     bool isLiked = post.Likes.UserLikes > 0;
+<<<<<<< HEAD
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     bool success = false;
 
                     try
@@ -453,7 +517,15 @@ namespace ovkdesktop
                             if (success)
                             {
                                 post.Likes.Count = Math.Max(0, post.Likes.Count - 1);
+<<<<<<< HEAD
+<<<<<<< HEAD
+                                post.Likes.UserLikes = false;
+=======
                                 post.Likes.UserLikes = 0;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                                post.Likes.UserLikes = 0;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                             }
                         }
                         else
@@ -463,7 +535,15 @@ namespace ovkdesktop
                             if (success)
                             {
                                 post.Likes.Count++;
+<<<<<<< HEAD
+<<<<<<< HEAD
+                                post.Likes.UserLikes = true;
+=======
                                 post.Likes.UserLikes = 1;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                                post.Likes.UserLikes = 1;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                             }
                         }
                     }
@@ -490,7 +570,15 @@ namespace ovkdesktop
                                 var elementTheme = ((FrameworkElement)this.Content).ActualTheme;
 
                                 // change button style depending on like state
+<<<<<<< HEAD
+<<<<<<< HEAD
+                                if (post.Likes.UserLikes)
+=======
                                 if (post.Likes.UserLikes > 0)
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                                if (post.Likes.UserLikes > 0)
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                                 {
                                     button.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
                                 }
@@ -654,13 +742,28 @@ namespace ovkdesktop
                     // --- Content Panel ---
                     var contentPanel = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
                     // 1. Add repost if exists
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                    // 1. Add repost if exists
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     if (post.CopyHistory != null && post.CopyHistory.Any())
                     {
                         AddRepostContent(contentPanel, post);
                     }
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 
                     // 2. Add post attachments
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+
+                    // 2. Add post attachments
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     if (post.Attachments != null && post.Attachments.Any())
                     {
                         bool hasVideo = false;
@@ -697,7 +800,15 @@ namespace ovkdesktop
 
                     var likeButton = new Button { Tag = post, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 10, 0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(4) };
                     var likeText = new TextBlock { Text = $"❤ {post.Likes?.Count ?? 0}", FontSize = 14 };
+<<<<<<< HEAD
+<<<<<<< HEAD
+                    if (post.Likes?.UserLikes == true) { likeButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); likeText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); }
+=======
                     if (post.Likes?.UserLikes > 0) { likeButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); likeText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); }
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                    if (post.Likes?.UserLikes > 0) { likeButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); likeText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); }
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     else { likeButton.Foreground = likeButtonColor; likeText.Foreground = likeButtonColor; }
                     likeButton.Content = likeText;
                     likeButton.Click += LikeButton_Click;
@@ -1762,8 +1873,16 @@ namespace ovkdesktop
                 this.DispatcherQueue.TryEnqueue(() =>
                 {
                     Debug.WriteLine("[PostsPage] Recreating UI on the UI thread to reflect all profile changes.");
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
                     // No need to clear container if we're adding posts (in case of LoadMore)
                     // But in your current logic you always rebuild everything.
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                    // No need to clear container if we're adding posts (in case of LoadMore)
+                    // But in your current logic you always rebuild everything.
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     PostsContainer.Children.Clear();
                     CreatePostsUI();
                     LoadingProgressRingNewsPosts.IsActive = false;
@@ -2076,10 +2195,23 @@ namespace ovkdesktop
                     {
                         PropertyNameCaseInsensitive = true
                     };
+<<<<<<< HEAD
+<<<<<<< HEAD
+                    options.Converters.Add(new Converters.IntToBoolJsonConverter());
+                    options.Converters.Add(new Converters.FlexibleIntConverter());
+                    options.Converters.Add(new Models.FlexibleStringJsonConverter());
+                    var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
+=======
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     options.Converters.Add(new Converters.FlexibleIntConverter());
                     options.Converters.Add(new Models.FlexibleStringJsonConverter());
                     var result = JsonSerializer.Deserialize<UsersGetResponse>(json, options);
 
+<<<<<<< HEAD
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     return result?.Response ?? new List<UserProfile>();
                 }
                 catch (JsonException ex)
@@ -2176,10 +2308,26 @@ namespace ovkdesktop
                     {
                         PropertyNameCaseInsensitive = true
                     };
+<<<<<<< HEAD
+<<<<<<< HEAD
+                    options.Converters.Add(new Converters.IntToBoolJsonConverter());
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     options.Converters.Add(new Converters.FlexibleIntConverter());
                     options.Converters.Add(new Models.FlexibleStringJsonConverter());
 
                     using JsonDocument doc = JsonDocument.Parse(json);
+<<<<<<< HEAD
+<<<<<<< HEAD
+                    if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
+                    {
+                        return JsonSerializer.Deserialize<List<GroupProfile>>(responseElement.GetRawText(), options);
+                    }
+=======
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) &&
                         responseElement.ValueKind == JsonValueKind.Array)
                     {
@@ -2262,6 +2410,10 @@ namespace ovkdesktop
                         return groups;
                     }
 
+<<<<<<< HEAD
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     return new List<GroupProfile>();
                 }
                 catch (JsonException ex)
@@ -2386,6 +2538,13 @@ namespace ovkdesktop
                     {
                         PropertyNameCaseInsensitive = true
                     };
+<<<<<<< HEAD
+<<<<<<< HEAD
+                    options.Converters.Add(new Converters.IntToBoolJsonConverter());
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     options.Converters.Add(new Converters.FlexibleIntConverter());
                     options.Converters.Add(new Models.FlexibleStringJsonConverter());
 

@@ -37,6 +37,10 @@ namespace ovkdesktop
     /// </summary>
     public sealed partial class AnotherProfilePage : Page
     {
+<<<<<<< HEAD
+
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
         private readonly List<string> _videoUrls = new List<string>();
         private int _currentVideoIndex = 0;
         private HttpClient httpClient;
@@ -109,11 +113,20 @@ namespace ovkdesktop
 
             try
             {
+<<<<<<< HEAD
+                Debug.WriteLine("[LoadPageDataAsync] ==> START");
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 LoadingProgressRing.IsActive = true;
                 PostsListView.Visibility = Visibility.Collapsed;
                 NoPostsTextBlock.Visibility = Visibility.Collapsed;
                 Posts.Clear();
 
+<<<<<<< HEAD
+                Debug.WriteLine("[LoadPageDataAsync] Cleared posts");
+
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 // initialize dependencies
                 instanceUrl = await SessionHelper.GetInstanceUrlAsync();
                 httpClient = await SessionHelper.GetConfiguredHttpClientAsync();
@@ -129,6 +142,11 @@ namespace ovkdesktop
                     return;
                 }
 
+<<<<<<< HEAD
+                Debug.WriteLine("[LoadPageDataAsync] Load OVKDataBody token...");
+
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 token.ThrowIfCancellationRequested();
 
                 // load profile information
@@ -139,6 +157,21 @@ namespace ovkdesktop
                     return;
                 }
 
+<<<<<<< HEAD
+                Debug.WriteLine("[LoadPageDataAsync] {success] getting userprofile...");
+                Debug.WriteLine("[LoadPageDataAsync] updating profile ui...");
+                // Update profile UI
+                UpdateProfileUI(ovkToken);
+
+                Debug.WriteLine("[LoadPageDataAsync] [success] updating profile ui...");
+
+                token.ThrowIfCancellationRequested();
+
+                // load posts
+                Debug.WriteLine("[LoadPageDataAsync] loading posts...");
+                await LoadPostsAsync(ovkToken.Token, token);
+                Debug.WriteLine("[LoadPageDataAsync] [success] loading posts...");
+=======
                 // Update profile UI
                 UpdateProfileUI(ovkToken);
 
@@ -146,6 +179,7 @@ namespace ovkdesktop
 
                 // load posts
                 await LoadPostsAsync(ovkToken.Token, token);
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
             }
             catch (OperationCanceledException)
             {
@@ -170,6 +204,57 @@ namespace ovkdesktop
                 ProfileImage.ImageSource = new BitmapImage(new Uri(userProfile.Photo200));
             }
 
+<<<<<<< HEAD
+            // Show correct panel based on profile type
+            FriendActionsPanel.Visibility = userProfile.IsGroup ? Visibility.Collapsed : Visibility.Visible;
+            GroupActionsPanel.Visibility = userProfile.IsGroup ? Visibility.Visible : Visibility.Collapsed;
+
+            if (userProfile.IsGroup)
+            {
+                // This is a group, configure its UI elements
+                GroupDescriptionTextBlock.Text = userProfile.Description;
+                GroupDescriptionTextBlock.Visibility = string.IsNullOrEmpty(userProfile.Description) ? Visibility.Collapsed : Visibility.Visible;
+
+                // Update Join/Leave button based on IsMember status
+                if (userProfile.IsMember)
+                {
+                    JoinLeaveText.Text = "Вы подписаны";
+                    JoinLeaveIcon.Glyph = "\uE8FB"; // Remove friend icon
+                }
+                else
+                {
+                    JoinLeaveText.Text = "Подписаться";
+                    JoinLeaveIcon.Glyph = "\uE8FA"; // Add friend icon
+                }
+
+                if (userProfile.IsAdmin || userProfile.CanPost) // if you admin or you can post
+                {
+                    PostToGroupWallButton.Content = "Написать на стене";
+                }
+                else
+                {
+                    PostToGroupWallButton.Content = "Предложить запись";
+                }
+
+
+                // Show "Post" button if user has rights
+                PostToGroupWallButton.Visibility = userProfile.CanPost ? Visibility.Visible : Visibility.Collapsed;
+
+                // Show "Edit" button if user is an admin (for future use)
+                // EditGroupButton.Visibility = userProfile.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else if (userProfile.Id != currentUserToken.UserId)
+            {
+                // This is another user's profile, check friendship status
+                FriendActionsPanel.Visibility = Visibility.Visible;
+                _ = CheckFriendshipStatusAsync(currentUserToken.Token);
+            }
+            else
+            {
+                // This is the current user's own profile, hide all action buttons
+                FriendActionsPanel.Visibility = Visibility.Collapsed;
+            }
+=======
             FriendshipStatusBadge.Visibility = Visibility.Collapsed;
             AddFriendButton.Visibility = Visibility.Collapsed;
             RemoveFriendButton.Visibility = Visibility.Collapsed;
@@ -178,6 +263,7 @@ namespace ovkdesktop
             {
                 _ = CheckFriendshipStatusAsync(currentUserToken.Token);
             }
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
         }
 
 
@@ -316,15 +402,32 @@ namespace ovkdesktop
         {
             try
             {
+<<<<<<< HEAD
+                var url = $"method/groups.getById?access_token={apiToken}&group_id={groupId}&fields=photo_50,photo_100,photo_200,screen_name,description,is_member,can_post,is_admin&v=5.126";
+=======
                 var url = $"method/groups.getById?access_token={apiToken}&group_id={groupId}&fields=photo_50,photo_100,photo_200,screen_name,description&v=5.126";
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 var response = await httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
                 using var doc = JsonDocument.Parse(json);
+<<<<<<< HEAD
+
+                if (doc.RootElement.TryGetProperty("response", out var responseElement) && responseElement.ValueKind == JsonValueKind.Array)
+                {
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    options.Converters.Add(new Converters.IntToBoolJsonConverter());
+
+                    return JsonSerializer.Deserialize<List<GroupProfile>>(responseElement.GetRawText(), options).FirstOrDefault();
+=======
                 if (doc.RootElement.TryGetProperty("response", out var responseElement) && responseElement.ValueKind == JsonValueKind.Array)
                 {
                     return JsonSerializer.Deserialize<List<GroupProfile>>(responseElement.GetRawText()).FirstOrDefault();
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 }
                 return null;
             }
@@ -335,6 +438,123 @@ namespace ovkdesktop
             }
         }
 
+<<<<<<< HEAD
+        private async void JoinLeaveGroup_Click(object sender, RoutedEventArgs e)
+        {
+            if (userProfile == null || !userProfile.IsGroup) return;
+
+            var button = sender as Button;
+            OVKDataBody ovkToken = await LoadTokenAsync();
+            if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
+            {
+                ShowError("Не удалось выполнить действие: нет токена.");
+                return;
+            }
+
+            button.IsEnabled = false;
+            JoinLeaveProgress.Visibility = Visibility.Visible;
+
+            try
+            {
+                bool success;
+                int groupId = Math.Abs(userProfile.Id);
+
+                if (userProfile.IsMember)
+                {
+                    success = await LeaveGroupAsync(ovkToken.Token, groupId);
+                }
+                else
+                {
+                    success = await JoinGroupAsync(ovkToken.Token, groupId);
+                }
+
+                if (success)
+                {
+                    userProfile.IsMember = !userProfile.IsMember;
+
+                    userProfile.CanPost = userProfile.IsMember;
+
+                    if (userProfile.IsMember)
+                    {
+                        JoinLeaveText.Text = "Вы подписаны";
+                        JoinLeaveIcon.Glyph = "\uE8FB"; // Иконка "убрать"
+                    }
+                    else
+                    {
+                        JoinLeaveText.Text = "Подписаться";
+                        JoinLeaveIcon.Glyph = "\uE8FA"; 
+                    }
+
+                    PostToGroupWallButton.Visibility = userProfile.CanPost ? Visibility.Visible : Visibility.Collapsed;
+                }
+                else
+                {
+                    ShowError("Не удалось выполнить действие.");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowError($"Ошибка: {ex.Message}");
+                Debug.WriteLine($"[AnotherProfilePage] JoinLeaveGroup_Click exception: {ex}");
+            }
+            finally
+            {
+                button.IsEnabled = true;
+                JoinLeaveProgress.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void PostToGroupWall_Click(object sender, RoutedEventArgs e)
+        {
+            if (userProfile == null || !userProfile.IsGroup) return;
+            // Navigate to the post creation page, passing the group's ID (which is negative)
+            Frame.Navigate(typeof(TypeNewPostPage), userProfile.Id);
+        }
+
+        private async Task<bool> JoinGroupAsync(string token, int groupId)
+        {
+            try
+            {
+                var url = $"method/groups.join?access_token={token}&group_id={groupId}&v=5.126";
+                var response = await httpClient.GetAsync(url);
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[groups.join] response: {json}");
+
+                using var doc = JsonDocument.Parse(json);
+                // Successful response is { "response": 1 }
+                return doc.RootElement.TryGetProperty("response", out var resp) && resp.TryGetInt32(out int result) && result == 1;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in JoinGroupAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<bool> LeaveGroupAsync(string token, int groupId)
+        {
+            try
+            {
+                var url = $"method/groups.leave?access_token={token}&group_id={groupId}&v=5.126";
+                var response = await httpClient.GetAsync(url);
+                var json = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"[groups.leave] response: {json}");
+
+                using var doc = JsonDocument.Parse(json);
+                return doc.RootElement.TryGetProperty("response", out var resp) && resp.TryGetInt32(out int result) && result == 1;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in LeaveGroupAsync: {ex.Message}");
+                return false;
+            }
+        }
+
+
+
+
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
 
 
 
@@ -354,7 +574,11 @@ namespace ovkdesktop
                     }
                 }
                 
+<<<<<<< HEAD
+                var url = $"method/groups.getById?access_token={token}&group_id={groupId}&fields=photo_50,photo_100,photo_200,can_post,is_admin,is_member&v=5.126";
+=======
                 var url = $"method/groups.getById?access_token={token}&group_id={groupId}&fields=photo_50,photo_100,photo_200&v=5.126";
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 Debug.WriteLine($"[AnotherProfilePage] Getting group info with URL: {instanceUrl}{url}");
                 
                 var response = await httpClient.GetAsync(url);
@@ -392,7 +616,21 @@ namespace ovkdesktop
                             
                         if (groupElement.TryGetProperty("photo_200", out JsonElement photo200Element))
                             group.Photo200 = photo200Element.GetString();
+<<<<<<< HEAD
+
+
+                        if (groupElement.TryGetProperty("can_post", out JsonElement canPostElement))
+                            group.CanPost = canPostElement.GetBoolean();
+
+                        if (groupElement.TryGetProperty("is_admin", out JsonElement isAdminElement))
+                            group.IsAdmin = isAdminElement.GetBoolean();
+
+                        if (groupElement.TryGetProperty("is_member", out JsonElement isMemberElement))
+                            group.IsMember = isMemberElement.GetBoolean();
+
+=======
                         
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                         return group;
                     }
                 }
@@ -678,6 +916,13 @@ namespace ovkdesktop
         {
             try
             {
+<<<<<<< HEAD
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                options.Converters.Add(new Converters.IntToBoolJsonConverter());
+
+
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 var allPostsById = new Dictionary<string, UserWallPost>();
                 var profilesDict = new Dictionary<long, UserProfile>();
                 var groupsDict = new Dictionary<long, GroupProfile>();
@@ -685,7 +930,12 @@ namespace ovkdesktop
                 var initialUrl = $"method/wall.get?access_token={apiToken}&owner_id={pageOwnerProfile.Id}&extended=1&v=5.126";
                 var initialResponse = await httpClient.GetAsync(initialUrl, cancellationToken);
                 initialResponse.EnsureSuccessStatusCode();
+<<<<<<< HEAD
+
+                var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+=======
                 var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 if (wallData?.Response?.Items == null) return wallData;
 
                 var pinnedPostSummary = wallData.Response.Items.FirstOrDefault(p => p.IsPinned);
@@ -699,7 +949,11 @@ namespace ovkdesktop
 
                     if (hydratedResponse.IsSuccessStatusCode)
                     {
+<<<<<<< HEAD
+                        var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+=======
                         var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                         var fullPinnedPost = hydratedData?.Response?.Items?.FirstOrDefault();
 
                         if (fullPinnedPost != null)
@@ -756,7 +1010,11 @@ namespace ovkdesktop
                     var hydratedResponse = await httpClient.GetAsync(getByIdUrl, cancellationToken);
                     if (!hydratedResponse.IsSuccessStatusCode) continue;
 
+<<<<<<< HEAD
+                    var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+=======
                     var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     if (hydratedData?.Response?.Items?.FirstOrDefault() is UserWallPost fullPost)
                     {
                         allPostsById[currentId] = fullPost;
@@ -1688,11 +1946,19 @@ namespace ovkdesktop
                     // check if the post has a Likes object
                     if (post.Likes == null)
                     {
+<<<<<<< HEAD
+                        post.Likes = new Models.Likes { Count = 0, UserLikes = false };
+                    }
+
+                    // determine if we need to set or remove the like
+                    bool isLiked = post.Likes.UserLikes;
+=======
                         post.Likes = new Models.Likes { Count = 0, UserLikes = 0 };
                     }
                     
                     // determine if we need to set or remove the like
                     bool isLiked = post.Likes.UserLikes > 0;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     int newLikesCount = -1;
                     
                     try
@@ -1704,7 +1970,11 @@ namespace ovkdesktop
                             if (newLikesCount >= 0)
                             {
                                 post.Likes.Count = newLikesCount;
+<<<<<<< HEAD
+                                post.Likes.UserLikes = false;
+=======
                                 post.Likes.UserLikes = 0;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                             }
                         }
                         else
@@ -1714,7 +1984,11 @@ namespace ovkdesktop
                             if (newLikesCount >= 0)
                             {
                                 post.Likes.Count = newLikesCount;
+<<<<<<< HEAD
+                                post.Likes.UserLikes = true;
+=======
                                 post.Likes.UserLikes = 1;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                             }
                         }
                     }
@@ -1772,7 +2046,12 @@ namespace ovkdesktop
         {
             try
             {
+<<<<<<< HEAD
+                var postsToUpdate = Posts.ToList();
+                foreach (var post in postsToUpdate)
+=======
                 foreach (var post in Posts)
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     bool isLiked = await SessionHelper.IsLikedAsync("post", post.OwnerId, post.Id);

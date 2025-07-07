@@ -370,7 +370,15 @@ namespace ovkdesktop
                     }
                     
                     // update counter and header
+<<<<<<< HEAD
+<<<<<<< HEAD
+                    MyAudioHeader.Text = $"Мои треки ({_myAudioCollection.Count})";
+=======
                     MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                    MyAudioHeader.Text = $"My audios ({_myAudioCollection.Count})";
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     
                     // update visibility of interface elements
                     UpdateUIVisibility(true);

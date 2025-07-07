@@ -231,7 +231,17 @@ namespace ovkdesktop
         {
             try
             {
+<<<<<<< HEAD
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                options.Converters.Add(new Converters.IntToBoolJsonConverter());
+
+
+=======
                 // Phase 1: Full data collection
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 var allPostsById = new Dictionary<string, UserWallPost>();
                 var profilesDict = new Dictionary<long, UserProfile>();
                 var groupsDict = new Dictionary<long, GroupProfile>();
@@ -239,7 +249,12 @@ namespace ovkdesktop
                 var initialUrl = $"method/wall.get?access_token={apiToken}&owner_id={pageOwnerProfile.Id}&extended=1&v=5.126";
                 var initialResponse = await httpClient.GetAsync(initialUrl, cancellationToken);
                 initialResponse.EnsureSuccessStatusCode();
+<<<<<<< HEAD
+
+                var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+=======
                 var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 if (wallData?.Response == null) return wallData;
 
                 var pinnedPostSummary = wallData.Response.Items.FirstOrDefault(p => p.IsPinned);
@@ -257,8 +272,12 @@ namespace ovkdesktop
                         var jsonResponse = await hydratedResponse.Content.ReadAsStringAsync();
                         Debug.WriteLine($"[ProfilePage] Full Pinned Post JSON: {jsonResponse}");
 
+<<<<<<< HEAD
+                        var hydratedData = JsonSerializer.Deserialize<APIResponse<WallResponse<UserWallPost>>>(jsonResponse, options);
+=======
                         var hydratedData = JsonSerializer.Deserialize<APIResponse<WallResponse<UserWallPost>>>(jsonResponse);
 
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
 
                         var fullPinnedPost = hydratedData?.Response?.Items?.FirstOrDefault();
 
@@ -317,7 +336,11 @@ namespace ovkdesktop
                     var hydratedResponse = await httpClient.GetAsync(getByIdUrl, cancellationToken);
                     if (!hydratedResponse.IsSuccessStatusCode) continue;
 
+<<<<<<< HEAD
+                    var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+=======
                     var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(cancellationToken: cancellationToken);
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     if (hydratedData?.Response?.Items?.FirstOrDefault() is UserWallPost fullPost)
                     {
                         allPostsById[currentId] = fullPost;
@@ -1091,11 +1114,19 @@ namespace ovkdesktop
                     // check if post has Likes object
                     if (post.Likes == null)
                     {
+<<<<<<< HEAD
+                        post.Likes = new Models.Likes { Count = 0, UserLikes = false };
+                    }
+
+                    // determine if like should be added or removed
+                    bool isLiked = post.Likes.UserLikes;
+=======
                         post.Likes = new Models.Likes { Count = 0, UserLikes = 0 };
                     }
                     
                     // determine if like should be added or removed
                     bool isLiked = post.Likes.UserLikes > 0;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     int newLikesCount = -1;
                     
                     try
@@ -1107,7 +1138,11 @@ namespace ovkdesktop
                             if (newLikesCount >= 0)
                             {
                                 post.Likes.Count = newLikesCount;
+<<<<<<< HEAD
+                                post.Likes.UserLikes = false;
+=======
                                 post.Likes.UserLikes = 0;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                             }
                         }
                         else
@@ -1117,7 +1152,11 @@ namespace ovkdesktop
                             if (newLikesCount >= 0)
                             {
                                 post.Likes.Count = newLikesCount;
+<<<<<<< HEAD
+                                post.Likes.UserLikes = true;
+=======
                                 post.Likes.UserLikes = 1;
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                             }
                         }
                     }

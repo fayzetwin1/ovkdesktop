@@ -146,7 +146,17 @@ namespace ovkdesktop
                 {
                     NavView.SelectedItem = SettingsItem;
                 }
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+                else if (e.SourcePageType == typeof(GroupsPage)) { NavView.SelectedItem = GroupsItem; }
+
+=======
                 
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+                
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                 Debug.WriteLine($"[MainPage] Navigated to {e.SourcePageType.Name}");
                 
                 // show or hide the mini player depending on the page
@@ -244,6 +254,13 @@ namespace ovkdesktop
                     {
                         "news" => typeof(PostsPage),
                         "profile" => typeof(ProfilePage),
+<<<<<<< HEAD
+<<<<<<< HEAD
+                        "groups" => typeof(GroupsPage),
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                         "music" => typeof(MusicPage),
                         "friends" => typeof(FriendsPage),
                         "settings" => typeof(SettingsClientPage),

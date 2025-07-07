@@ -100,6 +100,72 @@
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock x:Name="ProfileNameTextBlock" Text="Загрузка..." 
                                   Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" Margin="10,20,20,0"/>
+<<<<<<< HEAD
+<<<<<<< HEAD
+                        <TextBlock x:Name="GroupDescriptionTextBlock"
+                                  TextWrapping="Wrap" Margin="10,10,0,0" FontSize="16" 
+                                  Visibility="Collapsed"/>
+
+                        <!-- Friend action buttons (only for users) -->
+                        <StackPanel x:Name="FriendActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="Collapsed">
+                            <!-- Friendship status badge -->
+                            <TextBlock x:Name="FriendshipStatusBadge" 
+                                       Text="У вас в друзьях" 
+                                       Margin="0,0,10,0" 
+                                       FontSize="14" 
+                                       VerticalAlignment="Center"
+                                       Foreground="{ThemeResource SystemAccentColor}"
+                                       Visibility="Collapsed"/>
+
+                            <!-- Add friend button -->
+                            <Button x:Name="AddFriendButton" Click="AddFriend_Click" Visibility="Collapsed" Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="" FontSize="16"/>
+                                    <TextBlock Text="Добавить в друзья"/>
+                                    <ProgressRing x:Name="AddFriendProgress" IsActive="True" Width="16" Height="16" Visibility="Collapsed" Margin="5,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Remove friend button -->
+                            <Button x:Name="RemoveFriendButton" Click="RemoveFriend_Click" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph="" FontSize="16"/>
+                                    <TextBlock Text="Удалить из друзей"/>
+                                    <ProgressRing x:Name="RemoveFriendProgress" IsActive="True" Width="16" Height="16" Visibility="Collapsed" Margin="5,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- Group action buttons (only for groups) -->
+                        <StackPanel x:Name="GroupActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="Collapsed" Spacing="10">
+                            <!-- Join/Leave button -->
+                            <Button x:Name="JoinLeaveGroupButton" Click="JoinLeaveGroup_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon x:Name="JoinLeaveIcon" Glyph=""/>
+                                    <TextBlock x:Name="JoinLeaveText" Text="Подписаться"/>
+                                    <ProgressRing x:Name="JoinLeaveProgress" IsActive="True" Width="16" Height="16" Visibility="Collapsed" Margin="5,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Post to wall button -->
+                            <Button x:Name="PostToGroupWallButton" Click="PostToGroupWall_Click" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph=""/>
+                                    <TextBlock Text="Предложить запись"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- TODO: Edit Group Button. We will implement the page for it later. -->
+                            <!-- <Button x:Name="EditGroupButton" Click="EditGroup_Click" Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <FontIcon Glyph=""/>
+                                    <TextBlock Text="Редактировать"/>
+                                </StackPanel>
+                            </Button> -->
+                        </StackPanel>
+=======
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                         <TextBlock x:Name="ProfileNicknameTextBlock" Text="@username" 
                                   Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}" 
                                   Visibility="Collapsed" Margin="10,0,20,0" FontSize="16"/>
@@ -150,6 +216,10 @@
                         <TextBlock x:Name="ProfileInfoTextBlock" Text="Дополнительная информация" 
                                   Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}" 
                                   Visibility="Collapsed" Margin="10,10,0,0"/>
+<<<<<<< HEAD
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
+=======
+>>>>>>> 644b4d6b747c1e50274178d5788b57dd38cc8edf
                     </StackPanel>
                 </Grid>
 
