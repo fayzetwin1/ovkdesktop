@@ -1,17 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using System.IO;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Reflection;
 using Newtonsoft.Json.Linq;
 using ovkdesktop.Converters;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using ovkdesktop;
 
 namespace ovkdesktop.Models
 {
+    
+
     public class FlexibleStringJsonConverter : JsonConverter<string>
     {
         public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -58,23 +63,53 @@ namespace ovkdesktop.Models
         [JsonConverter(typeof(FlexibleStringJsonConverter))]
         public string Text { get; set; }
 
+        private List<Attachment> _attachments = new();
         [JsonPropertyName("attachments")]
-        public List<Attachment> Attachments { get; set; } = new();
+        public List<Attachment> Attachments
+        {
+            get => _attachments;
+            set => SetProperty(ref _attachments, value);
+        }
 
+        private PostSource _postSource;
         [JsonPropertyName("post_source")]
-        public PostSource PostSource { get; set; }
+        public PostSource PostSource
+        {
+            get => _postSource;
+            set => SetProperty(ref _postSource, value);
+        }
 
+        private Comments _comments;
         [JsonPropertyName("comments")]
-        public Comments Comments { get; set; }
+        public Comments Comments
+        {
+            get => _comments;
+            set => SetProperty(ref _comments, value);
+        }
 
+        private Likes _likes;
         [JsonPropertyName("likes")]
-        public Likes Likes { get; set; }
+        public Likes Likes
+        {
+            get => _likes;
+            set => SetProperty(ref _likes, value);
+        }
 
+        private Reposts _reposts;
         [JsonPropertyName("reposts")]
-        public Reposts Reposts { get; set; }
+        public Reposts Reposts
+        {
+            get => _reposts;
+            set => SetProperty(ref _reposts, value);
+        }
 
+        private Views _views;
         [JsonPropertyName("views")]
-        public Views Views { get; set; }
+        public Views Views
+        {
+            get => _views;
+            set => SetProperty(ref _views, value);
+        }
 
         [JsonPropertyName("is_pinned")]
         public bool IsPinned { get; set; }
@@ -171,17 +206,36 @@ namespace ovkdesktop.Models
             return null;
         }
 
+        private List<UserWallPost> _copyHistory;
         [JsonPropertyName("copy_history")]
-        public List<UserWallPost> CopyHistory { get; set; }
+        public List<UserWallPost> CopyHistory
+        {
+            get => _copyHistory;
+            set => SetProperty(ref _copyHistory, value);
+        }
 
         private UserProfile _profile;
-
         [JsonPropertyName("profile")]
         public UserProfile Profile
         {
             get => _profile;
-            set => SetProperty(ref _profile, value);
+            set
+            {
+                // Используем SetProperty из вашего базового класса ObservableObject
+                if (SetProperty(ref _profile, value))
+                {
+                    // ЯВНО уведомляем UI, что зависимые свойства тоже изменились!
+                    OnPropertyChanged(nameof(AuthorName));
+                    OnPropertyChanged(nameof(AuthorAvatarUrl));
+                }
+            }
         }
+
+        [JsonIgnore]
+        public string AuthorName => Profile?.FullName ?? "Загрузка...";
+
+        [JsonIgnore]
+        public string AuthorAvatarUrl => Profile?.BestAvailablePhoto;
 
         [JsonIgnore]
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
@@ -278,8 +332,13 @@ namespace ovkdesktop.Models
     public class NewsFeedPost : BasePost
     {
 
+        private new List<NewsFeedPost> _copyHistory;
         [JsonPropertyName("copy_history")]
-        public new List<NewsFeedPost> CopyHistory { get; set; }
+        public new List<NewsFeedPost> CopyHistory
+        {
+            get => _copyHistory;
+            set => SetProperty(ref _copyHistory, value);
+        }
 
 
 
@@ -469,7 +528,9 @@ namespace ovkdesktop.Models
         public string BestAvailablePhoto => Photo200 ?? Photo100 ?? Photo50;
 
         [JsonIgnore]
-        public string FullName => IsGroup ? FirstName : $"{FirstName} {LastName}".Trim();
+        public string FullName => IsDeactivated
+            ? "Удаленный аккаунт"
+            : (IsGroup ? FirstName : $"{FirstName} {LastName}".Trim());
 
         [JsonIgnore]
         public string Description { get; set; } // To hold group description
@@ -483,7 +544,13 @@ namespace ovkdesktop.Models
         [JsonIgnore]
         public bool IsAdmin { get; set; }
 
+        [JsonPropertyName("deactivated")]
+        public string Deactivated { get; set; }
 
+        [JsonIgnore]
+        public bool IsDeactivated => !string.IsNullOrEmpty(Deactivated) || FirstName == "DELETED";
+
+    
     }
 
     public class UsersGetResponse
@@ -576,6 +643,27 @@ namespace ovkdesktop.Models
 
     public class Video
     {
+        [JsonIgnore]
+        public string LargestImageUrl => GetLargestImageUrl();
+
+        private string GetLargestImageUrl()
+        {
+            // Логика для получения лучшего превью для видео
+            var bestImage = Image?.OrderByDescending(i => i.Width).FirstOrDefault();
+            if (bestImage != null && !string.IsNullOrEmpty(bestImage.Url))
+            {
+                return bestImage.Url;
+            }
+
+            var bestFrame = FirstFrame?.OrderByDescending(f => f.Width).FirstOrDefault();
+            if (bestFrame != null && !string.IsNullOrEmpty(bestFrame.Url))
+            {
+                return bestFrame.Url;
+            }
+
+            return "ms-appx:///Assets/Images/video_placeholder.png"; // Фолбэк-изображение
+        }
+
         [JsonPropertyName("id")]
         public int Id { get; set; }
 
@@ -804,6 +892,9 @@ namespace ovkdesktop.Models
         public Tags Tags { get; set; }
 
         [JsonIgnore]
+        public string LargestPhotoUrl => GetLargestPhotoUrl();
+
+        [JsonIgnore]
         public string BestQualityUrl => GetBestQualityUrl();
 
         private string GetBestQualityUrl()
@@ -942,7 +1033,7 @@ namespace ovkdesktop.Models
         public int FileSize { get; set; }
     }
 
-    public class Attachment
+    public class Attachment : ObservableObject
     {
         [JsonPropertyName("type")]
         public string Type { get; set; }
@@ -964,21 +1055,45 @@ namespace ovkdesktop.Models
         
         [JsonIgnore]
         public bool IsAudio => Type == "audio" && Audio != null;
+
+        [JsonIgnore]
+        public bool IsPhoto => Type == "photo" && Photo != null; 
+
+        [JsonIgnore]
+        public bool IsVideo => Type == "video" && Video != null;
+
+        private bool _isVideoPlaying = false;
+        [JsonIgnore]
+        public bool IsVideoPlaying
+        {
+            get => _isVideoPlaying;
+            set => SetProperty(ref _isVideoPlaying, value);
+        }
     }
 
-    public class Likes
+    public class Likes : ObservableObject
     {
+        private int _count;
         [JsonPropertyName("count")]
-        public int Count { get; set; }
+        public int Count
+        {
+            get => _count;
+            set => SetProperty(ref _count, value);
+        }
 
+        private bool _userLikes;
         [JsonPropertyName("user_likes")]
-        public bool UserLikes { get; set; } 
+        public bool UserLikes
+        {
+            get => _userLikes;
+            set => SetProperty(ref _userLikes, value);
+        }
 
         [JsonPropertyName("can_like")]
-        public bool CanLike { get; set; } 
+        public bool CanLike { get; set; }
 
         [JsonPropertyName("can_publish")]
-        public bool CanPublish { get; set; } 
+        public bool CanPublish { get; set; }
     }
 
     public class Comments

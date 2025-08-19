@@ -1,50 +1,41 @@
-<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="ovkdesktop.PostsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:ovkdesktop"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        <ScrollViewer>
+            <StackPanel Margin="24">
+                <TextBlock x:Name="NewsPostsLabel" 
+                           Text="Новости" 
+                           Margin="125,105,0,0" 
+                           Style="{ThemeResource TitleLargeTextBlockStyle}" 
+                           FontSize="42" 
+                           HorizontalAlignment="Left"/>
 
-        <Grid Grid.Row="0">
-            <TextBlock x:Name="NewsPostsLabel" Text="Новости" Margin="125,105,0,0" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" HorizontalAlignment="Left"></TextBlock>
-            <TextBlock x:Name="ErrorNewsPostsText" Margin="125,60,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap" HorizontalAlignment="Left"/>
-            <Button x:Name="LoadMoreNewsPageButton"
-                Content="Загрузить ещё..."
-                Click="LoadMoreButton"
-                Visibility="Collapsed"
-                HorizontalAlignment="Left"
-                Margin="25,-65,0,0"/>
+                <TextBlock x:Name="ErrorNewsPostsText" 
+                           Foreground="Red" 
+                           Visibility="Collapsed" 
+                           TextWrapping="Wrap" 
+                           Margin="125,10,0,10"/>
 
-            <!-- Debug TextBlock -->
-            <TextBlock x:Name="DebugInfoText" 
-                       Margin="125,60,0,0" 
-                       Foreground="Blue" 
-                       TextWrapping="Wrap"
-                       MaxWidth="600"
-                       MaxHeight="100"
-                       HorizontalAlignment="Left"
-                       VerticalAlignment="Top"/>
-        </Grid>
+                <StackPanel x:Name="PostsContainer" Margin="125,20,0,0"/>
 
-        <Grid Grid.Row="1" Margin="105,10,20,20" x:Name="GridNewsPosts">
-            <ProgressRing x:Name="LoadingProgressRingNewsPosts" IsActive="True" 
-                Width="50" Height="50" 
-                HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <ProgressRing x:Name="LoadingProgressRingNewsPosts" 
+                              IsActive="False" 
+                              Width="50" 
+                              Height="50" 
+                              Margin="0,20,0,0"/>
 
-            <!-- Replace ListView with ScrollViewer with StackPanel for manual element addition -->
-            <ScrollViewer>
-                <StackPanel x:Name="PostsContainer" Margin="15,0,0,20" HorizontalAlignment="Left"/>
-            </ScrollViewer>
-        </Grid>
+                <Button x:Name="LoadMoreNewsPageButton"
+                        Content="Загрузить ещё..."
+                        Click="LoadMoreButton"
+                        Visibility="Collapsed"
+                        HorizontalAlignment="Stretch"
+                        Margin="125,10,0,20"/>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Page>

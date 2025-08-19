@@ -84,7 +84,7 @@ namespace ovkdesktop
             }
         }
 
-        
+
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
@@ -171,40 +171,40 @@ namespace ovkdesktop
             {
                 // use older version of API for better compatibility
                 var url = $"method/users.get?fields=photo_200,nickname&access_token={token}&v=5.126";
-                
+
                 Debug.WriteLine($"[ProfilePage] Getting profile with URL: {instanceUrl}{url}");
-                
+
                 var response = await httpClient.GetAsync(url, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[ProfilePage] Profile response JSON: {json}");
-                
+
                 UserProfile profile = null;
-                
+
                 try
                 {
                     using (JsonDocument doc = JsonDocument.Parse(json))
                     {
-                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) && 
-                            responseElement.ValueKind == JsonValueKind.Array && 
+                        if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement) &&
+                            responseElement.ValueKind == JsonValueKind.Array &&
                             responseElement.GetArrayLength() > 0)
                         {
                             JsonElement userElement = responseElement[0];
                             profile = new UserProfile();
-                            
+
                             if (userElement.TryGetProperty("id", out JsonElement idElement))
                                 profile.Id = idElement.GetInt32();
-                                
+
                             if (userElement.TryGetProperty("first_name", out JsonElement firstNameElement))
                                 profile.FirstName = firstNameElement.GetString();
-                                
+
                             if (userElement.TryGetProperty("last_name", out JsonElement lastNameElement))
                                 profile.LastName = lastNameElement.GetString();
-                                
+
                             if (userElement.TryGetProperty("screen_name", out JsonElement nicknameElement))
                                 profile.Nickname = nicknameElement.GetString();
-                                
+
                             if (userElement.TryGetProperty("photo_200", out JsonElement photoElement))
                                 profile.Photo200 = photoElement.GetString();
                         }
@@ -215,7 +215,7 @@ namespace ovkdesktop
                     Debug.WriteLine($"[ProfilePage] JSON error: {ex.Message}");
                     throw;
                 }
-                
+
                 return profile;
             }
             catch (Exception ex)
@@ -561,7 +561,7 @@ namespace ovkdesktop
             {
                 object dataContext = null;
                 object tag = null;
-                
+
                 // get DataContext and Tag depending on the type of sender
                 if (sender is Button button)
                 {
@@ -578,10 +578,10 @@ namespace ovkdesktop
                     Debug.WriteLine("[Video] unknown type of sender");
                     return;
                 }
-                
+
                 string videoUrl = null;
                 UserWallPost post = null;
-                
+
                 // check Tag
                 if (tag is UserWallPost tagPost)
                 {
@@ -592,14 +592,14 @@ namespace ovkdesktop
                 {
                     post = contextPost;
                 }
-                
+
                 // get URL of video
                 if (post != null && post.MainVideo != null)
                 {
                     videoUrl = post.MainVideo.Player;
                     Debug.WriteLine($"[Video] received URL of video: {videoUrl ?? "null"}");
                 }
-                
+
                 // check URL and open it
                 if (!string.IsNullOrEmpty(videoUrl))
                 {
@@ -625,8 +625,8 @@ namespace ovkdesktop
                 Debug.WriteLine($"[Video] Stack trace: {ex.StackTrace}");
             }
         }
-        
-            // method for creating text block with formatted links
+
+        // method for creating text block with formatted links
         private FrameworkElement CreateFormattedTextWithLinks(string text)
         {
             try
@@ -643,16 +643,16 @@ namespace ovkdesktop
                         FontSize = 14
                     };
                 }
-                
+
                 // create container for text and links
                 var panel = new StackPanel
                 {
                     Margin = new Thickness(0, 10, 0, 10)
                 };
-                
+
                 // split text into parts, highlighting links
                 var parts = SplitTextWithUrls(text);
-                
+
                 foreach (var part in parts)
                 {
                     if (IsUrl(part))
@@ -666,9 +666,9 @@ namespace ovkdesktop
                             Padding = new Thickness(0),
                             FontSize = 14
                         };
-                        
+
                         // add handler for opening in browser
-                        link.Click += (sender, e) => 
+                        link.Click += (sender, e) =>
                         {
                             try
                             {
@@ -679,7 +679,7 @@ namespace ovkdesktop
                                 Debug.WriteLine($"error in opening link: {ex.Message}");
                             }
                         };
-                        
+
                         panel.Children.Add(link);
                     }
                     else
@@ -692,11 +692,11 @@ namespace ovkdesktop
                             FontWeight = FontWeights.Normal,
                             FontSize = 14
                         };
-                        
+
                         panel.Children.Add(textBlock);
                     }
                 }
-                
+
                 return panel;
             }
             catch (Exception ex)
@@ -713,49 +713,49 @@ namespace ovkdesktop
                 };
             }
         }
-        
+
         // method for checking if text contains URL
         private bool ContainsUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
             return text.Contains("http://") || text.Contains("https://");
         }
-        
+
         // method for checking if text is URL
         private bool IsUrl(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
             return text.StartsWith("http://") || text.StartsWith("https://");
         }
-        
+
         // method for splitting text into parts, highlighting URLs
         private List<string> SplitTextWithUrls(string text)
         {
             var result = new List<string>();
-            
+
             if (string.IsNullOrEmpty(text))
                 return result;
-                
+
             // simple regular processing for highlighting URLs
             int startIndex = 0;
             while (startIndex < text.Length)
             {
                 // find start of URL
                 int httpIndex = text.IndexOf("http", startIndex);
-                
+
                 if (httpIndex == -1)
                 {
                     // if there are no more URLs, add remaining text
                     result.Add(text.Substring(startIndex));
                     break;
                 }
-                
+
                 // add text before URL
                 if (httpIndex > startIndex)
                 {
                     result.Add(text.Substring(startIndex, httpIndex - startIndex));
                 }
-                
+
                 // find end of URL (space, line break or end of text)
                 int endIndex = text.IndexOfAny(new[] { ' ', '\n', '\r', '\t' }, httpIndex);
                 if (endIndex == -1)
@@ -771,20 +771,20 @@ namespace ovkdesktop
                     startIndex = endIndex;
                 }
             }
-            
+
             return result;
         }
-        
+
         // method for checking if URL is YouTube link
         private bool IsYouTubeUrl(string url)
         {
             if (string.IsNullOrEmpty(url)) return false;
-            
-            return url.Contains("youtube.com") || 
-                   url.Contains("youtu.be") || 
+
+            return url.Contains("youtube.com") ||
+                   url.Contains("youtu.be") ||
                    url.Contains("youtube-nocookie.com");
         }
-        
+
         // method for adding WebView2 for YouTube
         private async void AddYouTubePlayer(StackPanel container, string videoUrl)
         {
@@ -797,8 +797,8 @@ namespace ovkdesktop
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
-                youtubeButton.Click += (sender, e) => 
+
+                youtubeButton.Click += (sender, e) =>
                 {
                     try
                     {
@@ -809,7 +809,7 @@ namespace ovkdesktop
                         Debug.WriteLine($"error in opening YouTube: {innerEx.Message}");
                     }
                 };
-                
+
                 // add text label
                 var youtubeLabel = new TextBlock
                 {
@@ -817,10 +817,10 @@ namespace ovkdesktop
                     FontWeight = FontWeights.Bold,
                     Margin = new Thickness(0, 0, 0, 5)
                 };
-                
+
                 container.Children.Add(youtubeLabel);
                 container.Children.Add(youtubeButton);
-                
+
                 // create container for WebView2
                 var webViewContainer = new Grid
                 {
@@ -829,7 +829,7 @@ namespace ovkdesktop
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
+
                 // create WebView2 according to example
                 var webView = new WebView2
                 {
@@ -839,7 +839,7 @@ namespace ovkdesktop
                     MinHeight = 200,
                     MinWidth = 400
                 };
-                
+
                 // add element to container
                 webViewContainer.Children.Add(webView);
                 container.Children.Add(webViewContainer);
@@ -856,7 +856,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"error in creating WebView2 for YouTube: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
+
                 try
                 {
                     // in case of error, add a button to open in browser
@@ -865,8 +865,8 @@ namespace ovkdesktop
                         Content = "open YouTube video in browser",
                         NavigateUri = new Uri(videoUrl)
                     };
-                    
-                    youtubeButton.Click += (sender, e) => 
+
+                    youtubeButton.Click += (sender, e) =>
                     {
                         try
                         {
@@ -877,7 +877,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"error in opening YouTube: {innerEx.Message}");
                         }
                     };
-                    
+
                     container.Children.Add(youtubeButton);
                 }
                 catch (Exception innerEx)
@@ -886,7 +886,7 @@ namespace ovkdesktop
                 }
             }
         }
-        
+
         // method for adding MediaPlayerElement
         private void AddMediaPlayer(StackPanel container, string videoUrl)
         {
@@ -899,8 +899,8 @@ namespace ovkdesktop
                     NavigateUri = new Uri(videoUrl),
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
-                videoButton.Click += (sender, e) => 
+
+                videoButton.Click += (sender, e) =>
                 {
                     try
                     {
@@ -911,7 +911,7 @@ namespace ovkdesktop
                         Debug.WriteLine($"error in opening video: {innerEx.Message}");
                     }
                 };
-                
+
                 // add text label
                 var videoLabel = new TextBlock
                 {
@@ -919,10 +919,10 @@ namespace ovkdesktop
                     FontWeight = FontWeights.Bold,
                     Margin = new Thickness(0, 0, 0, 5)
                 };
-                
+
                 container.Children.Add(videoLabel);
                 container.Children.Add(videoButton);
-                
+
                 // create container for video with fixed height
                 var videoContainer = new Grid
                 {
@@ -931,7 +931,7 @@ namespace ovkdesktop
                     HorizontalAlignment = HorizontalAlignment.Left,
                     Margin = new Thickness(0, 5, 0, 5)
                 };
-                
+
                 // create MediaPlayerElement
                 var mediaPlayer = new MediaPlayerElement
                 {
@@ -939,12 +939,12 @@ namespace ovkdesktop
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                     VerticalAlignment = VerticalAlignment.Stretch
                 };
-                
+
                 // create
                 var player = new Windows.Media.Playback.MediaPlayer();
                 player.Source = Windows.Media.Core.MediaSource.CreateFromUri(new Uri(videoUrl));
                 mediaPlayer.SetMediaPlayer(player);
-                
+
                 // add element to container
                 videoContainer.Children.Add(mediaPlayer);
                 container.Children.Add(videoContainer);
@@ -955,7 +955,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"error in creating MediaPlayerElement: {ex.Message}");
                 Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
+
                 try
                 {
                     // in case of error, add a button to open in browser
@@ -964,8 +964,8 @@ namespace ovkdesktop
                         Content = "Открыть видео в браузере",
                         NavigateUri = new Uri(videoUrl)
                     };
-                    
-                    videoButton.Click += (sender, e) => 
+
+                    videoButton.Click += (sender, e) =>
                     {
                         try
                         {
@@ -976,7 +976,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"error in opening video in browser: {innerEx.Message}");
                         }
                     };
-                    
+
                     container.Children.Add(videoButton);
                 }
                 catch (Exception innerEx)
@@ -1093,7 +1093,7 @@ namespace ovkdesktop
                 {
                     // disable button during request processing
                     button.IsEnabled = false;
-                    
+
                     // check if post has Likes object
                     if (post.Likes == null)
                     {
@@ -1103,7 +1103,7 @@ namespace ovkdesktop
                     // determine if like should be added or removed
                     bool isLiked = post.Likes.UserLikes;
                     int newLikesCount = -1;
-                    
+
                     try
                     {
                         if (isLiked)
@@ -1134,7 +1134,7 @@ namespace ovkdesktop
                         button.IsEnabled = true;
                         return;
                     }
-                    
+
                     // update UI
                     if (newLikesCount >= 0)
                     {
@@ -1150,7 +1150,7 @@ namespace ovkdesktop
                                 {
                                     // update number of likes
                                     likesCountTextBlock.Text = post.Likes.Count.ToString();
-                                    
+
                                     // always use color depending on the current theme, regardless of the like state
                                     var theme = ((FrameworkElement)this.Content).ActualTheme;
                                     likesCountTextBlock.Foreground = new SolidColorBrush(
@@ -1164,7 +1164,7 @@ namespace ovkdesktop
                             Debug.WriteLine($"[ProfilePage] UI update error: {uiEx.Message}");
                         }
                     }
-                    
+
                     // enable button again
                     button.IsEnabled = true;
                 }
@@ -1222,17 +1222,17 @@ namespace ovkdesktop
                 {
                     return;
                 }
-                
+
                 Debug.WriteLine($"[ProfilePage] Updating like status for {audios.Count} audio tracks");
-                
+
                 foreach (var audio in audios)
                 {
                     // check status of like
                     bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
-                    
+
                     // update status
                     audio.IsAdded = isLiked;
-                    
+
                     Debug.WriteLine($"[ProfilePage] Audio {audio.Id} liked status: {isLiked}");
                 }
             }
@@ -1260,18 +1260,18 @@ namespace ovkdesktop
                         Margin = new Thickness(0, 10, 0, 5)
                     };
                     container.Children.Add(audioLabel);
-                    
+
                     var audioContainer = new StackPanel
                     {
                         Margin = new Thickness(0, 0, 0, 10)
                     };
-                    
+
                     foreach (var audio in post.Audios)
                     {
                         var audioItem = CreateAudioElement(audio);
                         audioContainer.Children.Add(audioItem);
                     }
-                    
+
                     container.Children.Add(audioContainer);
                     Debug.WriteLine($"[ProfilePage] Added {post.Audios.Count} audio tracks to post");
                 }
@@ -1281,7 +1281,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[ProfilePage] Error adding audio content: {ex.Message}");
             }
         }
-        
+
         private UIElement CreateAudioElement(Models.Audio audio)
         {
             try
@@ -1292,11 +1292,11 @@ namespace ovkdesktop
                     Height = 60,
                     Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent)
                 };
-                
+
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                
+
                 var playButton = new Button
                 {
                     Width = 40,
@@ -1313,13 +1313,13 @@ namespace ovkdesktop
                 playButton.Click += PlayAudio_Click;
                 Grid.SetColumn(playButton, 0);
                 grid.Children.Add(playButton);
-                
+
                 var infoPanel = new StackPanel
                 {
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(5, 0, 0, 0)
                 };
-                
+
                 var titleText = new TextBlock
                 {
                     Text = audio.Title,
@@ -1328,7 +1328,7 @@ namespace ovkdesktop
                     FontWeight = FontWeights.SemiBold
                 };
                 infoPanel.Children.Add(titleText);
-                
+
                 var artistText = new TextBlock
                 {
                     Text = audio.Artist,
@@ -1338,7 +1338,7 @@ namespace ovkdesktop
                     FontSize = 12
                 };
                 infoPanel.Children.Add(artistText);
-                
+
                 Grid.SetColumn(infoPanel, 1);
                 grid.Children.Add(infoPanel);
 
@@ -1352,7 +1352,7 @@ namespace ovkdesktop
                 };
                 Grid.SetColumn(durationText, 2);
                 grid.Children.Add(durationText);
-                
+
                 return grid;
             }
             catch (Exception ex)
@@ -1361,7 +1361,7 @@ namespace ovkdesktop
                 return new TextBlock { Text = $"{audio.Artist} - {audio.Title}" };
             }
         }
-        
+
         private void PlayAudio_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1375,7 +1375,7 @@ namespace ovkdesktop
                     {
                         var playlist = new ObservableCollection<Models.Audio> { audio };
                         audioService.SetPlaylist(playlist, 0);
-                        
+
                         Debug.WriteLine("[ProfilePage] Audio playback started");
                     }
                     else
@@ -1389,7 +1389,7 @@ namespace ovkdesktop
                 Debug.WriteLine($"[ProfilePage] Error playing audio: {ex.Message}");
             }
         }
-        
+
         // Handle clicks on repost authors to navigate to their profiles
         private void RepostAuthor_Click(object sender, RoutedEventArgs e)
         {
@@ -1407,11 +1407,11 @@ namespace ovkdesktop
                     {
                         fromId = parsedId;
                     }
-                    
+
                     if (fromId != 0)
                     {
                         Debug.WriteLine($"[ProfilePage] Navigating to profile with ID: {fromId}");
-                        
+
                         // Navigate to user profile or group page based on ID
                         Frame.Navigate(typeof(AnotherProfilePage), fromId);
                     }
@@ -1423,6 +1423,6 @@ namespace ovkdesktop
             }
         }
 
-        
+
     }
 }

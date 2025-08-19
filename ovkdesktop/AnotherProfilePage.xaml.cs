@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Text;
+﻿using Microsoft.UI;
+using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -7,6 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Shapes;
 using Microsoft.Web.WebView2.Core;
 using ovkdesktop.Converters;
 using ovkdesktop.Models;
@@ -26,6 +28,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using Windows.Media.Core;
+using Windows.UI;
 
 namespace ovkdesktop
 {
@@ -56,11 +60,15 @@ namespace ovkdesktop
         private bool isFriend = false;
         private int friendshipStatus = 0;
 
+        private bool _isLoadingPosts = false;
+        private int _currentPostOffset = 0;
+        private const int PostsPerPage = 20; // Количество постов на страницу
+        private bool _canLoadMorePosts = true;
+
         public AnotherProfilePage()
         {
             this.InitializeComponent();
             this.NavigationCacheMode = NavigationCacheMode.Disabled;
-            PostsListView.ContainerContentChanging += PostsListView_ContainerContentChanging;
         }
 
         protected override async void OnNavigatedTo(NavigationEventArgs e)
@@ -112,9 +120,9 @@ namespace ovkdesktop
             {
                 Debug.WriteLine("[LoadPageDataAsync] ==> START");
                 LoadingProgressRing.IsActive = true;
-                PostsListView.Visibility = Visibility.Collapsed;
-                NoPostsTextBlock.Visibility = Visibility.Collapsed;
-                Posts.Clear();
+                PostsContainer.Children.Clear();
+                _currentPostOffset = 0;
+                _canLoadMorePosts = true;
 
                 Debug.WriteLine("[LoadPageDataAsync] Cleared posts");
 
@@ -156,7 +164,7 @@ namespace ovkdesktop
 
                 // load posts
                 Debug.WriteLine("[LoadPageDataAsync] loading posts...");
-                await LoadPostsAsync(ovkToken.Token, token);
+                await LoadPostsAsync(isInitialLoad: true);
                 Debug.WriteLine("[LoadPageDataAsync] [success] loading posts...");
             }
             catch (OperationCanceledException)
@@ -674,7 +682,7 @@ namespace ovkdesktop
 
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    await LoadPostsAsync(token.Token, cancellationToken);
+                    await LoadPostsAsync(isInitialLoad: true);
                 }
                 else
                 {
@@ -821,42 +829,105 @@ namespace ovkdesktop
 
 
 
-        private async Task LoadPostsAsync(string token, CancellationToken cancellationToken)
+        private async Task LoadPostsAsync(bool isInitialLoad)
         {
+            if (_isLoadingPosts || !_canLoadMorePosts) return;
+            _isLoadingPosts = true;
+            if (isInitialLoad)
+            {
+                LoadingProgressRing.IsActive = true;
+                PostsContainer.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                LoadMorePostsButton.Content = new ProgressRing { IsActive = true, Width = 20, Height = 20 };
+            }
+
             try
             {
-                NoPostsTextBlock.Visibility = Visibility.Collapsed;
-                PostsListView.Visibility = Visibility.Collapsed;
-                Posts.Clear();
+                var token = await LoadTokenAsync();
+                if (token == null) { Debug.WriteLine("[AnotherProfilePage; LoadPostsAsync] Token from account not found."); return; }
 
-                var postsResponse = await GetPostsWithProfilesAsync(token, userProfile, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
+                var wallData = await GetPostsApiCallAsync(token.Token, userId, _currentPostOffset, PostsPerPage);
 
-                if (postsResponse == null || postsResponse.Response == null || !postsResponse.Response.Items.Any())
+                if (wallData?.Response?.Items == null || !wallData.Response.Items.Any())
                 {
-                    Debug.WriteLine($"[AnotherProfilePage] No posts found or response is empty.");
-                    NoPostsTextBlock.Visibility = Visibility.Visible;
+                    _canLoadMorePosts = false;
+                    if (isInitialLoad) NoPostsTextBlock.Visibility = Visibility.Visible;
                     return;
                 }
 
-                foreach (var post in postsResponse.Response.Items)
+                await EnrichPostsWithProfiles(wallData);
+                foreach (var post in wallData.Response.Items)
                 {
-                    Posts.Add(post);
+                    PostsContainer.Children.Add(CreatePostCard(post));
                 }
 
-                PostsListView.Visibility = Visibility.Visible;
-                await UpdateLikesStatusAsync(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.WriteLine("[AnotherProfilePage] Post loading was canceled.");
+                _currentPostOffset += wallData.Response.Items.Count;
+                _canLoadMorePosts = wallData.Response.Items.Count >= PostsPerPage;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AnotherProfilePage] Error loading posts: {ex.Message}");
-                ShowError($"Error when loading posts: {ex.Message}");
+                ShowError($"Ошибка при загрузке постов: {ex.Message}");
+            }
+            finally
+            {
+                _isLoadingPosts = false;
+                LoadingProgressRing.IsActive = false;
+                PostsContainer.Visibility = Visibility.Visible;
+                LoadMorePostsButton.Content = "Загрузить ещё...";
+                LoadMorePostsButton.Visibility = _canLoadMorePosts ? Visibility.Visible : Visibility.Collapsed;
             }
         }
+
+        private async Task<APIResponse<WallResponse<UserWallPost>>> GetPostsApiCallAsync(string token, int ownerId, int offset, int count)
+        {
+            var url = $"method/wall.get?access_token={token}&owner_id={ownerId}&extended=1&offset={offset}&count={count}&v=5.126";
+            var response = await httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new Converters.IntToBoolJsonConverter() } };
+            return await response.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options);
+        }
+
+        private async Task EnrichPostsWithProfiles(APIResponse<WallResponse<UserWallPost>> wallData)
+        {
+            if (wallData?.Response == null) return;
+
+            var profiles = wallData.Response.Profiles?.ToDictionary(p => (long)p.Id, p => p)
+                         ?? new Dictionary<long, UserProfile>();
+            var groups = wallData.Response.Groups?.ToDictionary(g => (long)-g.Id, g => g.ToUserProfile())
+                       ?? new Dictionary<long, UserProfile>();
+
+            var allProfiles = profiles.Concat(groups).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            foreach (var post in wallData.Response.Items)
+            {
+                if (allProfiles.TryGetValue(post.FromId, out var authorProfile))
+                {
+                    post.AuthorProfile = authorProfile;
+                }
+
+                if (post.HasRepost && post.CopyHistory != null)
+                {
+                    foreach (var repost in post.CopyHistory)
+                    {
+                        if (allProfiles.TryGetValue(repost.FromId, out var repostProfile))
+                        {
+                            repost.Profile = repostProfile; 
+                            repost.AuthorProfile = repostProfile; 
+                        }
+                    }
+                }
+            }
+        }
+
+        private async void LoadMorePostsButton_Click(object sender, RoutedEventArgs e)
+        {
+            await LoadPostsAsync(isInitialLoad: false);
+        }
+
+
 
         private async Task<APIResponse<WallResponse<UserWallPost>>> GetPostsWithProfilesAsync(string apiToken, UserProfile pageOwnerProfile, CancellationToken cancellationToken)
         {
@@ -1005,6 +1076,151 @@ namespace ovkdesktop
                 }
                 return null;
             }
+        }
+
+        private Border CreatePostCard(UserWallPost post)
+        {
+            var postCard = new Border
+            {
+                Background = (SolidColorBrush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                BorderBrush = (SolidColorBrush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                MaxWidth = 700,
+                Margin = new Thickness(60, 0, 0, 10),
+                Padding = new Thickness(15),
+                Tag = post,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+
+            var mainPanel = new StackPanel();
+            mainPanel.Children.Add(CreateHeader(post));
+
+            if (!string.IsNullOrEmpty(post.Text))
+                mainPanel.Children.Add(new TextBlock { Text = post.Text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10), IsTextSelectionEnabled = true });
+
+            if (post.HasRepost && post.CopyHistory.FirstOrDefault() is UserWallPost repost)
+                mainPanel.Children.Add(CreateRepostElement(repost));
+            else if (post.Attachments != null)
+                mainPanel.Children.Add(CreateAttachmentsPanel(post.Attachments));
+
+            if (post.HasAudio)
+                AddAudioContent(mainPanel, post);
+
+            mainPanel.Children.Add(CreateActionsPanel(post));
+            postCard.Child = mainPanel;
+            return postCard;
+        }
+
+        private Grid CreateHeader(UserWallPost post)
+        {
+            var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var avatarButton = new Button { Padding = new Thickness(0), Background = new SolidColorBrush(Colors.Transparent), BorderThickness = new Thickness(0), Tag = post.FromId };
+            avatarButton.Click += Author_Click;
+
+            var avatarEllipse = new Ellipse { Width = 48, Height = 48 };
+            var avatarUrl = post.AuthorProfile?.BestAvailablePhoto;
+            if (!string.IsNullOrEmpty(avatarUrl))
+                avatarEllipse.Fill = new ImageBrush { ImageSource = new BitmapImage(new Uri(avatarUrl)), Stretch = Stretch.UniformToFill };
+            avatarButton.Content = avatarEllipse;
+            headerGrid.Children.Add(avatarButton);
+
+            var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            infoPanel.Children.Add(new TextBlock { Text = post.AuthorProfile?.FullName ?? $"ID: {post.FromId}", FontWeight = FontWeights.SemiBold, FontSize = 16 });
+            infoPanel.Children.Add(new TextBlock { Text = post.FormattedDate, FontSize = 13, Opacity = 0.7 });
+            Grid.SetColumn(infoPanel, 1);
+            headerGrid.Children.Add(infoPanel);
+            return headerGrid;
+        }
+
+        private StackPanel CreateAttachmentsPanel(List<Attachment> attachments)
+        {
+            var panel = new StackPanel();
+            foreach (var attachment in attachments)
+            {
+                if (attachment.Type == "photo" && attachment.Photo != null && !string.IsNullOrEmpty(attachment.Photo.LargestPhotoUrl))
+                {
+                    panel.Children.Add(new Image { Source = new BitmapImage(new Uri(attachment.Photo.LargestPhotoUrl)), Stretch = Stretch.Uniform, MaxHeight = 400, Margin = new Thickness(0, 5, 0, 5) });
+                }
+                else if (attachment.Type == "video" && attachment.Video != null && !string.IsNullOrEmpty(attachment.Video.Player))
+                {
+                    panel.Children.Add(CreateVideoElement(attachment.Video));
+                }
+            }
+            return panel;
+        }
+
+        private FrameworkElement CreateVideoElement(Video video)
+        {
+            var videoHost = new Grid { Margin = new Thickness(0, 5, 0, 5) };
+            var previewGrid = new Grid { MaxHeight = 300, MaxWidth = 500, CornerRadius = new CornerRadius(8), HorizontalAlignment = HorizontalAlignment.Left };
+
+            if (!string.IsNullOrEmpty(video.LargestImageUrl))
+                previewGrid.Children.Add(new Image { Source = new BitmapImage(new Uri(video.LargestImageUrl)), Stretch = Stretch.UniformToFill });
+
+            var playButton = new Button { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Background = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)), Content = new FontIcon { Glyph = "\uE768", Foreground = new SolidColorBrush(Colors.White) } };
+            previewGrid.Children.Add(playButton);
+            videoHost.Children.Add(previewGrid);
+
+            playButton.Click += (s, e) =>
+            {
+                previewGrid.Visibility = Visibility.Collapsed;
+                var mediaPlayerElement = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = true, Source = MediaSource.CreateFromUri(new Uri(video.Player)), MaxHeight = 300, MaxWidth = 500 };
+                videoHost.Children.Add(mediaPlayerElement);
+                _activeMediaPlayers.Add(mediaPlayerElement);
+            };
+            return videoHost;
+        }
+
+        private Border CreateRepostElement(UserWallPost repost)
+        {
+            var repostCard = new Border
+            {
+                Background = (SolidColorBrush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+                BorderBrush = (SolidColorBrush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10),
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            var mainPanel = new StackPanel();
+            mainPanel.Children.Add(CreateHeader(repost));
+
+            if (!string.IsNullOrEmpty(repost.Text))
+                mainPanel.Children.Add(new TextBlock { Text = repost.Text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+
+            if (repost.Attachments != null)
+                mainPanel.Children.Add(CreateAttachmentsPanel(repost.Attachments));
+
+            repostCard.Child = mainPanel;
+            return repostCard;
+        }
+
+        private StackPanel CreateActionsPanel(UserWallPost post)
+        {
+            var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-5, 10, 0, 0) };
+
+            var likeButton = new Button { Tag = post, Margin = new Thickness(0, 0, 10, 0), Style = (Style)Application.Current.Resources["DefaultButtonStyle"] };
+            likeButton.Click += LikeButton_Click;
+            UpdateLikeButtonUI(likeButton, post.Likes);
+
+            var commentButton = new Button { Tag = post, Style = (Style)Application.Current.Resources["DefaultButtonStyle"] };
+            commentButton.Content = $"💬 {post.Comments?.Count ?? 0}";
+            commentButton.Click += CommentsButton_Click;
+
+            actionsPanel.Children.Add(likeButton);
+            actionsPanel.Children.Add(commentButton);
+            return actionsPanel;
+        }
+
+        private void UpdateLikeButtonUI(Button button, Likes likes)
+        {
+            button.Content = $"❤ {likes?.Count ?? 0}";
+            button.Foreground = (likes?.UserLikes == true) ? new SolidColorBrush(Colors.Red) : (SolidColorBrush)Application.Current.Resources["ButtonForeground"];
         }
 
         private void Author_Click(object sender, RoutedEventArgs e)
@@ -1866,95 +2082,41 @@ namespace ovkdesktop
         // method for liking a post
         private async void LikeButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                var button = sender as Button;
-                if (button?.Tag is UserWallPost post)
-                {
-                    // disable the button during request processing
-                    button.IsEnabled = false;
-                    
-                    // check if the post has a Likes object
-                    if (post.Likes == null)
-                    {
-                        post.Likes = new Models.Likes { Count = 0, UserLikes = false };
-                    }
+            if (!(sender is Button button) || !(button.Tag is UserWallPost post)) return;
 
-                    // determine if we need to set or remove the like
-                    bool isLiked = post.Likes.UserLikes;
-                    int newLikesCount = -1;
-                    
-                    try
-                    {
-                        if (isLiked)
-                        {
-                            // remove the like
-                            newLikesCount = await SessionHelper.DeleteLikeAsync("post", post.OwnerId, post.Id);
-                            if (newLikesCount >= 0)
-                            {
-                                post.Likes.Count = newLikesCount;
-                                post.Likes.UserLikes = false;
-                            }
-                        }
-                        else
-                        {
-                            // set the like (add)
-                            newLikesCount = await SessionHelper.AddLikeAsync("post", post.OwnerId, post.Id);
-                            if (newLikesCount >= 0)
-                            {
-                                post.Likes.Count = newLikesCount;
-                                post.Likes.UserLikes = true;
-                            }
-                        }
-                    }
-                    catch (Exception apiEx)
-                    {
-                        Debug.WriteLine($"[AnotherProfilePage] API error in LikeButton_Click: {apiEx.Message}");
-                        ShowError($"API error when processing like: {apiEx.Message}");
-                        button.IsEnabled = true;
-                        return;
-                    }
-                    
-                    // update the UI
-                    if (newLikesCount >= 0)
-                    {
-                        try
-                        {
-                            // find StackPanel inside the button
-                            var stackPanel = button.Content as StackPanel;
-                            if (stackPanel != null && stackPanel.Children.Count >= 2)
-                            {
-                                // Second TextBlock contains number of likes
-                                var likesCountTextBlock = stackPanel.Children[1] as TextBlock;
-                                if (likesCountTextBlock != null)
-                                {
-                                    // update the number of likes
-                                    likesCountTextBlock.Text = post.Likes.Count.ToString();
-                                    
-                                    // always use the color depending on the current theme, regardless of the like status
-                                    var theme = ((FrameworkElement)this.Content).ActualTheme;
-                                    likesCountTextBlock.Foreground = new SolidColorBrush(
-                                        theme == ElementTheme.Dark ? Microsoft.UI.Colors.White : Microsoft.UI.Colors.Black
-                                    );
-                                }
-                            }
-                        }
-                        catch (Exception uiEx)
-                        {
-                            Debug.WriteLine($"[AnotherProfilePage] UI update error: {uiEx.Message}");
-                        }
-                    }
-                    
-                    // enable the button again
-                    button.IsEnabled = true;
+            button.IsEnabled = false;
+            post.Likes ??= new Likes { Count = 0, UserLikes = false };
+
+            var token = await LoadTokenAsync();
+            if (token == null) { /* ... */ button.IsEnabled = true; return; }
+
+            bool success;
+            if (post.Likes.UserLikes)
+            {
+                success = await UnlikeItemAsync(token.Token, "post", post.OwnerId, post.Id);
+                if (success)
+                {
+                    post.Likes.UserLikes = false;
+                    post.Likes.Count--;
                 }
             }
-            catch (Exception ex)
+            else
             {
-                Debug.WriteLine($"[AnotherProfilePage] Error in LikeButton_Click: {ex.Message}");
-                ShowError($"Error when processing like: {ex.Message}");
+                success = await LikeItemAsync(token.Token, "post", post.OwnerId, post.Id);
+                if (success)
+                {
+                    post.Likes.UserLikes = true;
+                    post.Likes.Count++;
+                }
             }
+
+            if (success)
+            {
+                UpdateLikeButtonUI(button, post.Likes);
+            }
+            button.IsEnabled = true;
         }
+
 
         // method for updating the status of likes for all posts
         private async Task UpdateLikesStatusAsync(CancellationToken cancellationToken)

@@ -30,11 +30,15 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.UI; // For Colors
 using Windows.Media.Core; // For MediaSource
 using Windows.Media.Playback; // For MediaPlaybackItem
+using System.ComponentModel;
+using Windows.UI;
 
 namespace ovkdesktop
 {
     public sealed partial class PostsPage : Page
     {
+        private bool isLoading = false;
+
         private long nextFrom = 0;
         private readonly Dictionary<long, APIResponse<WallResponse<NewsFeedPost>>> _cache = new();
 
@@ -42,6 +46,8 @@ namespace ovkdesktop
         private readonly List<WebView2> _activeWebViews = new List<WebView2>();
         public ObservableCollection<NewsFeedPost> NewsPosts { get; } = new();
         private readonly APIServiceNewsPosts apiService = new();
+
+        private bool _isLoading = false;
 
         public PostsPage()
         {
@@ -114,7 +120,7 @@ namespace ovkdesktop
             }
         }
 
-        private async void LoadProfileFromPost(object sender, TappedRoutedEventArgs e)
+        private async void LoadProfileFromPost(object sender, RoutedEventArgs e)
         {
             var panel = (FrameworkElement)sender;
             int profileId = (int)panel.Tag;
@@ -138,29 +144,402 @@ namespace ovkdesktop
             }
         }
 
-        private async void LoadNewsPostsAsync()
+        private async void LoadNewsPostsAsync(bool isInitialLoad = false)
         {
+            if (_isLoading) return;
+            _isLoading = true;
+
+            if (isInitialLoad)
+            {
+                NewsPosts.Clear();
+                nextFrom = 0;
+                LoadingProgressRingNewsPosts.IsActive = true;
+                PostsContainer.Visibility = Visibility.Collapsed;
+            }
+            else if (LoadMoreNewsPageButton.Content is string)
+            {
+                LoadMoreNewsPageButton.Content = new ProgressRing { IsActive = true, Width = 20, Height = 20 };
+            }
+
             try
             {
-                OVKDataBody token = await LoadTokenAsync();
+                var token = await LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
+                    await ShowErrorAsync("Токен не найден."); return;
+                }
+
+                var data = await apiService.GetNewsPostsAsync(token.Token, nextFrom.ToString());
+                if (data?.Response?.Items == null || !data.Response.Items.Any())
+                {
+                    if (!NewsPosts.Any()) await ShowErrorAsync("Не удалось загрузить посты.");
+                    LoadMoreNewsPageButton.Visibility = Visibility.Collapsed;
                     return;
                 }
 
-                await LoadNewsPostsListAsync(token.Token);
-            }
-            catch (WebException ex) when (ex.Response is HttpWebResponse response)
-            {
-                HandleWebException(ex, response);
+                var postsToAdd = new List<NewsFeedPost>();
+                var authorIds = new HashSet<int>();
+                foreach (var post in data.Response.Items)
+                {
+                    postsToAdd.Add(post);
+                    if (post.FromId != 0) authorIds.Add(post.FromId);
+                    if (post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (repost.FromId != 0) authorIds.Add(repost.FromId);
+                        }
+                    }
+                }
+
+                var profiles = authorIds.Any() ? await apiService.GetUsersAsync(token.Token, authorIds) : new Dictionary<int, UserProfile>();
+
+                foreach (var post in postsToAdd)
+                {
+                    if (profiles.TryGetValue(post.FromId, out var profile)) post.Profile = profile;
+                    if (post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (profiles.TryGetValue(repost.FromId, out var repostProfile)) repost.Profile = repostProfile;
+                        }
+                    }
+                    NewsPosts.Add(post);
+                }
+
+                if (long.TryParse(data.Response.NextFrom, out var parsedNextFrom) && parsedNextFrom > 0)
+                {
+                    nextFrom = parsedNextFrom;
+                    LoadMoreNewsPageButton.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    nextFrom = 0;
+                    LoadMoreNewsPageButton.Visibility = Visibility.Collapsed;
+                }
+
+                // update ui in ui thread
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    CreatePostsUI(isInitialLoad);
+                    PostsContainer.Visibility = Visibility.Visible;
+                });
             }
             catch (Exception ex)
             {
-                ShowError($"Ошибка: {ex.Message}");
-                ShowDebugInfo($"Ошибка: {ex.Message}\nStack trace: {ex.StackTrace}");
-                Debug.WriteLine($"exception: {ex}");
+                await ShowErrorAsync($"Критическая ошибка: {ex.Message}");
+                Debug.WriteLine($"Exception in LoadNewsPostsAsync: {ex}");
             }
+            finally
+            {
+                DispatcherQueue.TryEnqueue(() =>
+                {
+                    _isLoading = false;
+                    LoadingProgressRingNewsPosts.IsActive = false;
+                    LoadMoreNewsPageButton.Content = "Загрузить ещё...";
+                });
+            }
+        }
+
+        private async Task ShowErrorAsync(string message)
+        {
+            if (this.XamlRoot == null) return;
+            try
+            {
+                var dialog = new ContentDialog { Title = "Ошибка", Content = message, CloseButtonText = "OK", XamlRoot = this.XamlRoot };
+                await dialog.ShowAsync();
+            }
+            catch (Exception ex) { Debug.WriteLine($"Error showing dialog: {ex.Message}"); }
+        }
+        private Border CreatePostCard(NewsFeedPost post)
+        {
+            var postCard = new Border
+            {
+                Background = (SolidColorBrush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+                BorderBrush = (SolidColorBrush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                MaxWidth = 600,
+                Margin = new Thickness(0, 0, 0, 10),
+                Padding = new Thickness(15),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Tag = post
+            };
+
+            var mainPanel = new StackPanel();
+            mainPanel.Children.Add(CreateHeader(post));
+
+            if (!string.IsNullOrEmpty(post.Text))
+                mainPanel.Children.Add(new TextBlock { Text = post.Text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10), IsTextSelectionEnabled = true });
+
+            if (post.HasRepost && post.CopyHistory.FirstOrDefault() is NewsFeedPost repost)
+                mainPanel.Children.Add(CreateRepostElement(repost));
+            else if (post.Attachments != null)
+                mainPanel.Children.Add(CreateAttachmentsPanel(post.Attachments));
+
+            mainPanel.Children.Add(CreateActionsPanel(post));
+            postCard.Child = mainPanel;
+            return postCard;
+        }
+
+        private Grid CreateHeader(BasePost post)
+        {
+            var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var avatarButton = new Button { Padding = new Thickness(0), Background = new SolidColorBrush(Colors.Transparent), BorderThickness = new Thickness(0), Tag = post.FromId };
+            avatarButton.Click += (s, e) => { if (Frame != null && (s as FrameworkElement)?.Tag is int id && id != 0) Frame.Navigate(typeof(AnotherProfilePage), id); };
+
+            var avatarEllipse = new Ellipse { Width = 48, Height = 48 };
+            var avatarUrl = post.Profile?.BestAvailablePhoto;
+            if (!string.IsNullOrEmpty(avatarUrl))
+                avatarEllipse.Fill = new ImageBrush { ImageSource = new BitmapImage(new Uri(avatarUrl)), Stretch = Stretch.UniformToFill };
+
+            avatarButton.Content = avatarEllipse;
+            headerGrid.Children.Add(avatarButton);
+
+            var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            infoPanel.Children.Add(new TextBlock { Text = post.Profile?.FullName ?? $"ID: {post.FromId}", FontWeight = FontWeights.SemiBold, FontSize = 16 });
+            infoPanel.Children.Add(new TextBlock { Text = post.FormattedDate, FontSize = 13, Opacity = 0.7 });
+            Grid.SetColumn(infoPanel, 1);
+            headerGrid.Children.Add(infoPanel);
+            return headerGrid;
+        }
+
+        private StackPanel CreateAttachmentsPanel(List<Attachment> attachments)
+        {
+            var panel = new StackPanel();
+            foreach (var attachment in attachments)
+            {
+                if (attachment.Type == "photo" && attachment.Photo != null && !string.IsNullOrEmpty(attachment.Photo.LargestPhotoUrl))
+                {
+                    try
+                    {
+                        panel.Children.Add(new Image { Source = new BitmapImage(new Uri(attachment.Photo.LargestPhotoUrl)), Stretch = Stretch.Uniform, MaxHeight = 400, Margin = new Thickness(0, 5, 0, 5) });
+                    }
+                    catch (Exception ex) { Debug.WriteLine($"[UI] Image load error: {ex.Message}"); }
+                }
+                else if (attachment.Type == "video" && attachment.Video != null && !string.IsNullOrEmpty(attachment.Video.SafePlayerUrl))
+                {
+                    panel.Children.Add(CreateVideoElement(attachment.Video));
+                }
+            }
+            return panel;
+        }
+
+        private FrameworkElement CreateVideoElement(Video video)
+        {
+            var videoHost = new Grid { Margin = new Thickness(0, 5, 0, 5) };
+            var previewGrid = new Grid { MaxHeight = 200, MaxWidth = 400, CornerRadius = new CornerRadius(8), HorizontalAlignment = HorizontalAlignment.Left };
+
+            if (!string.IsNullOrEmpty(video.LargestImageUrl))
+            {
+                try
+                {
+                    previewGrid.Children.Add(new Image { Source = new BitmapImage(new Uri(video.LargestImageUrl)), Stretch = Stretch.UniformToFill });
+                }
+                catch (Exception ex) { Debug.WriteLine($"[UI] Video thumbnail error: {ex.Message}"); }
+            }
+
+            var playButton = new Button { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Background = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)), Content = new FontIcon { Glyph = "\uE768", Foreground = new SolidColorBrush(Colors.White) } };
+            previewGrid.Children.Add(playButton);
+            videoHost.Children.Add(previewGrid);
+
+            playButton.Click += (s, e) =>
+            {
+                previewGrid.Visibility = Visibility.Collapsed;
+                var mediaPlayerElement = new MediaPlayerElement { AreTransportControlsEnabled = true, AutoPlay = true, Source = MediaSource.CreateFromUri(new Uri(video.SafePlayerUrl)), MaxHeight = 200, MaxWidth = 400 };
+                videoHost.Children.Add(mediaPlayerElement);
+            };
+            return videoHost;
+        }
+
+
+
+        private async Task EnrichPostsWithProfilesAsync(string token, List<NewsFeedPost> postsToEnrich)
+        {
+            if (!postsToEnrich.Any()) return;
+
+            try
+            {
+                var authorIds = new HashSet<int>();
+                foreach (var post in postsToEnrich)
+                {
+                    if (post.FromId != 0) authorIds.Add(post.FromId);
+                    if (post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (repost.FromId != 0) authorIds.Add(repost.FromId);
+                        }
+                    }
+                }
+
+                if (!authorIds.Any()) return;
+
+                var profiles = await apiService.GetUsersAsync(token, authorIds);
+                if (!profiles.Any()) return;
+
+                foreach (var post in postsToEnrich)
+                {
+                    if (profiles.TryGetValue(post.FromId, out var profile))
+                    {
+                        post.Profile = profile;
+                    }
+                    if (post.CopyHistory != null)
+                    {
+                        foreach (var repost in post.CopyHistory)
+                        {
+                            if (profiles.TryGetValue(repost.FromId, out var repostProfile))
+                            {
+                                repost.Profile = repostProfile;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[EnrichPosts] Error: {ex.Message}");
+            }
+        }
+
+        private StackPanel CreateActionsPanel(NewsFeedPost post)
+        {
+            var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-5, 10, 0, 0) };
+
+            var likeButton = new Button { Tag = post, Margin = new Thickness(0, 0, 10, 0), Style = (Style)Application.Current.Resources["DefaultButtonStyle"] };
+            likeButton.Click += LikeButton_Click;
+            UpdateLikeButtonUI(likeButton, post.Likes);
+
+            var commentButton = new Button { Tag = post, Style = (Style)Application.Current.Resources["DefaultButtonStyle"] };
+            commentButton.Content = $"💬 {post.Comments?.Count ?? 0}";
+            commentButton.Click += (s, e) => { if (Frame != null && (s as FrameworkElement)?.Tag is NewsFeedPost p) Frame.Navigate(typeof(PostInfoPage), new PostInfoPage.PostInfoParameters { PostId = p.Id, OwnerId = p.OwnerId }); };
+
+            actionsPanel.Children.Add(likeButton);
+            actionsPanel.Children.Add(commentButton);
+            return actionsPanel;
+        }
+
+        private void UpdateLikeButtonUI(Button button, Likes likes)
+        {
+            button.Content = $"❤ {likes?.Count ?? 0}";
+            button.Foreground = (likes?.UserLikes == true) ? new SolidColorBrush(Colors.Red) : (SolidColorBrush)Application.Current.Resources["ButtonForeground"];
+        }
+
+        private void CreatePostsUI(bool isInitialLoad)
+        {
+            if (isInitialLoad) PostsContainer.Children.Clear();
+
+            foreach (var post in NewsPosts)
+            {
+                if (PostsContainer.Children.Any(child => (child as FrameworkElement)?.Tag == post)) continue;
+
+                var postCard = CreatePostCard(post);
+                PostsContainer.Children.Add(postCard);
+            }
+        }
+
+        private void AddPhotoAttachment(StackPanel parent, Attachment attachment)
+        {
+            if (attachment?.Photo == null || string.IsNullOrEmpty(attachment.Photo.LargestPhotoUrl)) return;
+            try
+            {
+                var image = new Image
+                {
+                    Source = new BitmapImage(new Uri(attachment.Photo.LargestPhotoUrl)),
+                    Stretch = Stretch.Uniform,
+                    MaxHeight = 400,
+                    Margin = new Thickness(0, 5, 0, 5)
+                };
+                parent.Children.Add(image);
+            }
+            catch (Exception ex) { Debug.WriteLine($"[UI] Image load error: {ex.Message}"); }
+        }
+
+        private void AddVideoAttachment(StackPanel parent, Attachment attachment)
+        {
+            if (attachment?.Video == null || string.IsNullOrEmpty(attachment.Video.SafePlayerUrl)) return;
+
+            var videoHost = new Grid { Margin = new Thickness(0, 5, 0, 5) };
+            var previewGrid = new Grid { MaxHeight = 200, MaxWidth = 400 };
+
+            try
+            {
+                previewGrid.Children.Add(new Image { Source = new BitmapImage(new Uri(attachment.Video.LargestImageUrl)), Stretch = Stretch.UniformToFill });
+            }
+            catch (Exception ex) { Debug.WriteLine($"[UI] Video thumbnail load error: {ex.Message}"); }
+
+            var playButton = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)),
+                Content = new FontIcon { Glyph = "\uE768", Foreground = new SolidColorBrush(Colors.White) }
+            };
+            previewGrid.Children.Add(playButton);
+            videoHost.Children.Add(previewGrid);
+
+            playButton.Click += (s, e) =>
+            {
+                previewGrid.Visibility = Visibility.Collapsed;
+                var mediaPlayerElement = new MediaPlayerElement
+                {
+                    AreTransportControlsEnabled = true,
+                    AutoPlay = true,
+                    Source = MediaSource.CreateFromUri(new Uri(attachment.Video.SafePlayerUrl)),
+                    MaxHeight = 200,
+                    MaxWidth = 400
+                };
+                videoHost.Children.Add(mediaPlayerElement);
+            };
+            parent.Children.Add(videoHost);
+        }
+
+        private Border CreateRepostElement(NewsFeedPost repost)
+        {
+            var repostCard = new Border
+            {
+                Background = (SolidColorBrush)Application.Current.Resources["CardBackgroundFillColorSecondaryBrush"],
+                BorderBrush = (SolidColorBrush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10),
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            var mainPanel = new StackPanel();
+
+            var headerGrid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var avatarButton = new Button { Padding = new Thickness(0), Background = new SolidColorBrush(Colors.Transparent), BorderThickness = new Thickness(0), Tag = repost.FromId };
+            avatarButton.Click += (s, e) => { if (Frame != null && (s as FrameworkElement)?.Tag is int id) Frame.Navigate(typeof(AnotherProfilePage), id); };
+            var avatarEllipse = new Ellipse { Width = 40, Height = 40 };
+            var avatarUrl = repost.Profile?.BestAvailablePhoto;
+            if (!string.IsNullOrEmpty(avatarUrl))
+            {
+                avatarEllipse.Fill = new ImageBrush { ImageSource = new BitmapImage(new Uri(avatarUrl)), Stretch = Stretch.UniformToFill };
+            }
+            avatarButton.Content = avatarEllipse;
+            headerGrid.Children.Add(avatarButton);
+
+            var infoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+            infoPanel.Children.Add(new TextBlock { Text = repost.Profile?.FullName ?? $"ID: {repost.FromId}", FontWeight = FontWeights.SemiBold });
+            infoPanel.Children.Add(new TextBlock { Text = repost.SafeFormattedDate, FontSize = 12, Opacity = 0.7 });
+            Grid.SetColumn(infoPanel, 1);
+            headerGrid.Children.Add(infoPanel);
+            mainPanel.Children.Add(headerGrid);
+
+            if (!string.IsNullOrEmpty(repost.Text))
+            {
+                mainPanel.Children.Add(new TextBlock { Text = repost.Text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+            }
+
+            repostCard.Child = mainPanel;
+            return repostCard;
         }
 
         private async Task LoadNewsPostsListAsync(string token)
@@ -294,80 +673,14 @@ namespace ovkdesktop
 
         private async void LoadMoreButton(object sender, RoutedEventArgs e)
         {
-            OVKDataBody token = await LoadTokenAsync();
-            if (token != null && !string.IsNullOrEmpty(token.Token))
-                await LoadNewsPostsListAsync(token.Token);
+            LoadNewsPostsAsync();
         }
 
         private void PlayVideo_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (sender is FrameworkElement { DataContext: Attachment attachment } && attachment.IsVideo)
             {
-                object dataContext = null;
-                object tag = null;
-
-                // get DataContext and Tag depending on sender type
-                if (sender is Button button)
-                {
-                    dataContext = button.DataContext;
-                    tag = button.Tag;
-                }
-                else if (sender is HyperlinkButton hyperlinkButton)
-                {
-                    dataContext = hyperlinkButton.DataContext;
-                    tag = hyperlinkButton.Tag;
-                }
-                else
-                {
-                    Debug.WriteLine("[Video] unknown sender type");
-                    return;
-                }
-
-                string videoUrl = null;
-                NewsFeedPost post = null;
-
-                // check Tag
-                if (tag is NewsFeedPost tagPost)
-                {
-                    post = tagPost;
-                }
-                // check DataContext
-                else if (dataContext is NewsFeedPost contextPost)
-                {
-                    post = contextPost;
-                }
-
-                // get video URL
-                if (post != null && post.MainVideo != null)
-                {
-                    // use safe property
-                    videoUrl = post.MainVideo.SafePlayerUrl;
-                    Debug.WriteLine($"[Video] got video URL: {videoUrl ?? "null"}");
-                }
-
-                // check URL and open it
-                if (!string.IsNullOrEmpty(videoUrl))
-                {
-                    try
-                    {
-                        Debug.WriteLine($"[Video] open URL: {videoUrl}");
-                        _ = Windows.System.Launcher.LaunchUriAsync(new Uri(videoUrl));
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[Video] error opening video: {ex.Message}");
-                        Debug.WriteLine($"[Video] Stack trace: {ex.StackTrace}");
-                    }
-                }
-                else
-                {
-                    Debug.WriteLine("[Video] video URL not found");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Video] general error in PlayVideo_Click: {ex.Message}");
-                Debug.WriteLine($"[Video] Stack trace: {ex.StackTrace}");
+                attachment.IsVideoPlaying = true;
             }
         }
 
@@ -400,336 +713,41 @@ namespace ovkdesktop
             }
         }
 
-        private void ShowDebugInfo(string message)
-        {
-            DebugInfoText.Text = message;
-            DebugInfoText.Visibility = message.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
-        }
 
-        // handler of like button click
         private async void LikeButton_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (!(sender is Button button) || !(button.Tag is NewsFeedPost post)) return;
+
+            button.IsEnabled = false;
+            var token = await LoadTokenAsync();
+            if (token == null) { await ShowErrorAsync("Токен не найден."); button.IsEnabled = true; return; }
+
+            post.Likes ??= new Likes { Count = 0, UserLikes = false };
+
+            if (post.Likes.UserLikes)
             {
-                var button = sender as Button;
-                if (button?.Tag is NewsFeedPost post)
+                if (await apiService.UnlikeItemAsync(token.Token, "post", post.OwnerId, post.Id))
                 {
-                    // disable
-                    OVKDataBody token = await LoadTokenAsync();
-                    if (token == null || string.IsNullOrEmpty(token.Token))
-                    {
-                        ShowError("Токен не найден. Пожалуйста, авторизуйтесь.");
-                        button.IsEnabled = true;
-                        return;
-                    }
-
-                    // check if post has Likes object
-                    if (post.Likes == null)
-                    {
-                        post.Likes = new Models.Likes { Count = 0, UserLikes = false };
-                    }
-
-                    // determine if like should be added or removed
-                    bool isLiked = post.Likes.UserLikes;
-                    bool success = false;
-
-                    try
-                    {
-                        if (isLiked)
-                        {
-                            // remove like
-                            success = await apiService.UnlikeItemAsync(token.Token, "post", post.OwnerId, post.Id);
-                            if (success)
-                            {
-                                post.Likes.Count = Math.Max(0, post.Likes.Count - 1);
-                                post.Likes.UserLikes = false;
-                            }
-                        }
-                        else
-                        {
-                            // add like
-                            success = await apiService.LikeItemAsync(token.Token, "post", post.OwnerId, post.Id);
-                            if (success)
-                            {
-                                post.Likes.Count++;
-                                post.Likes.UserLikes = true;
-                            }
-                        }
-                    }
-                    catch (Exception apiEx)
-                    {
-                        Debug.WriteLine($"[PostsPage] API error in LikeButton_Click: {apiEx.Message}");
-                        ShowError($"API error in like processing: {apiEx.Message}");
-                        button.IsEnabled = true;
-                        return;
-                    }
-
-                    // update UI
-                    if (success)
-                    {
-                        try
-                        {
-                            // update button text
-                            var textBlock = button.Content as TextBlock;
-                            if (textBlock != null)
-                            {
-                                textBlock.Text = $"❤ {post.Likes.Count}";
-
-                                // determine color depending on theme
-                                var elementTheme = ((FrameworkElement)this.Content).ActualTheme;
-
-                                // change button style depending on like state
-                                if (post.Likes.UserLikes)
-                                {
-                                    button.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red);
-                                }
-                                else
-                                {
-                                    // use color depending on theme
-                                    if (elementTheme == ElementTheme.Dark)
-                                    {
-                                        button.Foreground = new SolidColorBrush(Microsoft.UI.Colors.White);
-                                    }
-                                    else
-                                    {
-                                        button.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Black);
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception uiEx)
-                        {
-                            Debug.WriteLine($"[PostsPage] UI update error in LikeButton_Click: {uiEx.Message}");
-                        }
-                    }
-
-                    // enable button again
-                    button.IsEnabled = true;
+                    post.Likes.UserLikes = false; post.Likes.Count--;
                 }
             }
-            catch (Exception ex)
+            else
             {
-                Debug.WriteLine($"[PostsPage] Error in LikeButton_Click: {ex.Message}");
-                Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
-                ShowError($"error in like processing: {ex.Message}");
-
-                // enable button again in case of error
-                if (sender is Button btn)
+                if (await apiService.LikeItemAsync(token.Token, "post", post.OwnerId, post.Id))
                 {
-                    btn.IsEnabled = true;
+                    post.Likes.UserLikes = true; post.Likes.Count++;
                 }
             }
+
+            UpdateLikeButtonUI(button, post.Likes);
+            button.IsEnabled = true;
         }
 
-        // method to create UI elements manually
-        private void CreatePostsUI()
-        {
-            try
-            {
-                // Container cleanup should happen before this method
-                PostsContainer.Children.Clear();
 
-                // determine colors depending on current theme
-                var elementTheme = ((FrameworkElement)this.Content).ActualTheme;
-                SolidColorBrush cardBackground, cardBorder, textColor, secondaryTextColor, likeButtonColor;
 
-                if (elementTheme == ElementTheme.Dark)
-                {
-                    cardBackground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 32, G = 32, B = 32 });
-                    cardBorder = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 64, G = 64, B = 64 });
-                    textColor = new SolidColorBrush(Microsoft.UI.Colors.White);
-                    secondaryTextColor = new SolidColorBrush(Microsoft.UI.Colors.LightGray);
-                    likeButtonColor = new SolidColorBrush(Microsoft.UI.Colors.White);
-                }
-                else
-                {
-                    cardBackground = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 245, G = 245, B = 245 });
-                    cardBorder = new SolidColorBrush(new Windows.UI.Color { A = 255, R = 225, G = 225, B = 225 });
-                    textColor = new SolidColorBrush(Microsoft.UI.Colors.Black);
-                    secondaryTextColor = new SolidColorBrush(Microsoft.UI.Colors.Gray);
-                    likeButtonColor = new SolidColorBrush(Microsoft.UI.Colors.Black);
-                }
 
-                foreach (var post in NewsPosts)
-                {
-                    // create card for post
-                    var postCard = new Grid
-                    {
-                        Margin = new Thickness(0, 0, 0, 15),
-                        Padding = new Thickness(15),
-                        Background = cardBackground,
-                        BorderBrush = cardBorder,
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(8),
-                        MaxWidth = 600,
-                        HorizontalAlignment = HorizontalAlignment.Left,
-                        Tag = post
-                    };
 
-                    postCard.RightTapped += PostCard_RightTapped;
 
-                    var flyout = new MenuFlyout();
-
-                    // define rows for card
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 0: Header
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 1: Text
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 2: Content (Attachments/Reposts)
-                    postCard.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 3: Actions
-
-                    // --- Header ---
-                    var headerPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 10) };
-
-                    var avatarContainer = new Grid { Width = 48, Height = 48, Margin = new Thickness(0, 0, 12, 0) };
-                    if (post.Profile != null)
-                    {
-                        avatarContainer.Tag = post.Profile.Id;
-                        avatarContainer.Tapped += LoadProfileFromPost;
-                        avatarContainer.PointerEntered += (s, e) => { ((FrameworkElement)s).Opacity = 0.8; };
-                        avatarContainer.PointerExited += (s, e) => { ((FrameworkElement)s).Opacity = 1.0; };
-                    }
-                    var avatarEllipse = new Ellipse { Width = 48, Height = 48 };
-                    if (post.Profile != null && !string.IsNullOrEmpty(post.Profile.Photo200))
-                    {
-                        try
-                        {
-                            avatarEllipse.Fill = new ImageBrush { ImageSource = new BitmapImage(new Uri(post.Profile.Photo200)), Stretch = Stretch.UniformToFill };
-                            avatarContainer.Children.Add(avatarEllipse);
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"[PostsPage] Error loading avatar: {ex.Message}");
-                            avatarContainer.Children.Add(new PersonPicture { Width = 48, Height = 48 });
-                        }
-                    }
-                    else
-                    {
-                        avatarContainer.Children.Add(new PersonPicture { Width = 48, Height = 48 });
-                    }
-                    headerPanel.Children.Add(avatarContainer);
-
-                    var authorInfoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                    var authorName = new TextBlock { FontWeight = FontWeights.SemiBold, FontSize = 16, Margin = new Thickness(0, 0, 0, 4), Foreground = textColor };
-                    if (post.Profile != null)
-                    {
-                        authorName.Text = $"{post.Profile.FirstName} {post.Profile.LastName}";
-                        var authorPanel = new Grid { Tag = post.Profile.Id };
-                        var fullAuthorInfoPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-                        fullAuthorInfoPanel.Children.Add(authorName);
-                        fullAuthorInfoPanel.Children.Add(new TextBlock { Text = post.SafeFormattedDate, FontSize = 13, Foreground = secondaryTextColor });
-                        authorPanel.Children.Add(fullAuthorInfoPanel);
-                        authorPanel.Tapped += LoadProfileFromPost;
-                        authorPanel.PointerEntered += (s, e) => { ((FrameworkElement)s).Opacity = 0.8; };
-                        authorPanel.PointerExited += (s, e) => { ((FrameworkElement)s).Opacity = 1.0; };
-                        authorInfoPanel.Children.Add(authorPanel);
-                    }
-                    else
-                    {
-                        authorName.Text = $"ID: {post.FromId}";
-                        authorInfoPanel.Children.Add(authorName);
-                        authorInfoPanel.Children.Add(new TextBlock { Text = post.SafeFormattedDate, FontSize = 13, Foreground = secondaryTextColor });
-                    }
-                    headerPanel.Children.Add(authorInfoPanel);
-                    Grid.SetRow(headerPanel, 0);
-                    postCard.Children.Add(headerPanel);
-
-                    // --- Post Text ---
-                    if (!string.IsNullOrEmpty(post.Text))
-                    {
-                        var textElement = CreateFormattedTextWithLinks(post.Text);
-                        Grid.SetRow(textElement, 1);
-                        postCard.Children.Add(textElement);
-                    }
-
-                    // --- Content Panel ---
-                    var contentPanel = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
-
-                    if (post.CopyHistory != null && post.CopyHistory.Any())
-                    {
-                        AddRepostContent(contentPanel, post);
-                    }
-                    if (post.Attachments != null && post.Attachments.Any())
-                    {
-                        bool hasVideo = false;
-                        foreach (var attachment in post.Attachments)
-                        {
-                            if (attachment == null || string.IsNullOrEmpty(attachment.Type)) continue;
-
-                            if (attachment.Type == "photo" && attachment.Photo != null)
-                            {
-                                string imageUrl = attachment.Photo.GetLargestPhotoUrl();
-                                if (!string.IsNullOrEmpty(imageUrl))
-                                {
-                                    try
-                                    {
-                                        var image = new Image { Source = new BitmapImage(new Uri(imageUrl)), Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left, MaxHeight = 400, Margin = new Thickness(0, 5, 0, 5) };
-                                        contentPanel.Children.Add(image);
-                                    }
-                                    catch (Exception ex) { Debug.WriteLine($"[UI] error loading image: {ex.Message}"); }
-                                }
-                            }
-                            else if (attachment.Type == "video" && attachment.Video != null)
-                            {
-                                hasVideo = true;
-                            }
-                        }
-                        if (hasVideo) AddVideoButton(contentPanel, post);
-                        if (post.HasAudio) AddAudioContent(contentPanel, post);
-                    }
-                    Grid.SetRow(contentPanel, 2);
-                    postCard.Children.Add(contentPanel);
-
-                    // --- Actions Panel ---
-                    var actionsPanel = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 5, 0, 0) };
-
-                    var likeButton = new Button { Tag = post, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 10, 0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), CornerRadius = new CornerRadius(4) };
-                    var likeText = new TextBlock { Text = $"❤ {post.Likes?.Count ?? 0}", FontSize = 14 };
-                    if (post.Likes?.UserLikes == true) { likeButton.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); likeText.Foreground = new SolidColorBrush(Microsoft.UI.Colors.Red); }
-                    else { likeButton.Foreground = likeButtonColor; likeText.Foreground = likeButtonColor; }
-                    likeButton.Content = likeText;
-                    likeButton.Click += LikeButton_Click;
-                    actionsPanel.Children.Add(likeButton);
-
-                    var commentButton = new Button { Tag = post, Padding = new Thickness(10, 5, 10, 5), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), Foreground = likeButtonColor, CornerRadius = new CornerRadius(4) };
-                    var commentText = new TextBlock { Text = $"💬 {post.Comments?.Count ?? 0}", FontSize = 14, Foreground = likeButtonColor };
-                    commentButton.Content = commentText;
-                    commentButton.Tapped += ShowPostInfo_Tapped;
-                    actionsPanel.Children.Add(commentButton);
-
-                    Grid.SetRow(actionsPanel, 3);
-                    postCard.Children.Add(actionsPanel);
-
-                    // --- Add card to container ---
-                    PostsContainer.Children.Add(postCard);
-                }
-
-                // --- Final UI updates ---
-                LoadMoreNewsPageButton.Visibility = (nextFrom > 0) ? Visibility.Visible : Visibility.Collapsed;
-                LoadingProgressRingNewsPosts.IsActive = false;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[PostsPage] Error in CreatePostsUI: {ex.Message}");
-                Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
-                ShowError($"error in UI creation: {ex.Message}");
-                LoadingProgressRingNewsPosts.IsActive = false;
-            }
-        }
-
-        private void PostCard_RightTapped(object sender, RightTappedRoutedEventArgs e)
-        {
-            if (sender is not Grid postCard || postCard.Tag is not NewsFeedPost post)
-            {
-                return;
-            }
-
-            var flyout = new MenuFlyout();
-            var repostItem = new MenuFlyoutItem { Text = "Репост", Tag = post };
-
-            repostItem.Click += RepostButton_Click;
-            flyout.Items.Add(repostItem);
-
-            flyout.ShowAt(postCard, e.GetPosition(postCard));
-        }
 
 
         private async void RepostButton_Click(object sender, RoutedEventArgs e)
@@ -765,12 +783,10 @@ namespace ovkdesktop
             }
         }
 
-        // method to create text block with formatted links
         private FrameworkElement CreateFormattedTextWithLinks(string text)
         {
             try
             {
-                // if text does not contain links, return regular TextBlock
                 if (!ContainsUrl(text))
                 {
                     return new TextBlock
@@ -782,8 +798,6 @@ namespace ovkdesktop
                         FontSize = 14
                     };
                 }
-
-                // create container for text and links
                 var panel = new StackPanel
                 {
                     Margin = new Thickness(0, 10, 0, 10)
@@ -925,65 +939,60 @@ namespace ovkdesktop
         }
 
         // method to add video button
-        private void AddVideoButton(StackPanel container, NewsFeedPost post)
+        private void AddVideoButton(StackPanel container, Attachment attachment)
         {
-            try
+            if (attachment?.Video == null || string.IsNullOrEmpty(attachment.Video.SafePlayerUrl))
             {
-                if (post?.MainVideo == null || string.IsNullOrEmpty(post.MainVideo.Player))
-                {
-                    Debug.WriteLine("[PostsPage] failed to get video URL");
-                    return;
-                }
+                return;
+            }
 
-                var videoUrl = post.MainVideo.Player;
-                Debug.WriteLine($"[PostsPage] add video with URL: {videoUrl}");
+            var videoHost = new Grid();
 
-                var videoPanel = new StackPanel
+            var previewGrid = new Grid
+            {
+                CornerRadius = new CornerRadius(8),
+                MaxHeight = 200,
+                MaxWidth = 350,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+
+            var thumbnailImage = new Image
+            {
+                Source = new BitmapImage(new Uri(attachment.Video.LargestImageUrl)),
+                Stretch = Stretch.UniformToFill
+            };
+            previewGrid.Children.Add(thumbnailImage);
+
+            var playButton = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                Background = new SolidColorBrush(Color.FromArgb(170, 0, 0, 0)),
+                Content = new FontIcon { Glyph = "\uE768", Foreground = new SolidColorBrush(Colors.White) }
+            };
+            previewGrid.Children.Add(playButton);
+
+            videoHost.Children.Add(previewGrid);
+
+            playButton.Click += (s, e) =>
+            {
+                previewGrid.Visibility = Visibility.Collapsed;
+
+                var mediaPlayerElement = new MediaPlayerElement
                 {
-                    Margin = new Thickness(0, 5, 0, 5)
+                    AreTransportControlsEnabled = true,
+                    AutoPlay = true,
+                    Source = new MediaPlaybackItem(MediaSource.CreateFromUri(new Uri(attachment.Video.SafePlayerUrl))),
+                    MaxHeight = 200,
+                    MaxWidth = 350,
+                    HorizontalAlignment = HorizontalAlignment.Left
                 };
 
-                // check if this is YouTube video
-                if (IsYouTubeUrl(videoUrl))
-                {
-                    // add WebView2 for YouTube video
-                    AddYouTubePlayer(container, videoUrl);
-                }
-                else
-                {
-                    // add MediaPlayerElement for regular videos
-                    AddMediaPlayer(container, videoUrl);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[PostsPage] error in adding video: {ex.Message}");
-                Debug.WriteLine($"[PostsPage] Stack trace: {ex.StackTrace}");
+                videoHost.Children.Add(mediaPlayerElement);
+            };
 
-                // add backup variant - button to open in browser
-                try
-                {
-                    var videoLabel = new TextBlock
-                    {
-                        Text = "[Video]",
-                        FontWeight = FontWeights.Bold,
-                        Margin = new Thickness(0, 0, 0, 5)
-                    };
-                    container.Children.Add(videoLabel);
-
-                    var videoButton = new HyperlinkButton
-                    {
-                        Content = "Открыть видео в браузере",
-                        Tag = post
-                    };
-                    videoButton.Click += PlayVideo_Click;
-                    container.Children.Add(videoButton);
-                }
-                catch (Exception innerEx)
-                {
-                    Debug.WriteLine($"[PostsPage] critical error in adding video button: {innerEx.Message}");
-                }
-            }
+            container.Children.Add(new TextBlock { Text = attachment.Video.Title, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 5, 0, 5) });
+            container.Children.Add(videoHost);
         }
 
         // method to add WebView2 for YouTube
@@ -1720,7 +1729,6 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine("[PostsPage] No reposts found in this batch. Building UI now.");
                     this.DispatcherQueue.TryEnqueue(() => {
-                        CreatePostsUI();
                         LoadingProgressRingNewsPosts.IsActive = false;
                     });
                     return;
@@ -1728,7 +1736,6 @@ namespace ovkdesktop
 
                 var allIds = userIds.Concat(groupIds.Select(id => -id));
                 var profiles = await apiService.GetUsersAsync(token, allIds);
-
                 Debug.WriteLine($"[PostsPage] Loaded a total of {profiles.Count} profiles for reposts.");
 
                 foreach (var post in NewsPosts)
@@ -1747,9 +1754,7 @@ namespace ovkdesktop
 
                 this.DispatcherQueue.TryEnqueue(() =>
                 {
-                    Debug.WriteLine("[PostsPage] Recreating UI on the UI thread to reflect all profile changes.");
-                    PostsContainer.Children.Clear();
-                    CreatePostsUI();
+                    Debug.WriteLine("[PostsPage] Profiles loaded. UI updated via data binding.");
                     LoadingProgressRingNewsPosts.IsActive = false;
                 });
             }
@@ -1758,7 +1763,6 @@ namespace ovkdesktop
                 Debug.WriteLine($"[PostsPage] A critical error occurred in LoadRepostProfilesAsync: {ex.Message}");
                 this.DispatcherQueue.TryEnqueue(() => {
                     ShowError($"Ошибка при загрузке данных репостов: {ex.Message}");
-                    CreatePostsUI();
                     LoadingProgressRingNewsPosts.IsActive = false;
                 });
             }
