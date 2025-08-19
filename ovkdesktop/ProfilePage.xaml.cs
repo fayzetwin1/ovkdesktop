@@ -434,7 +434,6 @@ namespace ovkdesktop
                 await UpdateLikesStatusAsync(cancellationToken);
 
                 PostsCountText.Text = $"Записей: {postsResponse.Response.Count}";
-                LoadingProgressRing.IsActive = false;
             }
             catch (OperationCanceledException)
             {
@@ -444,6 +443,10 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[ProfilePage] Error loading profile and posts: {ex.Message}");
                 ShowError($"Error loading profile and posts: {ex.Message}");
+                LoadingProgressRing.IsActive = false;
+            }
+            finally
+            {
                 LoadingProgressRing.IsActive = false;
             }
         }
@@ -1181,27 +1184,37 @@ namespace ovkdesktop
         {
             try
             {
-                // Can use Task.WhenAll for parallel execution
-                foreach (var post in Posts)
+                if (Posts == null || !Posts.Any())
+                {
+                    return;
+                }
+
+                // parrarel tasks
+                var updateTasks = Posts.Select(async post =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    bool isLiked = await SessionHelper.IsLikedAsync("post", post.OwnerId, post.Id);
+                    bool isLiked = await SessionHelper.IsLikedAsync("post", post.OwnerId, post.Id, cancellationToken);
 
-                    /* if (post.Likes == null)
+                    DispatcherQueue.TryEnqueue(() =>
                     {
-                        post.Likes = new Likes { Count = post.Likes?.Count ?? 0, UserLikes = isLiked ? 1 : 0 };
-                    }
-                    else
-                    {
-                        post.Likes.UserLikes = isLiked ? 1 : 0;
-                    }
+                        if (post.Likes == null)
+                        {
+                            post.Likes = new Likes { UserLikes = isLiked };
+                        }
+                        else
+                        {
+                            post.Likes.UserLikes = isLiked;
+                        }
+                    });
 
                     if (post.HasAudio)
                     {
-                        await UpdateAudioLikesStatusAsync(post.Audios);
-                    } */
-                }
+                        await UpdateAudioLikesStatusAsync(post.Audios, cancellationToken);
+                    }
+                });
+
+                await Task.WhenAll(updateTasks);
             }
             catch (OperationCanceledException)
             {
@@ -1214,32 +1227,21 @@ namespace ovkdesktop
         }
 
         // method for update status of audio likes
-        private async Task UpdateAudioLikesStatusAsync(List<Models.Audio> audios)
+        private async Task UpdateAudioLikesStatusAsync(List<Models.Audio> audios, CancellationToken cancellationToken)
         {
-            try
+            if (audios == null || !audios.Any())
             {
-                if (audios == null || audios.Count == 0)
-                {
-                    return;
-                }
-
-                Debug.WriteLine($"[ProfilePage] Updating like status for {audios.Count} audio tracks");
-
-                foreach (var audio in audios)
-                {
-                    // check status of like
-                    bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id);
-
-                    // update status
-                    audio.IsAdded = isLiked;
-
-                    Debug.WriteLine($"[ProfilePage] Audio {audio.Id} liked status: {isLiked}");
-                }
+                return;
             }
-            catch (Exception ex)
+
+            var audioTasks = audios.Select(async audio =>
             {
-                Debug.WriteLine($"[ProfilePage] Error updating audio likes status: {ex.Message}");
-            }
+                cancellationToken.ThrowIfCancellationRequested();
+                bool isLiked = await SessionHelper.IsLikedAsync("audio", audio.OwnerId, audio.Id, cancellationToken);
+                DispatcherQueue.TryEnqueue(() => audio.IsAdded = isLiked);
+            });
+
+            await Task.WhenAll(audioTasks);
         }
 
         private void AddAudioContent(StackPanel container, UserWallPost post)

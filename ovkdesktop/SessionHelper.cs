@@ -3,10 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Linq;
 
 namespace ovkdesktop
 {
@@ -344,7 +345,7 @@ namespace ovkdesktop
         {
             return await GetConfiguredHttpClientAsync();
         }
-        
+
         /// <summary>
         /// Check if current user liked object
         /// </summary>
@@ -352,7 +353,7 @@ namespace ovkdesktop
         /// <param name="ownerId">Object owner ID</param>
         /// <param name="itemId">Object ID</param>
         /// <returns>true if liked, false if not</returns>
-        public static async Task<bool> IsLikedAsync(string type, int ownerId, int itemId)
+        public static async Task<bool> IsLikedAsync(string type, int ownerId, int itemId, CancellationToken cancellationToken = default) // <<< ИЗМЕНЕНИЕ
         {
             try
             {
@@ -362,18 +363,18 @@ namespace ovkdesktop
                     Debug.WriteLine("[SessionHelper] IsLikedAsync: Token is empty");
                     return false;
                 }
-                
+
                 string instanceUrl = await GetInstanceUrlAsync();
                 using var httpClient = await GetConfiguredHttpClientAsync();
-                
+
                 // get ID of current user
-                int userId = await GetCurrentUserIdAsync();
+                int userId = await GetCurrentUserIdAsync(); 
                 if (userId <= 0)
                 {
                     Debug.WriteLine("[SessionHelper] IsLikedAsync: Failed to get current user ID");
                     return false;
                 }
-                
+
                 // form URL for API request likes.isLiked
                 var url = $"method/likes.isLiked?access_token={token}" +
                         $"&type={type}" +
@@ -381,54 +382,46 @@ namespace ovkdesktop
                         $"&item_id={itemId}" +
                         $"&user_id={userId}" +
                         $"&v=5.126";
-                
+
                 Debug.WriteLine($"[SessionHelper] IsLikedAsync URL: {instanceUrl}{url}");
-                
-                // Special handling for audio likes
-                
-                
+
                 // Standard handling for other objects
                 HttpResponseMessage response;
                 string json;
-                
+
                 try
                 {
-                    response = await httpClient.GetAsync(url);
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    response = await httpClient.GetAsync(url, cancellationToken); 
                     response.EnsureSuccessStatusCode();
-                    json = await response.Content.ReadAsStringAsync();
+                    json = await response.Content.ReadAsStringAsync(cancellationToken); 
                 }
                 catch (HttpRequestException ex)
                 {
-                    // even if status code is not successful, we still read the response content
                     Debug.WriteLine($"[SessionHelper] IsLikedAsync HTTP error: {ex.Message}");
-                    
+
                     if (ex.StatusCode.HasValue && (int)ex.StatusCode.Value == 400)
                     {
-                        // for code 400, try to read the response content
                         try
                         {
-                            // get response content directly
                             var errorRequest = new HttpRequestMessage(HttpMethod.Get, new Uri(instanceUrl + url));
-                            var errorResponse = await httpClient.SendAsync(errorRequest);
-                            json = await errorResponse.Content.ReadAsStringAsync();
+                            var errorResponse = await httpClient.SendAsync(errorRequest, cancellationToken);
+                            json = await errorResponse.Content.ReadAsStringAsync(cancellationToken);
                             Debug.WriteLine($"[SessionHelper] IsLikedAsync error response content: {json}");
-                            
-                            // check if there is information about API error in the response
+
                             using JsonDocument doc = JsonDocument.Parse(json);
                             if (doc.RootElement.TryGetProperty("error", out JsonElement errorElement))
                             {
-                                string errorMsg = errorElement.TryGetProperty("error_msg", out var msgElement) 
-                                    ? msgElement.GetString() 
+                                string errorMsg = errorElement.TryGetProperty("error_msg", out var msgElement)
+                                    ? msgElement.GetString()
                                     : "Unknown error";
-                                
+
                                 int errorCode = errorElement.TryGetProperty("error_code", out var codeElement)
                                     ? codeElement.GetInt32()
                                     : 0;
-                                
+
                                 Debug.WriteLine($"[SessionHelper] IsLikedAsync API error: {errorCode} - {errorMsg}");
-                                
-                                // if the error is related to the fact that the object does not exist or is not available,
-                                // return false (user did not like non-existent object)
                                 return false;
                             }
                         }
@@ -438,36 +431,31 @@ namespace ovkdesktop
                             return false;
                         }
                     }
-                    
-                    // for other errors, return false
                     return false;
                 }
-                
+
                 Debug.WriteLine($"[SessionHelper] IsLikedAsync response: {json}");
-                
-                // JSON response parsing
+
                 try
                 {
                     using JsonDocument doc = JsonDocument.Parse(json);
-                    
-                    // check if there is information about API error in the response
+
                     if (doc.RootElement.TryGetProperty("error", out JsonElement errorElement))
                     {
-                        string errorMsg = errorElement.TryGetProperty("error_msg", out var msgElement) 
-                            ? msgElement.GetString() 
+                        string errorMsg = errorElement.TryGetProperty("error_msg", out var msgElement)
+                            ? msgElement.GetString()
                             : "Unknown error";
-                        
+
                         int errorCode = errorElement.TryGetProperty("error_code", out var codeElement)
                             ? codeElement.GetInt32()
                             : 0;
-                        
+
                         Debug.WriteLine($"[SessionHelper] IsLikedAsync API error: {errorCode} - {errorMsg}");
                         return false;
                     }
-                    
+
                     if (doc.RootElement.TryGetProperty("response", out JsonElement responseElement))
                     {
-                        // API returns object with field liked
                         if (responseElement.TryGetProperty("liked", out JsonElement likedElement))
                         {
                             int liked = likedElement.GetInt32();
@@ -481,7 +469,13 @@ namespace ovkdesktop
                     Debug.WriteLine($"[SessionHelper] IsLikedAsync JSON parsing error: {jsonEx.Message}");
                     return false;
                 }
-                
+
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+
+                Debug.WriteLine($"[SessionHelper] IsLikedAsync was canceled for {type} {ownerId}_{itemId}.");
                 return false;
             }
             catch (Exception ex)
@@ -490,7 +484,7 @@ namespace ovkdesktop
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Get current user ID
         /// </summary>

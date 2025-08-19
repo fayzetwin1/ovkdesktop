@@ -13,10 +13,48 @@
 
     <Page.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
         <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
         <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
+        <converters:AttachmentTemplateSelector x:Key="AttachmentTemplateSelector">
+            <converters:AttachmentTemplateSelector.PhotoTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <Image Source="{Binding Photo.BestQualityUrl}"
+                   Stretch="Uniform" MaxHeight="400"
+                   HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.PhotoTemplate>
+
+            <!-- video -->
+            <converters:AttachmentTemplateSelector.VideoTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <MediaPlayerElement 
+                Source="{Binding Video.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                MaxHeight="400" AreTransportControlsEnabled="True"
+                HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.VideoTemplate>
+
+            <!-- gif (doc) -->
+            <converters:AttachmentTemplateSelector.GifTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <Image Source="{Binding Doc.Url}"
+                   Stretch="Uniform" MaxHeight="400"
+                   HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.GifTemplate>
+
+            <!-- unknown types -->
+            <converters:AttachmentTemplateSelector.OtherTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <TextBlock Text="{Binding Type, FallbackValue='Вложение'}" 
+                       FontWeight="SemiBold" Margin="0,5"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.OtherTemplate>
+
+        </converters:AttachmentTemplateSelector>
 
         <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:UserWallPost">
             <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
@@ -24,7 +62,6 @@
                 BorderThickness="1" CornerRadius="4"
                 Padding="10" Margin="0,5,0,0">
                 <StackPanel>
-                    <!-- Заголовок репоста (аватар, имя, дата) -->
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -43,7 +80,6 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Содержимое репоста (текст, картинки и т.д.) -->
                     <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
                     <Image Source="{Binding MainImageUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     <Image Source="{Binding GifUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
@@ -51,7 +87,6 @@
                         <MediaPlayerElement Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}" MaxHeight="300" AreTransportControlsEnabled="True"/>
                     </Grid>
 
-                    <!-- РЕКУРСИВНАЯ ЧАСТЬ: Отображаем вложенные репосты, используя этот же шаблон -->
                     <ItemsControl ItemsSource="{Binding CopyHistory}" 
                               ItemTemplate="{StaticResource RepostItemTemplate}" 
                               Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"/>
@@ -198,30 +233,19 @@
                                           TextWrapping="Wrap" Margin="0,0,0,10"
                                           Foreground="{ThemeResource TextFillColorPrimary}"/>
 
-                                <!-- Image -->
-                                <Image Grid.Row="2"
-                                      Source="{Binding MainImageUrl}"
-                                      Stretch="Uniform" MaxHeight="400"
-                                      HorizontalAlignment="Left" Margin="0,0,0,10"
-                                      Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <ItemsControl Grid.Row="2"
+                                  ItemsSource="{Binding Attachments}"
+                                  ItemTemplateSelector="{StaticResource AttachmentTemplateSelector}"
+                                  Visibility="{Binding Attachments.Count, Converter={StaticResource IntToVisibilityConverter}}" 
+                                  Margin="0,0,0,10">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Vertical"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
 
-                                <!-- Video -->
-                                <Grid Grid.Row="3" 
-                                     Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}"
-                                     Margin="0,0,0,10"
-                                     HorizontalAlignment="Left">
-                                    <MediaPlayerElement 
-                                        Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
-                                        MaxHeight="400" 
-                                        AreTransportControlsEnabled="True"/>
-                                </Grid>
 
-                                <!-- GIF -->
-                                <Image Grid.Row="4"
-                                      Source="{Binding GifUrl}"
-                                      Stretch="Uniform" MaxHeight="400"
-                                      HorizontalAlignment="Left" Margin="0,0,0,10"
-                                      Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                                 <!-- Audio -->
                                 <ItemsControl Grid.Row="5"

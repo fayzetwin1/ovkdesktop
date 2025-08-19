@@ -16,87 +16,104 @@
         </Grid.RowDefinitions>
 
         <!-- Page header -->
-        <Grid Grid.Row="0" Margin="125,105,20,0">
-            <TextBlock x:Name="NewPostMPLabel" Text="Новый пост" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" />
-            <TextBlock x:Name="ErrorTextBlock" Margin="0,60,0,0" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap"/>
-        </Grid>
+        <StackPanel Grid.Row="0" Margin="125,105,20,0">
+            <TextBlock Text="Новый пост" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" />
+            <TextBlock x:Name="ErrorTextBlock" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,10,0,0"/>
+        </StackPanel>
 
         <!-- Main content -->
-        <Grid Grid.Row="1" Margin="125,25,20,20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <!-- Media add button -->
-            <DropDownButton Grid.Row="0" 
-                           AnimatedIcon.State="Add" 
-                           Content="Добавить" 
-                           HorizontalAlignment="Left"
-                           Margin="0,0,0,10"
-                           x:Name="MediaAddNewPostButton">
-                <DropDownButton.Flyout>
-                    <MenuFlyout Placement="Bottom">
-                        <MenuFlyoutItem Text="Фото" Click="UploadPhotoButton">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE91B;"/>
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem Text="Видео">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xF131;"/>
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                        <MenuFlyoutItem Text="Музыка">
-                            <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE8D6;"/>
-                            </MenuFlyoutItem.Icon>
-                        </MenuFlyoutItem>
-                    </MenuFlyout>
-                </DropDownButton.Flyout>
-            </DropDownButton>
+        <ScrollViewer Grid.Row="1" Margin="125,25,20,20" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="10">
 
-            <!-- Text input field -->
-            <TextBox Grid.Row="1" 
-                    AutomationProperties.Name="multi-line TextBox" 
+                <!-- Media add button -->
+                <DropDownButton Content="Добавить" HorizontalAlignment="Left" x:Name="MediaAddNewPostButton">
+                    <DropDownButton.Flyout>
+                        <MenuFlyout Placement="Bottom">
+                            <MenuFlyoutItem Text="Фото" Click="UploadPhotoButton">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE91B;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Видео" Click="UploadVideoButton" IsEnabled="False">
+                                <!-- support of video in typenewpostpage will be added in the future -->
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xF131;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="Музыка" Click="UploadAudioButton" IsEnabled="False">
+                                <!-- support of audio in typenewpostpage will be added in the future -->
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8D6;"/>
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
+
+                <!-- Text input field -->
+                <TextBox
                     x:Name="NewPostTextBox"
-                    TextWrapping="Wrap" 
-                    AcceptsReturn="True" 
+                    TextWrapping="Wrap"
+                    AcceptsReturn="True"
                     IsSpellCheckEnabled="True"
                     MinHeight="200"
                     MaxHeight="400"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Stretch"
-                    Margin="0,0,0,10" />
+                    PlaceholderText="Что у вас нового?"
+                    VerticalAlignment="Stretch" />
 
-            <!-- Image preview -->
-            <Image Grid.Row="2"
-                  x:Name="SelectedImagePreview" 
-                  MaxHeight="300" 
-                  Stretch="Uniform"
-                  HorizontalAlignment="Left"
-                  Margin="0,10,0,10"/>
+                <!-- Attachments preview -->
+                <GridView
+                    x:Name="AttachmentsGridView"
+                    IsItemClickEnabled="False"
+                    SelectionMode="None"
+                    CanDragItems="False">
+                    <GridView.ItemTemplate>
+                        <DataTemplate x:DataType="local:AttachmentViewModel">
+                            <Grid CornerRadius="4" Width="120" Height="120">
+                                <Image Source="{x:Bind Thumbnail}" Stretch="UniformToFill"/>
+                                <!-- Overlay for video icon -->
+                                <FontIcon
+                                    Glyph="&#xE714;"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    FontSize="32"
+                                    Foreground="White"
+                                    Visibility="{x:Bind IsVideo, Mode=OneWay}"/>
 
-            <!-- Action buttons -->
-            <StackPanel Grid.Row="3" 
-                       Orientation="Horizontal" 
-                       HorizontalAlignment="Left" 
-                       Spacing="10"
-                       Margin="0,10,0,0">
-                <Button Content="Опубликовать" Click="PublishNewPostButton"/>
-                <Button Content="Отмена"/>
+                                <Button
+                                    Click="RemoveAttachmentButton_Click"
+                                    DataContext="{x:Bind}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="5" 
+                                    Width="24" 
+                                    Height="24"
+                                    Padding="0"
+                                    BorderThickness="0"
+                                    Background="#A0000000"
+                                    CornerRadius="12">
+                                    <ToolTipService.ToolTip>
+                                        <ToolTip Content="Удалить"/>
+                                    </ToolTipService.ToolTip>
+                                    <FontIcon 
+                                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                        Glyph="&#xE711;" 
+                                        FontSize="10" 
+                                        Foreground="White"/>
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </GridView.ItemTemplate>
+                </GridView>
+
+
+                <!-- Action buttons -->
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
+                    <Button Content="Опубликовать" Click="PublishNewPostButton" Style="{ThemeResource AccentButtonStyle}"/>
+                    <Button Content="Отмена" Click="CancelButton_Click"/>
+                </StackPanel>
             </StackPanel>
-        </Grid>
-        
-        <!-- Navigation frame -->
-        <Frame x:Name="ContentNewPostFrame" Grid.RowSpan="2">
-            <Frame.ContentTransitions>
-                <TransitionCollection>
-                    <NavigationThemeTransition />
-                </TransitionCollection>
-            </Frame.ContentTransitions>
-        </Frame>
+        </ScrollViewer>
+
     </Grid>
 </Page>
