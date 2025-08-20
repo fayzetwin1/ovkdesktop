@@ -259,10 +259,9 @@ namespace ovkdesktop
                 BorderBrush = (SolidColorBrush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(8),
-                MaxWidth = 600,
                 Margin = new Thickness(0, 0, 0, 10),
                 Padding = new Thickness(15),
-                HorizontalAlignment = HorizontalAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
                 Tag = post
             };
 
