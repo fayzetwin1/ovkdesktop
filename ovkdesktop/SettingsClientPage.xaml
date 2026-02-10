@@ -70,7 +70,7 @@
                                Style="{ThemeResource SubtitleTextBlockStyle}" 
                                FontSize="28"/>
                     <TextBlock x:Name="VersionOfClientLabel" 
-                               Text="версия: Release 1.5" 
+                               Text="версия: Release 1.5.1" 
                                Style="{ThemeResource BodyTextBlockStyle}" 
                                Opacity="0.7"/>
                     <TextBlock x:Name="AuthorOfClientLabel" 

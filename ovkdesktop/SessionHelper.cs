@@ -147,7 +147,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SessionHelper] ������ �������� OVKDataBody: {ex.Message}");
+                Debug.WriteLine($"[SessionHelper] Error of LoadTokenAsync(OVKDataBody): {ex.Message}");
                 return null;
             }
         }

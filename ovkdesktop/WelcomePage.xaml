@@ -50,7 +50,7 @@
                 <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz"/>
                 <HyperlinkButton Content="Telegram канал клиента" NavigateUri="https://t.me/ovkdesktop"/>
             </StackPanel>
-            <TextBlock Text="OpenVK Desktop, version: 1.5 Release. Made with love by Fayzetwin :3." 
+            <TextBlock Text="OpenVK Desktop, version: 1.5.1 Release. Made with love by Fayzetwin :3." 
                        Margin="0,10,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"
                        HorizontalAlignment="Center"/>
         </StackPanel>
