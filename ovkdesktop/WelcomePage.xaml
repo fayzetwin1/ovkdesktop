@@ -46,8 +46,8 @@
         
         <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,20,0,20">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://ovk.to" Margin="0,0,20,0"/>
-                <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetwin.xyz"/>
+                <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://openvk.org" Margin="0,0,20,0"/>
+                <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetw.in"/>
                 <HyperlinkButton Content="Telegram канал клиента" NavigateUri="https://t.me/ovkdesktop"/>
             </StackPanel>
             <TextBlock Text="OpenVK Desktop, version: 1.5.1 Release. Made with love by Fayzetwin :3." 
