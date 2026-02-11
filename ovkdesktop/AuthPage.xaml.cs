@@ -28,7 +28,7 @@ namespace ovkdesktop
 {
     public sealed partial class AuthPage : Page
     {
-        private string _instanceUrl = "https://ovk.to/";
+        private string _instanceUrl = "https://openvk.org/";
         private string _username = string.Empty;
         private string _password = string.Empty;
 

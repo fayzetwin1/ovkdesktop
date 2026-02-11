@@ -102,7 +102,7 @@ namespace ovkdesktop
             RadioButtons instanceOptions = new RadioButtons();
             
             // add popular instances
-            var ovkOption = new RadioButton { Content = "OpenVK (по умолчанию)", Tag = "https://openvk.org/" };
+            var ovkOption = new RadioButton { Content = "OpenVK (по умолчанию)", Tag = "https://api.openvk.org/" };
             var vepurOption = new RadioButton { Content = "VepurOVK", Tag = "https://vepurovk.xyz/" };
             var zovkOption = new RadioButton { Content = "ZOVK", Tag = "https://ovk.zazios.ru/" };
             var oujasOption = new RadioButton { Content = "OUJAS", Tag = "https://openvk.ujas.tech/" };
