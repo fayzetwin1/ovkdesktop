@@ -79,7 +79,7 @@ namespace ovkdesktop.Models
             set => SetProperty(ref _postSource, value);
         }
 
-        private Comments _comments;
+        private Comments _comments = new();
         [JsonPropertyName("comments")]
         public Comments Comments
         {
@@ -87,7 +87,7 @@ namespace ovkdesktop.Models
             set => SetProperty(ref _comments, value);
         }
 
-        private Likes _likes;
+        private Likes _likes = new();
         [JsonPropertyName("likes")]
         public Likes Likes
         {
@@ -95,7 +95,7 @@ namespace ovkdesktop.Models
             set => SetProperty(ref _likes, value);
         }
 
-        private Reposts _reposts;
+        private Reposts _reposts = new();
         [JsonPropertyName("reposts")]
         public Reposts Reposts
         {
@@ -340,6 +340,15 @@ namespace ovkdesktop.Models
             set => SetProperty(ref _copyHistory, value);
         }
 
+        [JsonIgnore]
+        public new bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
+
+        [JsonIgnore]
+        public List<NewsFeedPost> RepostsList => CopyHistory;
+
+        [JsonIgnore]
+        public bool HasRepostsList => RepostsList != null && RepostsList.Count > 0;
+
 
 
         [JsonIgnore]
@@ -482,7 +491,7 @@ namespace ovkdesktop.Models
         public List<NewsFeedPost> Items { get; set; }
 
         [JsonPropertyName("next_from")]
-        public long NextFrom { get; set; }
+        public string NextFrom { get; set; }
     }
 
     public class NewsFeedAPIResponse
@@ -525,7 +534,16 @@ namespace ovkdesktop.Models
 
 
         [JsonIgnore]
-        public string BestAvailablePhoto => Photo200 ?? Photo100 ?? Photo50;
+        public string BestAvailablePhoto 
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(Photo200)) return Photo200;
+                if (!string.IsNullOrEmpty(Photo100)) return Photo100;
+                if (!string.IsNullOrEmpty(Photo50)) return Photo50;
+                return "http://api.openvk.org/assets/packages/static/openvk/img/camera_200.png";
+            }
+        }
 
         [JsonIgnore]
         public string FullName => IsDeactivated

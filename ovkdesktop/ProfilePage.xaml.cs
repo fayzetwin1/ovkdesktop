@@ -112,7 +112,7 @@ namespace ovkdesktop
         {
             try
             {
-                using var fs = new FileStream("ovkdata.json", FileMode.Open);
+                using var fs = new FileStream(Path.Combine(App.LocalFolderPath, "ovkdata.json"), FileMode.Open);
                 return await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
             }
             catch (Exception ex)
@@ -145,6 +145,10 @@ namespace ovkdesktop
                 }
 
                 string objectId = $"wall{post.OwnerId}_{post.Id}";
+                if (post.CopyHistory != null && post.CopyHistory.Count > 0)
+                {
+                    objectId = $"wall{post.CopyHistory[0].OwnerId}_{post.CopyHistory[0].Id}";
+                }
                 bool success = await RepostAsync(ovkToken.Token, objectId);
 
                 var dialog = new ContentDialog
@@ -476,6 +480,10 @@ namespace ovkdesktop
                     }
 
                     string objectId = $"wall{post.OwnerId}_{post.Id}";
+                    if (post.CopyHistory != null && post.CopyHistory.Count > 0)
+                    {
+                        objectId = $"wall{post.CopyHistory[0].OwnerId}_{post.CopyHistory[0].Id}";
+                    }
                     bool success = await RepostAsync(ovkToken.Token, objectId);
 
                     var dialog = new ContentDialog

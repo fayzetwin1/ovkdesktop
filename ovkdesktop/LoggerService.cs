@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -86,6 +86,7 @@ namespace ovkdesktop
             lock (_lock)
             {
                 _logWriter.WriteLine(formattedMessage);
+                Console.WriteLine(formattedMessage);
 
                 _recentLogs.Enqueue(formattedMessage);
                 while (_recentLogs.Count > MaxRecentLogsCount)

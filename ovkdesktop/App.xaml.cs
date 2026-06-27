@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
 using ovkdesktop.Models;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -40,6 +41,11 @@ namespace ovkdesktop
         public static LastFmService LastFmService { get; private set; }
         public static SettingsHelper Settings { get; private set; }
         public static string LocalFolderPath { get; private set; }
+
+        public IServiceProvider Services { get; private set; }
+
+        public static Services.INavigationService NavigationService { get; private set; }
+        public static Services.IDialogService DialogService { get; private set; }
 
         // main window of the application
         public static Window MainWindow { get; private set; }
@@ -83,8 +89,13 @@ namespace ovkdesktop
                 LocalFolderPath = AppContext.BaseDirectory;
                 Settings = await SettingsHelper.CreateAsync();
 
-                LastFmService = new LastFmService();
-                AudioService = new AudioPlayerService();
+                Services = ConfigureServices();
+
+                LastFmService = Services.GetRequiredService<LastFmService>();
+                AudioService = Services.GetRequiredService<AudioPlayerService>();
+                
+                NavigationService = Services.GetRequiredService<Services.INavigationService>();
+                DialogService = Services.GetRequiredService<Services.IDialogService>();
 
                 await LastFmService.InitializeAsync();
 
@@ -94,6 +105,8 @@ namespace ovkdesktop
 
                 Frame rootFrame = new Frame();
                 m_window.Content = rootFrame;
+                
+                ((Services.NavigationService)NavigationService).Initialize(rootFrame);
 
                 // --- Блок 3: Навигация и активация ---
                 bool isTokenValid = await SessionHelper.IsTokenValidAsync();
@@ -111,6 +124,23 @@ namespace ovkdesktop
         }
 
 
+
+        private IServiceProvider ConfigureServices()
+        {
+            var services = new ServiceCollection();
+
+            // Services
+            services.AddSingleton<Services.INavigationService, Services.NavigationService>();
+            services.AddSingleton<Services.IDialogService, Services.DialogService>();
+            services.AddSingleton<AudioPlayerService>();
+            services.AddSingleton<LastFmService>();
+
+            // ViewModels
+            services.AddTransient<ViewModels.WelcomeViewModel>();
+            services.AddTransient<ViewModels.AuthViewModel>();
+
+            return services.BuildServiceProvider();
+        }
 
         private Window? m_window;
 

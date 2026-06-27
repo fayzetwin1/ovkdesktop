@@ -149,13 +149,13 @@ namespace ovkdesktop
         {
             try
             {
-                if (!File.Exists("ovkdata.json"))
+                if (!File.Exists(Path.Combine(App.LocalFolderPath, "ovkdata.json")))
                 {
-                    ShowError("Unauthorized");
+                    Debug.WriteLine("[MusicPage] ovkdata.json not found");
                     return null;
                 }
-                
-                using var fs = new FileStream("ovkdata.json", FileMode.Open, FileAccess.Read);
+
+                using var fs = new FileStream(Path.Combine(App.LocalFolderPath, "ovkdata.json"), FileMode.Open, FileAccess.Read);
                 using var reader = new StreamReader(fs);
                 var jsonContent = await reader.ReadToEndAsync();
                 var data = JsonConvert.DeserializeObject<OVKDataBody>(jsonContent);

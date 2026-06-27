@@ -1,4 +1,4 @@
-﻿using Microsoft.UI;
+using Microsoft.UI;
 using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -288,7 +288,7 @@ namespace ovkdesktop
         {
             try
             {
-                using var fs = new FileStream("ovkdata.json", FileMode.Open);
+                using var fs = new FileStream(System.IO.Path.Combine(App.LocalFolderPath, "ovkdata.json"), FileMode.Open);
                 return await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
             }
             catch (Exception ex)
@@ -1192,7 +1192,9 @@ namespace ovkdesktop
             if (!string.IsNullOrEmpty(repost.Text))
                 mainPanel.Children.Add(new TextBlock { Text = repost.Text, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
 
-            if (repost.Attachments != null)
+            if (repost.HasRepost && repost.CopyHistory.FirstOrDefault() is UserWallPost nestedRepost)
+                mainPanel.Children.Add(CreateRepostElement(nestedRepost));
+            else if (repost.Attachments != null)
                 mainPanel.Children.Add(CreateAttachmentsPanel(repost.Attachments));
 
             repostCard.Child = mainPanel;
@@ -1245,6 +1247,10 @@ namespace ovkdesktop
                     }
 
                     string objectId = $"wall{post.OwnerId}_{post.Id}";
+                    if (post.CopyHistory != null && post.CopyHistory.Count > 0)
+                    {
+                        objectId = $"wall{post.CopyHistory[0].OwnerId}_{post.CopyHistory[0].Id}";
+                    }
                     bool success = await RepostAsync(ovkToken.Token, objectId);
 
                     var dialog = new ContentDialog
@@ -1388,6 +1394,10 @@ namespace ovkdesktop
                 }
 
                 string objectId = $"wall{post.OwnerId}_{post.Id}";
+                if (post.CopyHistory != null && post.CopyHistory.Count > 0)
+                {
+                    objectId = $"wall{post.CopyHistory[0].OwnerId}_{post.CopyHistory[0].Id}";
+                }
                 bool success = await RepostAsync(ovkToken.Token, objectId);
 
                 var dialog = new ContentDialog

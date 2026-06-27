@@ -167,7 +167,7 @@ namespace ovkdesktop
         {
             try
             {
-                using var fs = new FileStream("ovkdata.json", FileMode.Open);
+                using var fs = new FileStream(Path.Combine(App.LocalFolderPath, "ovkdata.json"), FileMode.Open);
                 return await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
             }
             catch (Exception ex)

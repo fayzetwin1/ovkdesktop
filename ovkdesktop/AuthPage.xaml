@@ -15,7 +15,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
-        <Button Grid.Row="0" Click="BackLoginWelcomeButtonClick" 
+        <Button Grid.Row="0" Command="{x:Bind ViewModel.GoBackCommand}" 
                 AutomationProperties.Name="Back" CornerRadius="5" 
                 Margin="20,20,0,0" HorizontalAlignment="Left">
             <FontIcon Glyph="&#xE72B;"/>
@@ -39,23 +39,27 @@
                      PlaceholderText="veselcraft@gmail.com" 
                      MaxLength="60"
                      Width="250"
+                     Text="{x:Bind ViewModel.Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                      HorizontalAlignment="Stretch"/>
             
             <PasswordBox x:Name="passwordTextBox" 
                          Header="Введите свой пароль:" 
                          PlaceholderText="qwerty123"
                          Width="250"
+                         Password="{x:Bind ViewModel.Password, Mode=TwoWay}"
                          HorizontalAlignment="Stretch"/>
             
             <Button Content="Авторизоваться" 
                     Width="250" 
-                    Click="LoginButtonClick"
+                    Command="{x:Bind ViewModel.LoginCommand}"
                     HorizontalAlignment="Center"/>
             
             <HyperlinkButton x:Name="registrationLink" 
                              Content="Регистрация" 
-                             Click="RegistrationLink_Click"
+                             Command="{x:Bind ViewModel.OpenRegistrationCommand}"
                              HorizontalAlignment="Center"/>
+                             
+            <ProgressRing IsActive="{x:Bind ViewModel.IsBusy, Mode=OneWay}" HorizontalAlignment="Center"/>
         </StackPanel>
     </Grid>
 </Page>

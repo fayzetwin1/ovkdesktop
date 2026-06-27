@@ -2,40 +2,198 @@
     x:Class="ovkdesktop.PostsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:ovkdesktop.Controls"
+    xmlns:models="using:ovkdesktop.Models"
+    xmlns:converters="using:ovkdesktop.Converters"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
 
+    <Page.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        
+        <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:NewsFeedPost">
+            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="4"
+                Padding="10" Margin="0,5,0,0">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                            <Ellipse.Fill>
+                                <ImageBrush ImageSource="{Binding Profile.BestAvailablePhoto}" Stretch="UniformToFill"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{Binding FromId}" Click="OnAvatarClicked">
+                                <TextBlock Text="{Binding Profile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Button>
+                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    
+                    <controls:PostMediaControl Attachments="{Binding Attachments}" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        
+        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:NewsFeedPost">
+            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="4"
+                Padding="10" Margin="0,5,0,0">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                            <Ellipse.Fill>
+                                <ImageBrush ImageSource="{Binding Profile.BestAvailablePhoto}" Stretch="UniformToFill"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{Binding FromId}" Click="OnAvatarClicked">
+                                <TextBlock Text="{Binding Profile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Button>
+                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    
+                    <controls:PostMediaControl Attachments="{Binding Attachments}" />
+
+                    <ItemsControl ItemsSource="{Binding RepostsList}" 
+                                  ItemTemplate="{StaticResource RepostItemTemplateLevel2}" 
+                                  Visibility="{Binding HasRepostsList, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Page.Resources>
+
     <Grid>
-        <ScrollViewer>
-            <StackPanel Margin="24">
+        <ListView x:Name="PostsListView"
+                  Loaded="PostsListView_Loaded"
+                  ItemsSource="{x:Bind ViewModel.NewsPosts, Mode=OneWay}"
+                  SelectionMode="None"
+                  Margin="125,24,125,0"
+                  ShowsScrollingPlaceholders="False">
+            
+            <ListView.Header>
                 <TextBlock x:Name="NewsPostsLabel" 
                            Text="Новости" 
-                           Margin="125,105,0,0" 
+                           Margin="0,81,0,20" 
                            Style="{ThemeResource TitleLargeTextBlockStyle}" 
                            FontSize="42" 
                            HorizontalAlignment="Left"/>
+            </ListView.Header>
 
-                <TextBlock x:Name="ErrorNewsPostsText" 
-                           Foreground="Red" 
-                           Visibility="Collapsed" 
-                           TextWrapping="Wrap" 
-                           Margin="125,10,0,10"/>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Margin" Value="0,0,0,10" />
+                    <Setter Property="Padding" Value="0" />
+                </Style>
+            </ListView.ItemContainerStyle>
 
-                <StackPanel x:Name="PostsContainer" Margin="125,20,0,0"/>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:NewsFeedPost">
+                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="15"
+                            HorizontalAlignment="Stretch">
+                        <StackPanel>
+                            
+                            <!-- Header -->
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                
+                                <Button Padding="0" Background="Transparent" BorderThickness="0" 
+                                        CommandParameter="{x:Bind FromId}"
+                                        Click="OnAvatarClicked">
+                                    <Ellipse Width="48" Height="48">
+                                        <Ellipse.Fill>
+                                            <ImageBrush ImageSource="{x:Bind Profile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill" />
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                </Button>
 
-                <ProgressRing x:Name="LoadingProgressRingNewsPosts" 
-                              IsActive="False" 
-                              Width="50" 
-                              Height="50" 
-                              Margin="0,20,0,0"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                    <TextBlock Text="{x:Bind Profile.FullName, Mode=OneWay}" FontWeight="SemiBold" FontSize="16" />
+                                    <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" FontSize="13" Opacity="0.7" />
+                                </StackPanel>
+                            </Grid>
 
-                <Button x:Name="LoadMoreNewsPageButton"
-                        Content="Загрузить ещё..."
-                        Click="LoadMoreButton"
-                        Visibility="Collapsed"
-                        HorizontalAlignment="Stretch"
-                        Margin="125,10,0,20"/>
-            </StackPanel>
-        </ScrollViewer>
+                            <!-- Post Text -->
+                            <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" IsTextSelectionEnabled="True" />
+
+                            <!-- Media Attachments -->
+                            <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
+
+                            <!-- Repost -->
+                            <ItemsControl ItemsSource="{x:Bind RepostsList, Mode=OneWay}" 
+                                          ItemTemplate="{StaticResource RepostItemTemplate}" 
+                                          Visibility="{x:Bind HasRepostsList, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                          Margin="0,0,0,10"/>
+
+                            <!-- Actions Panel -->
+                            <StackPanel Orientation="Horizontal" Margin="-5,10,0,0">
+                                <Button Margin="0,0,10,0" Style="{ThemeResource DefaultButtonStyle}" 
+                                        Click="OnLikeClicked"
+                                        Tag="{Binding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="❤ " />
+                                        <TextBlock Text="{x:Bind Likes.Count, Mode=OneWay}" />
+                                    </StackPanel>
+                                </Button>
+                                
+                                <Button Style="{ThemeResource DefaultButtonStyle}"
+                                        Click="OnCommentClicked"
+                                        Tag="{Binding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="💬 " />
+                                        <TextBlock Text="{x:Bind Comments.Count, Mode=OneWay}" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Margin="10,0,0,0" Style="{ThemeResource DefaultButtonStyle}"
+                                        Click="OnRepostClicked"
+                                        Tag="{Binding}">
+                                    <TextBlock Text="🔁 Репост" />
+                                </Button>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+
+            <ListView.Footer>
+                <StackPanel Margin="0,10,0,40">
+                    <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingMore, Mode=OneWay}" 
+                                  Width="50" 
+                                  Height="50" 
+                                  Margin="0,0,0,10"/>
+
+                    <Button Content="Загрузить ещё..."
+                            Command="{x:Bind ViewModel.LoadMoreCommand}"
+                            Visibility="{x:Bind ViewModel.CanLoadMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </ListView.Footer>
+        </ListView>
     </Grid>
 </Page>

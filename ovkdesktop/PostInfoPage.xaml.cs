@@ -87,7 +87,7 @@ namespace ovkdesktop
             try
             {
                 Debug.WriteLine("[PostInfoPage] Loading token from ovkdata.json...");
-                using var fs = new FileStream("ovkdata.json", FileMode.Open, FileAccess.Read);
+                using var fs = new FileStream(Path.Combine(App.LocalFolderPath, "ovkdata.json"), FileMode.Open, FileAccess.Read);
                 var token = await JsonSerializer.DeserializeAsync<OVKDataBody>(fs);
                 Debug.WriteLine($"[PostInfoPage] Token loaded: {token?.Token}");
                 return token;
