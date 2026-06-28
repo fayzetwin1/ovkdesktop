@@ -52,7 +52,7 @@ namespace ovkdesktop
                 var result = FindVisualChild<T>(child);
                 if (result != null) return result;
             }
-            return null;
+            return default;
         }
 
         private void OnAvatarClicked(object sender, RoutedEventArgs e)

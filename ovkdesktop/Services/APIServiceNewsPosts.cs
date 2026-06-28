@@ -440,7 +440,7 @@ namespace ovkdesktop.Services
             }
         }
 
-        private void CollectAuthorIds(NewsFeedPost post, HashSet<int> authorIds)
+        private void CollectAuthorIds(BasePost post, HashSet<int> authorIds)
         {
             if (post.FromId != 0) authorIds.Add(post.FromId);
             if (post.CopyHistory != null)
@@ -452,7 +452,7 @@ namespace ovkdesktop.Services
             }
         }
 
-        private void MapProfilesToPost(NewsFeedPost post, Dictionary<int, UserProfile> profiles)
+        private void MapProfilesToPost(BasePost post, Dictionary<int, UserProfile> profiles)
         {
             if (profiles.TryGetValue(post.FromId, out var profile)) post.Profile = profile;
             

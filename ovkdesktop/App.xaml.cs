@@ -279,6 +279,9 @@ namespace ovkdesktop
         }
 
 
-
+        public static void InitializeLogging()
+        {
+            // Logging is handled by LoggerService.Instance in this app
+        }
     }
 }

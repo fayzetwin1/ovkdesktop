@@ -40,10 +40,12 @@ namespace ovkdesktop
         
         public void SetScreenSize()
         {
+#if WINDOWS
             var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WindowId myWndId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
             _apw = AppWindow.GetFromWindowId(myWndId);
             _presenter = _apw.Presenter as OverlappedPresenter;
+#endif
         }
         
         public MainWindow()
@@ -56,15 +58,17 @@ namespace ovkdesktop
             // add a handler of navigation
             ContentFrame.Navigated += ContentFrame_Navigated;
 
+#if WINDOWS
             IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
             AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
 
-            appWindow.Resize(new SizeInt32(1600, 900));
+            appWindow.Resize(new Windows.Graphics.SizeInt32(1600, 900));
 
             SetScreenSize();
             _presenter.IsResizable = true;
             _presenter.IsMaximizable = true;
+#endif
             
             // Note: setting the minimum window size is not supported directly in WinUI 3
             // To implement this functionality, you will need to use Win32 API
@@ -116,15 +120,15 @@ namespace ovkdesktop
             return _audioPlayerService;
         }
         
-        // setting the window size
         private void SetWindowSize(int width, int height)
         {
+#if WINDOWS
             try
             {
                 // get the AppWindow
-                var hWnd = WindowNative.GetWindowHandle(this);
-                var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-                var appWindow = AppWindow.GetFromWindowId(windowId);
+                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
+                var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
                 
                 // set the size
                 appWindow.Resize(new Windows.Graphics.SizeInt32(width, height));
@@ -135,20 +139,21 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[MainWindow] Error setting window size: {ex.Message}");
             }
+#endif
         }
         
-        // centering the window on the screen
         private void CenterWindow()
         {
+#if WINDOWS
             try
             {
                 // get the AppWindow
-                var hWnd = WindowNative.GetWindowHandle(this);
-                var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
-                var appWindow = AppWindow.GetFromWindowId(windowId);
+                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hWnd);
+                var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
                 
                 // get the size of the screen
-                var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(windowId, Microsoft.UI.Windowing.DisplayAreaFallback.Primary);
                 
                 // calculate the coordinates for centering
                 var windowSize = appWindow.Size;
@@ -164,6 +169,7 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[MainWindow] Error centering window: {ex.Message}");
             }
+#endif
         }
         
         // freeing resources when closing the window
@@ -239,9 +245,9 @@ namespace ovkdesktop
             }
         }
         
-        // switch to full screen mode
         public void ToggleFullScreen()
         {
+#if WINDOWS
             if (_presenter != null)
             {
                 _isFullScreen = !_isFullScreen;
@@ -255,9 +261,9 @@ namespace ovkdesktop
                     _presenter.IsResizable = false;
                     
                     // remember the size of the window before full screen mode
-                    var displayArea = DisplayArea.GetFromWindowId(_apw.Id, DisplayAreaFallback.Primary);
-                    _apw.Resize(new SizeInt32(displayArea.WorkArea.Width, displayArea.WorkArea.Height));
-                    _apw.Move(new PointInt32(displayArea.WorkArea.X, displayArea.WorkArea.Y));
+                    var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(_apw.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Primary);
+                    _apw.Resize(new Windows.Graphics.SizeInt32(displayArea.WorkArea.Width, displayArea.WorkArea.Height));
+                    _apw.Move(new Windows.Graphics.PointInt32(displayArea.WorkArea.X, displayArea.WorkArea.Y));
                 }
                 else
                 {
@@ -279,6 +285,7 @@ namespace ovkdesktop
                     _miniPlayer.UpdateLayout();
                 }
             }
+#endif
         }
     }
 }

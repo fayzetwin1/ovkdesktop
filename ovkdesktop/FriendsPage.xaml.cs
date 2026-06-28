@@ -319,7 +319,7 @@ namespace ovkdesktop
                 if (childOfChild != null)
                     return childOfChild;
             }
-            return null;
+            return default;
         }
 
         private async Task LoadFriendRequestsAsync(string token)

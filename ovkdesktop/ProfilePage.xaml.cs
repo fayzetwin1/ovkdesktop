@@ -56,7 +56,7 @@ namespace ovkdesktop
                 var result = FindVisualChild<T>(child);
                 if (result != null) return result;
             }
-            return null;
+            return default;
         }
 
         private void PageScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)

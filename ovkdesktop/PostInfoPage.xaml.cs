@@ -235,7 +235,7 @@ namespace ovkdesktop
                     Title = "Error",
                     Content = message,
                     CloseButtonText = "OK",
-                    XamlRoot = this.Content.XamlRoot
+                    XamlRoot = this.XamlRoot
                 };
                 await dialog.ShowAsync();
             }
@@ -345,7 +345,7 @@ namespace ovkdesktop
                     Title = "Success",
                     Content = "Comment sent successfully",
                     CloseButtonText = "OK",
-                    XamlRoot = this.Content.XamlRoot
+                    XamlRoot = this.XamlRoot
                 };
                 await successDialog.ShowAsync();
             }

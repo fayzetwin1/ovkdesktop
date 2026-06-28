@@ -12,7 +12,7 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         
-        <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:NewsFeedPost">
+        <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:UserWallPost">
             <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1" CornerRadius="4"
@@ -43,7 +43,7 @@
             </Border>
         </DataTemplate>
         
-        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:NewsFeedPost">
+        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:UserWallPost">
             <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                 BorderThickness="1" CornerRadius="4"
@@ -71,9 +71,9 @@
                     
                     <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
 
-                    <ItemsControl ItemsSource="{x:Bind RepostsList, Mode=OneWay}" 
+                    <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
                                   ItemTemplate="{StaticResource RepostItemTemplateLevel2}" 
-                                  Visibility="{x:Bind HasRepostsList, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                  Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -144,9 +144,9 @@
                             <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
 
                             <!-- Repost -->
-                            <ItemsControl ItemsSource="{x:Bind RepostsList, Mode=OneWay}" 
+                            <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
                                           ItemTemplate="{StaticResource RepostItemTemplate}" 
-                                          Visibility="{x:Bind HasRepostsList, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                          Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
                                           Margin="0,0,0,10"/>
 
                             <!-- Actions Panel -->

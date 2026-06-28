@@ -106,18 +106,48 @@ namespace ovkdesktop.Controls
             previewGrid.Children.Add(playButton);
             videoHost.Children.Add(previewGrid);
 
-            playButton.Click += (s, e) =>
+            playButton.Click += async (s, e) =>
             {
                 previewGrid.Visibility = Visibility.Collapsed;
-                var mediaPlayerElement = new MediaPlayerElement
+                string playerUrl = System.Net.WebUtility.HtmlDecode(video.SafePlayerUrl);
+
+                bool isWebPlayer = playerUrl.Contains("video_ext.php") || 
+                                   playerUrl.Contains("youtube.com") || 
+                                   playerUrl.Contains("youtu.be") ||
+                                   playerUrl.Contains("rutube.ru") ||
+                                   playerUrl.Contains("vimeo.com");
+
+                if (!isWebPlayer)
                 {
-                    AreTransportControlsEnabled = true,
-                    AutoPlay = true,
-                    Source = MediaSource.CreateFromUri(new Uri(video.SafePlayerUrl)),
-                    MaxHeight = 200,
-                    MaxWidth = 400
-                };
-                videoHost.Children.Add(mediaPlayerElement);
+                    var mediaPlayerElement = new MediaPlayerElement
+                    {
+                        AreTransportControlsEnabled = true,
+                        AutoPlay = true,
+                        Source = MediaSource.CreateFromUri(new Uri(playerUrl)),
+                        MaxHeight = 300,
+                        HorizontalAlignment = HorizontalAlignment.Center
+                    };
+                    videoHost.Children.Add(mediaPlayerElement);
+                }
+                else
+                {
+                    try 
+                    {
+                        var webView = new WebView2
+                        {
+                            Source = new Uri(playerUrl),
+                            Height = 300,
+                            HorizontalAlignment = HorizontalAlignment.Stretch
+                        };
+                        await webView.EnsureCoreWebView2Async();
+                        videoHost.Children.Add(webView);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[PostMediaControl] WebView2 initialization failed: {ex}");
+                        await Windows.System.Launcher.LaunchUriAsync(new Uri(playerUrl));
+                    }
+                }
             };
 
             return videoHost;

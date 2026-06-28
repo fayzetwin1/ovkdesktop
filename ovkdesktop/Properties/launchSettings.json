@@ -1,10 +1,30 @@
 {
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:8080",
+      "sslPort": 0
+    }
+  },
   "profiles": {
-    "ovkdesktop (Package)": {
-      "commandName": "MsixPackage"
+    "ovkdesktop (WinAppSDK Unpackaged)": {
+      "commandName": "Project",
+      "compatibleTargetFramework": "windows"
     },
-    "ovkdesktop (Unpackaged)": {
-      "commandName": "Project"
+    "ovkdesktop (WinAppSDK Packaged)": {
+      "commandName": "MsixPackage",
+      "compatibleTargetFramework": "windows"
+    },
+    "ovkdesktop (Desktop)": {
+      "commandName": "Project",
+      "compatibleTargetFramework": "desktop"
+    },
+    "ovkdesktop (Desktop WSL2)": {
+      "commandName": "WSL2",
+      "commandLineArgs": "{ProjectDir}/bin/Debug/net9.0-desktop/ovkdesktop.dll",
+      "distributionName": "",
+      "compatibleTargetFramework": "desktop"
     }
   }
 }

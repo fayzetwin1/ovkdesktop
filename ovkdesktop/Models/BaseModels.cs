@@ -288,18 +288,6 @@ namespace ovkdesktop.Models
 
     public class ProfileWallPost : BasePost
     {
-        [JsonPropertyName("copy_history")]
-        public List<ProfileWallPost> CopyHistory { get; set; }
-
-        [JsonIgnore]
-        public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
-
-        [JsonIgnore]
-        public ProfileWallPost Repost => HasRepost ? CopyHistory[0] : null;
-
-        [JsonIgnore]
-        public string RepostOwnerText => HasRepost ? FormatRepostOwnerText() : "";
-        
         [JsonIgnore]
         public UserProfile Profile { get; set; }
 
@@ -331,25 +319,6 @@ namespace ovkdesktop.Models
 
     public class NewsFeedPost : BasePost
     {
-
-        private new List<NewsFeedPost> _copyHistory;
-        [JsonPropertyName("copy_history")]
-        public new List<NewsFeedPost> CopyHistory
-        {
-            get => _copyHistory;
-            set => SetProperty(ref _copyHistory, value);
-        }
-
-        [JsonIgnore]
-        public new bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
-
-        [JsonIgnore]
-        public List<NewsFeedPost> RepostsList => CopyHistory;
-
-        [JsonIgnore]
-        public bool HasRepostsList => RepostsList != null && RepostsList.Count > 0;
-
-
 
         [JsonIgnore]
         public string SafeMainImageUrl 

@@ -1,4 +1,6 @@
-# OpenVK Desktop - клиент для соц. сети OpenVK в UWP стиле под Windows.
+# OpenVK Desktop
+
+> ..десктопный клиент для OpenVK под Windows, Linux и macOS
 
 ![](https://github.com/user-attachments/assets/025b0dda-6d3e-4169-ab80-c8783198abdf)
 
@@ -7,7 +9,7 @@
 
 ## Состояние проекта
 
-На текущий момент, проект хоть и вышел в релиз, но все еще ведется активная разработка проекта, поскольку некоторый функционал еще не сделан/недоделан до конца. 
+На текущий момент, проект хоть и вышел в релиз, но все еще ведется активная разработка проекта, поскольку некоторый функционал еще не сделан/недоделан до конца. Недавно клиент был портирован на **Uno Platform**, что позволило добавить нативную поддержку Linux и macOS помимо Windows.
 
 ## Вопросы
 
@@ -20,15 +22,16 @@
 
 Требования для билда проекта: 
 
-- .NET версии 9.0, 8.0
-- [Windows SDK](https://go.microsoft.com/fwlink/?linkid=2313119)
-- [Windows App SDK](https://aka.ms/windowsappsdk/1.7/latest/windowsappruntimeinstall-x64.exe)
-- Visual Studio 2022 (через dotnet cli забилдить адекватно не получится)
+- .NET версии 9.0
+- [Windows SDK](https://go.microsoft.com/fwlink/?linkid=2313119) (нужен для Windows билдов)
+- [Windows App SDK](https://aka.ms/windowsappsdk/1.7/latest/windowsappruntimeinstall-x64.exe) (нужен для Windows билдов)
+- Visual Studio 2022 (для работы с .sln файлом)
 
-Мудрить с билдом проекта особо не нужно:
-необходимо лишь открыт .sln файл проекта в VS2022 и уже нажать нужную кнопку для билда клиента:
+Мудрить с билдом проекта особо не нужно. Вы можете открыть `.sln` файл проекта в VS2022 и нажать нужную кнопку для билда клиента под Windows:
 
 ![изображение](https://github.com/user-attachments/assets/aa865b0c-808f-4831-af47-fb6a2aed03f2)
+
+Либо, благодаря переходу на Uno, теперь вы можете легко собрать проект и без Visual Studio под все операционные системы разом — просто запустите скрипт `build.bat` в корне проекта! Он создаст автономные (self-contained) сборки для Linux и macOS.
 
 ## Баги 
 
@@ -45,5 +48,3 @@
 ![Профиль](https://github.com/user-attachments/assets/affbd15a-96b5-4622-a61d-e4db58fafe88)
 ![Друзья](https://github.com/user-attachments/assets/cf809a84-3a89-4bb7-bd4e-7e3e4a151a36)
 ![Лента](https://github.com/user-attachments/assets/9cb50337-0913-4c03-b067-b1702b53396e)
-
-
