@@ -32,7 +32,15 @@ namespace ovkdesktop.Helpers
             }
             catch
             {
-                return "N/A (Unpackaged)";
+                try 
+                {
+                    var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                    return version != null ? $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}" : "N/A";
+                }
+                catch
+                {
+                    return "N/A (Unpackaged)";
+                }
             }
         }
 
@@ -43,6 +51,7 @@ namespace ovkdesktop.Helpers
 
         public static string GetOsBuildVersion()
         {
+#if WINDOWS
             try
             {
                 using (RegistryKey? key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
@@ -61,6 +70,7 @@ namespace ovkdesktop.Helpers
             {
                 LoggerService.Instance.LogWarning($"Could not read OS build version from registry: {ex.Message}");
             }
+#endif
 
             return Environment.OSVersion.ToString();
         }

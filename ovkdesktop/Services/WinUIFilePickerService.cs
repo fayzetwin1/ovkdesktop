@@ -14,9 +14,11 @@ namespace ovkdesktop.Services
         {
             var picker = new FileOpenPicker();
             
+#if WINDOWS
             var window = App.MainWindow;
             var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+#endif
 
             picker.ViewMode = PickerViewMode.Thumbnail;
             picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
@@ -34,9 +36,11 @@ namespace ovkdesktop.Services
         {
             var picker = new FileOpenPicker();
             
+#if WINDOWS
             var window = App.MainWindow;
             var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+#endif
 
             picker.ViewMode = PickerViewMode.Thumbnail;
             picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
@@ -58,9 +62,11 @@ namespace ovkdesktop.Services
         {
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             
+#if WINDOWS
             var window = App.MainWindow;
             var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hWnd);
+#endif
 
             picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
             picker.FileTypeChoices.Add(extensionName, extensions.ToList());

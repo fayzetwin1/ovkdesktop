@@ -50,7 +50,6 @@ namespace ovkdesktop.Services
 
         public async Task<bool> CopyImageToClipboardAsync(string imageUrl)
         {
-#if WINDOWS
             try
             {
                 // Download the image
@@ -63,6 +62,7 @@ namespace ovkdesktop.Services
                     await File.WriteAllBytesAsync(tempPath, imageBytes);
                 }
 
+#if WINDOWS
                 // Copy to clipboard using Win32 API
                 string[] files = { tempPath };
                 int offset = Marshal.SizeOf(typeof(DROPFILES));
@@ -107,16 +107,36 @@ namespace ovkdesktop.Services
                 CloseClipboard();
                 
                 return true;
+#else
+                // Copy to clipboard using cross-platform DataTransfer API (Uno Platform)
+                var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                var file = await Windows.Storage.StorageFile.GetFileFromPathAsync(tempPath);
+                
+                // Set as bitmap and as storage item (file drop) for maximum compatibility
+                dataPackage.SetBitmap(Windows.Storage.Streams.RandomAccessStreamReference.CreateFromFile(file));
+                dataPackage.SetStorageItems(new[] { file });
+
+                App.MainWindow?.DispatcherQueue?.TryEnqueue(() =>
+                {
+                    try
+                    {
+                        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
+                        Windows.ApplicationModel.DataTransfer.Clipboard.Flush(); // Flush ensures data is available even if app closes
+                    }
+                    catch (Exception dispatchEx)
+                    {
+                        Debug.WriteLine($"[WinUIClipboardService] Error setting clipboard content: {dispatchEx}");
+                    }
+                });
+                
+                return true;
+#endif
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[WinUIClipboardService] Error copying image: {ex.Message}");
+                Debug.WriteLine($"[WinUIClipboardService] Error copying image: {ex}");
                 return false;
             }
-#else
-            Debug.WriteLine("[ClipboardService] Clipboard image copying is only supported on Windows currently.");
-            return false;
-#endif
         }
     }
 }
