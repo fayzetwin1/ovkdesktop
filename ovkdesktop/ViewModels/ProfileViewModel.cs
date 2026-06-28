@@ -218,14 +218,16 @@ namespace ovkdesktop.ViewModels
             // A dialog service should be used if needed.
         }
 
+
         [RelayCommand]
         public void PlayAudio(Audio audio)
         {
             if (audio == null) return;
-            
             // For simplicity, play just the selected track
-            _audioPlayerService.SetPlaylist(new ObservableCollection<Audio> { audio }, 0);
+            _audioPlayerService.PlayAudio(audio);
         }
+
+
 
         public void Cancel()
         {

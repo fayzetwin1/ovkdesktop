@@ -11,7 +11,7 @@
             <Image x:Name="PreviewImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"/>
         </ScrollViewer>
         
-        <!-- Отступ сверху 50px гарантирует, что кнопки будут находиться строго ниже стандартной полосы заголовка (где находятся системные кнопки Свернуть/Развернуть/Закрыть) -->
+        <!-- Top padding of 50px ensures buttons are positioned below the standard title bar (where Minimize/Maximize/Close system buttons are located) -->
         <Grid VerticalAlignment="Top" Padding="20,45,20,20">
             <Button Content="Закрыть" Click="CloseButton_Click" HorizontalAlignment="Left" Style="{ThemeResource AccentButtonStyle}"/>
             

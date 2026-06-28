@@ -16,6 +16,7 @@ namespace ovkdesktop.ViewModels
         private readonly IAPIServiceProfile _profileService;
         private readonly IAPIServiceWall _wallService;
         private readonly AudioPlayerService _audioPlayerService;
+        private readonly INavigationService _navigationService;
 
         [ObservableProperty]
         private long _profileId;
@@ -63,11 +64,12 @@ namespace ovkdesktop.ViewModels
 
         private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
 
-        public AnotherProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
+        public AnotherProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, INavigationService navigationService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _profileService = profileService;
             _wallService = wallService;
             _audioPlayerService = audioPlayerService;
+            _navigationService = navigationService;
             _dispatcherService = dispatcherService;
         }
 
@@ -250,8 +252,10 @@ namespace ovkdesktop.ViewModels
         public void PlayAudio(Audio audio)
         {
             if (audio == null) return;
-            _audioPlayerService.SetPlaylist(new ObservableCollection<Audio> { audio }, 0);
+            // For simplicity, play just the selected track
+            _audioPlayerService.PlayAudio(audio);
         }
+
 
         [RelayCommand]
         public async Task ToggleFriendshipAsync()
