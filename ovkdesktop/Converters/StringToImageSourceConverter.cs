@@ -39,7 +39,14 @@ namespace ovkdesktop.Converters
                 
                 // create a BitmapImage from the URL
                 Debug.WriteLine($"[StringToImageSourceConverter] Creating image from URL: {imageUrl}");
-                return new BitmapImage(new Uri(imageUrl));
+                var bitmap = new BitmapImage(new Uri(imageUrl));
+                
+                if (parameter != null && int.TryParse(parameter.ToString(), out int width))
+                {
+                    bitmap.DecodePixelWidth = width;
+                }
+
+                return bitmap;
             }
             catch (Exception ex)
             {

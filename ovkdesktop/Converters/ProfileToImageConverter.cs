@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media.Imaging;
 using ovkdesktop.Models;
 using System;
@@ -13,7 +13,6 @@ namespace ovkdesktop.Converters
     {
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            // 1. Check if UserProfile object
             if (value is UserProfile profile)
             {
                 // 2. Check for avatar URL
@@ -22,7 +21,15 @@ namespace ovkdesktop.Converters
                     try
                     {
                         // 3. Create and return image
-                        return new BitmapImage(new Uri(profile.BestAvailablePhoto));
+                        var bitmap = new BitmapImage(new Uri(profile.BestAvailablePhoto));
+                        
+                        // Parse DecodePixelWidth if provided
+                        if (parameter != null && int.TryParse(parameter.ToString(), out int width))
+                        {
+                            bitmap.DecodePixelWidth = width;
+                        }
+
+                        return bitmap;
                     }
                     catch (Exception)
                     {

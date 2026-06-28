@@ -7,8 +7,13 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:ovkdesktop.Models"
+    xmlns:converters="using:ovkdesktop.Converters"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.Resources>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
+    </Page.Resources>
 
     <Grid>
         <VisualStateManager.VisualStateGroups>
@@ -82,14 +87,14 @@
                                         </Grid.ColumnDefinitions>
                                         <Ellipse Width="48" Height="48" Margin="0,0,15,0">
                                             <Ellipse.Fill>
-                                                <ImageBrush ImageSource="{Binding BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                                <ImageBrush ImageSource="{x:Bind BestAvailablePhoto, Converter={StaticResource StringToImageSourceConverter}, ConverterParameter='48'}" Stretch="UniformToFill"/>
                                             </Ellipse.Fill>
                                         </Ellipse>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Style="{ThemeResource BaseTextBlockStyle}"/>
+                                            <TextBlock Text="{x:Bind Name}" FontWeight="SemiBold" Style="{ThemeResource BaseTextBlockStyle}"/>
                                             <TextBlock Opacity="0.7" Style="{ThemeResource BodyTextBlockStyle}">
                                                 <Run Text="@"/>
-                                                <Run Text="{Binding ScreenName}"/>
+                                                <Run Text="{x:Bind ScreenName}"/>
                                             </TextBlock>
                                         </StackPanel>
                                     </Grid>

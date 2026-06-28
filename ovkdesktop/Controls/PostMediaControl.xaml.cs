@@ -51,12 +51,21 @@ namespace ovkdesktop.Controls
                 {
                     try
                     {
+                        var bitmapImage = new BitmapImage(new Uri(attachment.Photo.LargestPhotoUrl));
+                        // Optimize memory consumption by rendering smaller images initially
+                        bitmapImage.DecodePixelWidth = 800;
+
                         var image = new Image
                         {
-                            Source = new BitmapImage(new Uri(attachment.Photo.LargestPhotoUrl)),
+                            Source = bitmapImage,
                             Stretch = Stretch.Uniform,
                             MaxHeight = 400,
                             Margin = new Thickness(0, 5, 0, 5)
+                        };
+
+                        image.Tapped += (s, ev) =>
+                        {
+                            ImageViewerDialog.Show(attachment.Photo.LargestPhotoUrl, image.XamlRoot);
                         };
                         MediaContainer.Children.Add(image);
                     }

@@ -13,6 +13,7 @@
 
 	<Page.Resources>
 		<converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
+		<converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
 	</Page.Resources>
 
 	<Grid>
@@ -68,20 +69,20 @@
 									</Grid.ColumnDefinitions>
 
 									<!-- avatar -->
-									<PersonPicture ProfilePicture="{Binding Avatar}" Width="65" />
+									<PersonPicture ProfilePicture="{x:Bind Avatar, Converter={StaticResource StringToImageSourceConverter}, ConverterParameter='65'}" Width="65" />
 
 									<!-- name -->
 									<StackPanel Grid.Column="1" Margin="10,0">
-										<TextBlock Text="{Binding FirstName}" FontWeight="SemiBold" FontSize="16" Margin="5,7,0,0"/>
-										<TextBlock Text="{Binding LastName}" Opacity="0.7" Margin="5,0,0,0"/>
+										<TextBlock Text="{x:Bind FirstName}" FontWeight="SemiBold" FontSize="16" Margin="5,7,0,0"/>
+										<TextBlock Text="{x:Bind LastName}" Opacity="0.7" Margin="5,0,0,0"/>
 									</StackPanel>
 
 									<!-- action buttons -->
 									<StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5">
-										<Button Tag="{Binding}" Click="AcceptRequest_Click" ToolTipService.ToolTip="Принять заявку">
+										<Button Tag="{x:Bind}" Click="AcceptRequest_Click" ToolTipService.ToolTip="Принять заявку">
 											<FontIcon Glyph="&#xE73E;" />
 										</Button>
-										<Button Tag="{Binding}" Click="RejectRequest_Click" ToolTipService.ToolTip="Отклонить заявку">
+										<Button Tag="{x:Bind}" Click="RejectRequest_Click" ToolTipService.ToolTip="Отклонить заявку">
 											<FontIcon Glyph="&#xE711;" />
 										</Button>
 									</StackPanel>
@@ -101,6 +102,7 @@
 
             <ListView x:Name="FriendsListView"
                       ItemsSource="{x:Bind Friends}"
+                      Loaded="FriendsListView_Loaded"
                       ScrollViewer.VerticalScrollMode="Auto"
                       ScrollViewer.VerticalScrollBarVisibility="Auto">
                 <ListView.ItemTemplate>
@@ -118,19 +120,19 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- avatar of user -->
-                                <PersonPicture ProfilePicture="{Binding Avatar}" Width="65" />
+                                <PersonPicture ProfilePicture="{x:Bind Avatar, Converter={StaticResource StringToImageSourceConverter}, ConverterParameter='65'}" Width="65" />
 
                                 <!-- nickname of friend -->
                                 <StackPanel Grid.Column="1" Margin="10,0">
-                                    <TextBlock Text="{Binding FirstName}" FontWeight="SemiBold" FontSize="16" Margin="5,7,0,0"/>
-                                    <TextBlock Text="{Binding LastName}" Opacity="0.7" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{x:Bind FirstName}" FontWeight="SemiBold" FontSize="16" Margin="5,7,0,0"/>
+                                    <TextBlock Text="{x:Bind LastName}" Opacity="0.7" Margin="5,0,0,0"/>
                                 </StackPanel>
 
                                 <!-- online status -->
                                 <TextBlock Grid.Column="2"
                                            Text="В сети"
                                            VerticalAlignment="Center"
-                                           Visibility="{Binding IsOnline, Converter={StaticResource IntToVisibilityConverter}}"/>
+                                           Visibility="{x:Bind IsOnline, Converter={StaticResource IntToVisibilityConverter}}"/>
                             </Grid>
                         </Border>
                     </DataTemplate>

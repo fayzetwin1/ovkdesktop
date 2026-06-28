@@ -118,6 +118,12 @@ namespace ovkdesktop
         private Models.Friends selectedFriend;
         private Models.FriendRequest selectedRequest;
 
+        private int _currentFriendsOffset = 0;
+        private const int _friendsLoadCount = 50;
+        private bool _isLoadingMoreFriends = false;
+        private bool _canLoadMoreFriends = true;
+        private ScrollViewer _friendsScrollViewer;
+
         public FriendsPage()
         {
             this.InitializeComponent();
@@ -204,7 +210,10 @@ namespace ovkdesktop
                 LoadingProgressRingFriends.IsActive = true;
                 LoadingProgressRingFriends.Visibility = Visibility.Visible;
 
-                var response = await apiService.GetFriendsAsync(token);
+                _currentFriendsOffset = 0;
+                _canLoadMoreFriends = true;
+
+                var response = await apiService.GetFriendsAsync(token, _currentFriendsOffset, _friendsLoadCount);
 
                 if (response?.Response?.Items != null)
                 {
@@ -216,18 +225,21 @@ namespace ovkdesktop
 
                     int count = response.Response.Count;
                     FriendsCount.Text = $"Всего друзей: {count}";
+                    
+                    _currentFriendsOffset += response.Response.Items.Count;
+                    if (Friends.Count >= count || response.Response.Items.Count == 0)
+                    {
+                        _canLoadMoreFriends = false;
+                    }
                 }
                 else
                 {
                     ShowError("Не удалось загрузить список друзей.");
                 }
-
-
-
             }
             catch (Exception ex)
             {
-                ShowError($"error of load posts: {ex.Message}");
+                ShowError($"error of load friends: {ex.Message}");
                 Debug.WriteLine($"exception: {ex}");
             }
             finally
@@ -235,6 +247,79 @@ namespace ovkdesktop
                 LoadingProgressRingFriends.IsActive = false;
                 LoadingProgressRingFriends.Visibility = Visibility.Collapsed;
             }
+        }
+
+        private async Task LoadMoreFriendsAsync()
+        {
+            if (_isLoadingMoreFriends || !_canLoadMoreFriends) return;
+
+            try
+            {
+                _isLoadingMoreFriends = true;
+                
+                OVKDataBody token = await LoadTokenAsync();
+                if (token == null || string.IsNullOrEmpty(token.Token)) return;
+
+                var response = await apiService.GetFriendsAsync(token.Token, _currentFriendsOffset, _friendsLoadCount);
+
+                if (response?.Response?.Items != null && response.Response.Items.Count > 0)
+                {
+                    foreach (var friend in response.Response.Items)
+                    {
+                        Friends.Add(friend);
+                    }
+                    
+                    _currentFriendsOffset += response.Response.Items.Count;
+                    if (Friends.Count >= response.Response.Count || response.Response.Items.Count == 0)
+                    {
+                        _canLoadMoreFriends = false;
+                    }
+                }
+                else
+                {
+                    _canLoadMoreFriends = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading more friends: {ex.Message}");
+            }
+            finally
+            {
+                _isLoadingMoreFriends = false;
+            }
+        }
+
+        private void FriendsListView_Loaded(object sender, RoutedEventArgs e)
+        {
+            _friendsScrollViewer = FindVisualChild<ScrollViewer>(FriendsListView);
+            if (_friendsScrollViewer != null)
+            {
+                _friendsScrollViewer.ViewChanged += FriendsScrollViewer_ViewChanged;
+            }
+        }
+
+        private async void FriendsScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+        {
+            if (_friendsScrollViewer.VerticalOffset >= _friendsScrollViewer.ScrollableHeight - 50)
+            {
+                await LoadMoreFriendsAsync();
+            }
+        }
+
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typedChild)
+                    return typedChild;
+
+                var childOfChild = FindVisualChild<T>(child);
+                if (childOfChild != null)
+                    return childOfChild;
+            }
+            return null;
         }
 
         private async Task LoadFriendRequestsAsync(string token)
@@ -529,11 +614,11 @@ namespace ovkdesktop
                 return 0;
             }
 
-            public async Task<Models.APIResponseFriends> GetFriendsAsync(string token)
+            public async Task<Models.APIResponseFriends> GetFriendsAsync(string token, int offset = 0, int count = 50)
             {
                 try
                 {
-                    string url = $"method/friends.get?access_token={token}&fields=photo_200&v=5.126";
+                    string url = $"method/friends.get?access_token={token}&fields=photo_200&offset={offset}&count={count}&v=5.126";
                     var content = await httpClient.GetStringAsync(url);
                     return JsonSerializer.Deserialize<Models.APIResponseFriends>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 }
