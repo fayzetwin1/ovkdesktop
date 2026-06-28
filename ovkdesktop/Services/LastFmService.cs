@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using ovkdesktop.Models;
 using System;
@@ -12,9 +12,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Windows.System;
 
-namespace ovkdesktop
+namespace ovkdesktop.Services
 {
-    public class LastFmService
+    public class LastFmService : ILastFmService
     {
         private const string ApiBaseUrl = "https://ws.audioscrobbler.com/2.0/";
 

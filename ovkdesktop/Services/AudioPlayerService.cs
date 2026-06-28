@@ -13,9 +13,9 @@ using Microsoft.UI.Xaml;
 using ovkdesktop.Models; // add an explicit import of the model
 using Newtonsoft.Json.Linq;
 
-namespace ovkdesktop
+namespace ovkdesktop.Services
 {
-    public class AudioPlayerService : IDisposable
+    public class AudioPlayerService : IAudioPlayerService, IDisposable
     {
         // lastfm support
         private readonly LastFmService _lastFmService;

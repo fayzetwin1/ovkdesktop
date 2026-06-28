@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -9,7 +9,7 @@ using Windows.Storage;
 using ovkdesktop.Models;
 using System.IO;
 
-namespace ovkdesktop
+namespace ovkdesktop.Helpers
 {
     public class SettingsHelper
     {

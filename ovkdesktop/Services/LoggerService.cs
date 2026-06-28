@@ -7,9 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.Storage;
 
-namespace ovkdesktop
+namespace ovkdesktop.Services
 {
-    public sealed class LoggerService : IDisposable
+    public sealed class LoggerService : ILoggerService, IDisposable
     {
         public static LoggerService Instance { get; } = new LoggerService();
 

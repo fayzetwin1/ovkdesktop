@@ -7,9 +7,9 @@ using System.Text.Json;
 using System.Linq;
 using ovkdesktop.Models;
 
-namespace ovkdesktop
+namespace ovkdesktop.Services
 {
-    public class APIServiceNewsPosts
+    public class APIServiceNewsPosts : IAPIServiceNewsPosts
     {
         private HttpClient httpClient;
         private readonly Dictionary<string, (DateTimeOffset CreatedAt, NewsFeedAPIResponse Response)> cache = new();

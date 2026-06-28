@@ -9,7 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ovkdesktop
+namespace ovkdesktop.Helpers
 {
     public static class SessionHelper
     {
