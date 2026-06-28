@@ -22,8 +22,9 @@ namespace ovkdesktop
         protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            if (e.Parameter is long ownerId)
+            if (e.Parameter is IConvertible convertible)
             {
+                long ownerId = convertible.ToInt64(null);
                 await ViewModel.InitializeAsync(ownerId);
             }
         }
@@ -44,8 +45,9 @@ namespace ovkdesktop
 
         private void Author_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement element && element.Tag is long fromId)
+            if (sender is FrameworkElement element && element.Tag is IConvertible convertible)
             {
+                long fromId = convertible.ToInt64(null);
                 if (fromId == ViewModel.ProfileId) return;
                 Frame.Navigate(typeof(AnotherProfilePage), fromId);
             }
@@ -53,8 +55,9 @@ namespace ovkdesktop
 
         private void RepostAuthor_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement element && element.Tag is long fromId)
+            if (sender is FrameworkElement element && element.Tag is IConvertible convertible)
             {
+                long fromId = convertible.ToInt64(null);
                 if (fromId == ViewModel.ProfileId) return;
                 Frame.Navigate(typeof(AnotherProfilePage), fromId);
             }
@@ -94,6 +97,20 @@ namespace ovkdesktop
             if (sender is FrameworkElement element && element.DataContext is UserWallPost post)
             {
                 ViewModel.RepostCommand.Execute(post);
+            }
+        }
+
+        private void PageScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+        {
+            if (sender is ScrollViewer scrollViewer)
+            {
+                if (scrollViewer.VerticalOffset >= scrollViewer.ScrollableHeight - 500)
+                {
+                    if (ViewModel.CanLoadMore && !ViewModel.IsLoadingMore && !ViewModel.IsLoading)
+                    {
+                        ViewModel.LoadMorePostsCommand.Execute(null);
+                    }
+                }
             }
         }
     }

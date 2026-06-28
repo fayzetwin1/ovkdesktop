@@ -610,12 +610,15 @@ namespace ovkdesktop.Models
         public string Site { get; set; }
 
         [JsonPropertyName("is_member")]
+        [JsonConverter(typeof(FlexibleBoolJsonConverter))]
         public bool IsMember { get; set; }
 
         [JsonPropertyName("can_post")]
+        [JsonConverter(typeof(FlexibleBoolJsonConverter))]
         public bool CanPost { get; set; }
 
         [JsonPropertyName("is_admin")]
+        [JsonConverter(typeof(FlexibleBoolJsonConverter))]
         public bool IsAdmin { get; set; }
 
         public UserProfile ToUserProfile()

@@ -33,4 +33,32 @@ namespace ovkdesktop.Models
             writer.WriteNumberValue(value);
         }
     }
+
+    public class FlexibleBoolJsonConverter : JsonConverter<bool>
+    {
+        public override bool Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.True) return true;
+            if (reader.TokenType == JsonTokenType.False) return false;
+            
+            if (reader.TokenType == JsonTokenType.Number)
+            {
+                if (reader.TryGetInt32(out int intValue))
+                    return intValue != 0;
+            }
+            
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                var stringValue = reader.GetString();
+                if (bool.TryParse(stringValue, out bool boolValue)) return boolValue;
+                if (int.TryParse(stringValue, out int intVal)) return intVal != 0;
+            }
+            return false;
+        }
+
+        public override void Write(Utf8JsonWriter writer, bool value, JsonSerializerOptions options)
+        {
+            writer.WriteBooleanValue(value);
+        }
+    }
 } 

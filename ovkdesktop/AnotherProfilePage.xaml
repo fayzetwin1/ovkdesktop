@@ -6,6 +6,7 @@
     xmlns:local="using:ovkdesktop"
     xmlns:models="using:ovkdesktop.Models"
     xmlns:converters="using:ovkdesktop.Converters"
+    xmlns:controls="using:ovkdesktop.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -18,6 +19,7 @@
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
         <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
         <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
+        <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
         
         <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:UserWallPost">
             <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
@@ -144,19 +146,17 @@
                       TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <ScrollViewer Grid.Row="1" Margin="0,10,0,0">
+        <ScrollViewer x:Name="PageScrollViewer" Grid.Row="1" Margin="0,10,0,0" ViewChanged="PageScrollViewer_ViewChanged">
             <StackPanel Margin="20,0,20,20">
                 <Grid Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-
                     <PersonPicture Grid.Column="0" 
-                          x:Name="ProfileAvatar" 
-                          ProfilePicture="{x:Bind ViewModel.ProfilePhotoUrl, Mode=OneWay}"
-                          Width="150" Height="150" Margin="50,25,20,0"
-                          VerticalAlignment="Top"/>
+                                  x:Name="ProfileAvatar" 
+                                  ProfilePicture="{x:Bind ViewModel.ProfilePhotoUrl, Mode=OneWay}"
+                                  Width="150" Height="150" Margin="50,25,20,0" VerticalAlignment="Top"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock x:Name="ProfileNameTextBlock" Text="{x:Bind ViewModel.ProfileName, Mode=OneWay, FallbackValue='Загрузка...'}" 
@@ -165,7 +165,7 @@
                         <StackPanel x:Name="FriendActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="{x:Bind ViewModel.IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Button x:Name="AddFriendButton" Command="{x:Bind ViewModel.ToggleFriendshipCommand}" Margin="0,0,10,0">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <FontIcon Glyph="" FontSize="16"/>
+                                    <FontIcon Glyph="&#xE8FA;" FontSize="16"/>
                                     <TextBlock Text="Добавить в друзья"/>
                                 </StackPanel>
                             </Button>
@@ -174,7 +174,7 @@
                         <StackPanel x:Name="GroupActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="{x:Bind ViewModel.IsGroup, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="10">
                             <Button x:Name="JoinLeaveGroupButton" Command="{x:Bind ViewModel.ToggleGroupMembershipCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <FontIcon x:Name="JoinLeaveIcon" Glyph=""/>
+                                    <FontIcon x:Name="JoinLeaveIcon" Glyph="&#xE710;"/>
                                     <TextBlock x:Name="JoinLeaveText" Text="Подписаться"/>
                                 </StackPanel>
                             </Button>
@@ -192,148 +192,63 @@
                 <ListView x:Name="PostsListView" 
                          ItemsSource="{x:Bind ViewModel.Posts, Mode=OneWay}"
                          HorizontalAlignment="Stretch">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Margin" Value="0,0,0,10" />
+                            <Setter Property="Padding" Value="0" />
+                        </Style>
+                    </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="models:UserWallPost">
                             <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                   BorderThickness="1" CornerRadius="8"
-                                   Margin="60,5,60,10" Padding="15"
-                                   HorizontalAlignment="Stretch">
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1" CornerRadius="8"
+                                    Margin="60,0,60,0" Padding="15"
+                                    HorizontalAlignment="Stretch">
 
-                                <Border.ContextFlyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem Text="Репост" 
-                                            Click="RepostItem_Click"/>
-                                    </MenuFlyout>
-                                </Border.ContextFlyout>
-
-                                <Grid HorizontalAlignment="Stretch">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-
-                                    <!-- Row 0: Post Header -->
-                                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <!-- Header -->
+                                    <Grid Margin="0,0,0,10">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-
-                                        <!-- Author Avatar -->
-                                        <Button Grid.Column="0" Padding="0" BorderThickness="0" Background="Transparent"
-                                            Tag="{Binding FromId}" Click="Author_Click"
-                                            VerticalAlignment="Top">
-                                            <Ellipse Width="48" Height="48" Margin="0,0,12,0">
+                                        
+                                        <Button Padding="0" Background="Transparent" BorderThickness="0" 
+                                                Tag="{x:Bind FromId}"
+                                                Click="Author_Click">
+                                            <Ellipse Width="48" Height="48">
                                                 <Ellipse.Fill>
-                                                    <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                                                    <ImageBrush ImageSource="{x:Bind AuthorProfile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill" />
                                                 </Ellipse.Fill>
                                             </Ellipse>
                                         </Button>
 
-                                        <!-- Author Info & Date -->
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
-                                                <Button Padding="0" Margin="0,-2,0,0" BorderThickness="0" Background="Transparent"
-                                                    Tag="{Binding FromId}" Click="Author_Click">
-                                                    <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold"
-                                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                                                </Button>
-
-                                                <StackPanel Orientation="Horizontal" Spacing="5"
-                                                    Visibility="{Binding IsWallPostByAnotherUser, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                    <TextBlock Text=">" FontWeight="SemiBold" Opacity="0.7"/>
-                                                    <TextBlock Text="{Binding ElementName=ProfileNameTextBlock, Path=Text}" FontWeight="SemiBold" Opacity="0.7"/>
-                                                </StackPanel>
-                                            </StackPanel>
-
-                                            <!-- Date and Pinned Icon -->
-                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
-                                                <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
-                                                <FontIcon Glyph="" FontSize="12"
-                                                      Foreground="{ThemeResource SystemAccentColor}"
-                                                      ToolTipService.ToolTip="Закрепленная запись"
-                                                      Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                      VerticalAlignment="Center"/>
-                                            </StackPanel>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                                            <Button Padding="0" Background="Transparent" BorderThickness="0" 
+                                                    Tag="{x:Bind FromId}"
+                                                    Click="Author_Click">
+                                                <TextBlock Text="{x:Bind AuthorProfile.FullName, Mode=OneWay}" FontWeight="SemiBold" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
+                                            </Button>
+                                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" FontSize="13" Opacity="0.7" />
                                         </StackPanel>
                                     </Grid>
 
-                                    <!-- Post text -->
-                                    <TextBlock Grid.Row="1"
-                                              Text="{Binding Text}"
-                                              TextWrapping="Wrap" Margin="0,0,0,10"
-                                              Foreground="{ThemeResource TextFillColorPrimary}"/>
+                                    <!-- Post Text -->
+                                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" IsTextSelectionEnabled="True" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
 
-                                    <ItemsControl Grid.Row="2"
-                                      ItemsSource="{Binding Attachments}"
-                                      ItemTemplateSelector="{StaticResource AttachmentTemplateSelector}"
-                                      Visibility="{Binding Attachments.Count, Converter={StaticResource IntToVisibilityConverter}}" 
-                                      Margin="0,0,0,10">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Vertical"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-
-                                    <!-- Audio -->
-                                    <ItemsControl Grid.Row="5"
-                                                 ItemsSource="{Binding Audios}"
-                                                 Visibility="{Binding HasAudio, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                 Margin="0,0,0,10"
-                                                 HorizontalAlignment="Stretch">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="models:Audio">
-                                                <Grid Height="60" Margin="0,5" HorizontalAlignment="Stretch">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="40"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <Button Grid.Column="0" Width="40" Height="40" 
-                                                            Padding="0" Background="Transparent"
-                                                            Tag="{Binding}" Click="PlayAudio_Click">
-                                                        <FontIcon Glyph="&#xE768;" FontSize="16"/>
-                                                    </Button>
-
-                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
-                                                        <TextBlock Text="{Binding Title}" 
-                                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                                                   FontWeight="SemiBold"/>
-                                                        <TextBlock Text="{Binding Artist}" 
-                                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
-                                                                   Opacity="0.8" FontSize="12"/>
-                                                    </StackPanel>
-
-                                                    <TextBlock Grid.Column="2" Text="{Binding FormattedDuration}" 
-                                                               VerticalAlignment="Center" Margin="10,0,0,0"
-                                                               Opacity="0.8" FontSize="12"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <!-- Media Attachments -->
+                                    <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
 
                                     <!-- Repost -->
-                                    <ItemsControl Grid.Row="6"
-                                          ItemsSource="{Binding CopyHistory}"
-                                          Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
-                                          ItemTemplate="{StaticResource RepostItemTemplate}"
-                                          Margin="0,0,0,10"/>
+                                    <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
+                                                  ItemTemplate="{StaticResource RepostItemTemplate}" 
+                                                  Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  Margin="0,0,0,10"/>
 
                                     <!-- Likes and comments -->
-                                    <StackPanel Grid.Row="7" 
-                                              Orientation="Horizontal" 
-                                              Spacing="15" 
-                                              Margin="0,20,0,0"
-                                              VerticalAlignment="Bottom">
+                                    <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,15,0,0">
                                         <!-- Like button -->
                                         <Button Tag="{Binding}" 
                                                 Click="LikeButton_Click" 
@@ -342,8 +257,8 @@
                                                 Padding="5,2">
                                             <StackPanel Orientation="Horizontal" Spacing="5">
                                                 <TextBlock Text="❤" />
-                                                <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" 
-                                                           Foreground="{Binding Likes.UserLikes, Converter={StaticResource LikeButtonColorConverter}, FallbackValue=Black}"/>
+                                                <TextBlock Text="{x:Bind Likes.Count, Mode=OneWay}" 
+                                                           Foreground="{x:Bind Likes.UserLikes, Mode=OneWay, Converter={StaticResource LikeButtonColorConverter}}"/>
                                             </StackPanel>
                                         </Button>
 
@@ -355,17 +270,31 @@
                                                 Padding="5,2">
                                             <StackPanel Orientation="Horizontal" Spacing="5">
                                                 <TextBlock Text="💬" />
-                                                <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" 
-                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Text="{x:Bind Comments.Count, Mode=OneWay}" />
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Repost button -->
+                                        <Button Tag="{Binding}" 
+                                                Click="RepostItem_Click" 
+                                                Background="Transparent" 
+                                                BorderThickness="0" 
+                                                Padding="5,2">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <TextBlock Text="🔁" />
+                                                <TextBlock Text="{x:Bind Reposts.Count, Mode=OneWay}" />
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
-                                </Grid>
+                                </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
-
+                
+                <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingMore, Mode=OneWay}" 
+                             Width="30" Height="30" 
+                             HorizontalAlignment="Center" Margin="0,20,0,20"/>
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -24,7 +24,7 @@ namespace ovkdesktop.ViewModels
         private string _profileName;
 
         [ObservableProperty]
-        private string _profilePhotoUrl;
+        private Microsoft.UI.Xaml.Media.ImageSource _profilePhotoUrl;
 
         [ObservableProperty]
         private bool _isGroup;
@@ -49,6 +49,15 @@ namespace ovkdesktop.ViewModels
 
         [ObservableProperty]
         private string _postsCountText = "Загрузка постов...";
+
+        [ObservableProperty]
+        private bool _isLoadingMore;
+
+        [ObservableProperty]
+        private bool _canLoadMore = true;
+
+        private int _currentOffset = 0;
+        private const int PostsPerPage = 20;
 
         private CancellationTokenSource _cts;
 
@@ -88,7 +97,8 @@ namespace ovkdesktop.ViewModels
                     if (Group != null)
                     {
                         ProfileName = Group.Name;
-                        ProfilePhotoUrl = Group.Photo200;
+                        if (!string.IsNullOrEmpty(Group.Photo200))
+                            ProfilePhotoUrl = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(Group.Photo200));
                     }
                     else
                     {
@@ -106,7 +116,8 @@ namespace ovkdesktop.ViewModels
                     if (User != null)
                     {
                         ProfileName = User.FullName;
-                        ProfilePhotoUrl = User.Photo200;
+                        if (!string.IsNullOrEmpty(User.Photo200))
+                            ProfilePhotoUrl = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(User.Photo200));
                     }
                     else
                     {
@@ -116,7 +127,10 @@ namespace ovkdesktop.ViewModels
                     }
                 }
 
-                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, id, User, Group, 0, 20, token);
+                _currentOffset = 0;
+                CanLoadMore = true;
+                IsLoadingMore = false;
+                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, id, User, Group, _currentOffset, PostsPerPage, token);
                 
                 Posts.Clear();
                 foreach (var post in wallPosts)
@@ -140,6 +154,40 @@ namespace ovkdesktop.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        public async Task LoadMorePostsAsync()
+        {
+            if (IsLoading || IsLoadingMore || !CanLoadMore) return;
+
+            IsLoadingMore = true;
+            try
+            {
+                var sessionToken = await SessionHelper.GetTokenAsync();
+                if (string.IsNullOrEmpty(sessionToken)) return;
+
+                _currentOffset += PostsPerPage;
+                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, ProfileId, User, Group, _currentOffset, PostsPerPage, _cts?.Token ?? CancellationToken.None);
+                
+                if (wallPosts.Count < PostsPerPage)
+                {
+                    CanLoadMore = false;
+                }
+
+                foreach (var post in wallPosts)
+                {
+                    Posts.Add(post);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AnotherProfileViewModel] LoadMorePostsAsync error: {ex.Message}");
+            }
+            finally
+            {
+                IsLoadingMore = false;
             }
         }
 
