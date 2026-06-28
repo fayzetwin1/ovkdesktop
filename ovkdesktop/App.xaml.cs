@@ -66,7 +66,7 @@ namespace ovkdesktop
         // handler of unhandled exceptions
         private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
         {
-            e.Handled = true; // Критически важно для отображения нашего окна
+            e.Handled = true; // critically important for displaying our custom crash window
             HandleException(e.Exception);
         }
 
@@ -103,11 +103,11 @@ namespace ovkdesktop
                 
                 ((Services.NavigationService)navigationService).Initialize(rootFrame);
 
-                // --- Блок 3: Навигация и активация ---
+                // --- block 3: navigation and activation ---
                 bool isTokenValid = await SessionHelper.IsTokenValidAsync();
                 rootFrame.Navigate(isTokenValid ? typeof(MainPage) : typeof(WelcomePage));
 
-                m_window.ExtendsContentIntoTitleBar = true;
+                m_window.ExtendsContentIntoTitleBar = false;
                 m_window.Activate();
 
                 Debug.WriteLine("[App] OnLaunched complete.");
@@ -131,6 +131,10 @@ namespace ovkdesktop
             services.AddSingleton<Services.IAPIServiceMusic, Services.APIServiceMusic>();
             services.AddSingleton<Services.IAPIServiceProfile, Services.APIServiceProfile>();
             services.AddSingleton<Services.IAPIServiceWall, Services.APIServiceWall>();
+            services.AddSingleton<Services.Interfaces.IDispatcherService, Services.WinUIDispatcherService>();
+            services.AddSingleton<Services.Interfaces.IFilePickerService, Services.WinUIFilePickerService>();
+            services.AddSingleton<Services.Interfaces.IClipboardService, Services.WinUIClipboardService>();
+            services.AddSingleton<ovkdesktop.Services.Interfaces.IMediaPlayerService, WinUIMediaPlayerService>();
             services.AddSingleton<AudioPlayerService>();
             services.AddSingleton<LastFmService>();
             services.AddSingleton(settings);
@@ -141,6 +145,7 @@ namespace ovkdesktop
             services.AddTransient<ViewModels.MusicViewModel>();
             services.AddTransient<ViewModels.ProfileViewModel>();
             services.AddTransient<ViewModels.AnotherProfileViewModel>();
+            services.AddTransient<ViewModels.PostsViewModel>();
 
             return services.BuildServiceProvider();
         }

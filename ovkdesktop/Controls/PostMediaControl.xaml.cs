@@ -47,11 +47,11 @@ namespace ovkdesktop.Controls
 
             foreach (var attachment in attachments)
             {
-                if (attachment.Type == "photo" && attachment.Photo != null && !string.IsNullOrEmpty(attachment.Photo.LargestPhotoUrl))
+                if (attachment.Type == "photo" && attachment.Photo != null && !string.IsNullOrEmpty(attachment.Photo.TimelinePhotoUrl))
                 {
                     try
                     {
-                        var bitmapImage = new BitmapImage(new Uri(attachment.Photo.LargestPhotoUrl));
+                        var bitmapImage = new BitmapImage(new Uri(attachment.Photo.TimelinePhotoUrl));
                         // Optimize memory consumption by rendering smaller images initially
                         bitmapImage.DecodePixelWidth = 800;
 

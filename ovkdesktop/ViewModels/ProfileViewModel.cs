@@ -43,11 +43,14 @@ namespace ovkdesktop.ViewModels
 
         private CancellationTokenSource _cts;
 
-        public ProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService)
+        private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
+
+        public ProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _profileService = profileService;
             _wallService = wallService;
             _audioPlayerService = audioPlayerService;
+            _dispatcherService = dispatcherService;
         }
 
         [RelayCommand]
@@ -85,24 +88,23 @@ namespace ovkdesktop.ViewModels
                 _currentOffset = 0;
                 CanLoadMore = true;
                 IsLoadingMore = false;
-                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, _currentOffset, PostsPerPage, token);
-                
-                Posts.Clear();
-                foreach (var post in wallPosts)
+                var wallResult = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, _currentOffset, PostsPerPage, token);
+                _dispatcherService.TryEnqueue(() =>
                 {
-                    Posts.Add(post);
-                }
+                    Posts.Clear();
+                    foreach (var post in wallResult.Items)
+                    {
+                        Posts.Add(post);
+                    }
+                });
 
-                _currentOffset += wallPosts.Count;
-                if (wallPosts.Count < PostsPerPage)
+                _currentOffset += wallResult.Items.Count;
+                if (wallResult.Items.Count < PostsPerPage)
                 {
                     CanLoadMore = false;
                 }
 
-                // Try to get total count
-                var rawWall = await _wallService.GetWallAsync(sessionToken, CurrentUserProfile.Id, 0, 1, token);
-                var count = rawWall?.Response?.Count ?? Posts.Count;
-                PostsCountText = $"{count} записей";
+                PostsCountText = $"{wallResult.TotalCount} записей";
             }
             catch (OperationCanceledException)
             {
@@ -129,18 +131,21 @@ namespace ovkdesktop.ViewModels
                 var sessionToken = await SessionHelper.GetTokenAsync();
                 if (string.IsNullOrEmpty(sessionToken)) return;
 
-                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, _currentOffset, PostsPerPage, _cts?.Token ?? CancellationToken.None);
+                var wallResult = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, _currentOffset, PostsPerPage, _cts?.Token ?? CancellationToken.None);
 
-                if (wallPosts.Count > 0)
+                if (wallResult.Items.Count > 0)
                 {
-                    foreach (var post in wallPosts)
+                    _dispatcherService.TryEnqueue(() =>
                     {
-                        Posts.Add(post);
-                    }
-                    _currentOffset += wallPosts.Count;
+                        foreach (var post in wallResult.Items)
+                        {
+                            Posts.Add(post);
+                        }
+                    });
+                    _currentOffset += wallResult.Items.Count;
                 }
 
-                if (wallPosts.Count < PostsPerPage)
+                if (wallResult.Items.Count < PostsPerPage)
                 {
                     CanLoadMore = false;
                 }

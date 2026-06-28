@@ -15,17 +15,8 @@ namespace ovkdesktop
         public PostsPage()
         {
             this.InitializeComponent();
-            ViewModel = new PostsViewModel();
+            ViewModel = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<PostsViewModel>();
             this.DataContext = ViewModel;
-
-            // Global handler for unhandled exceptions (kept from original code)
-            Application.Current.UnhandledException += UnhandledException_UnhandledException;
-        }
-
-        private void UnhandledException_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
-        {
-            e.Handled = true;
-            Debug.WriteLine($"[UNHANDLED EXCEPTION] {e.Exception.Message}");
         }
 
         private ScrollViewer _scrollViewer;
@@ -35,6 +26,7 @@ namespace ovkdesktop
             _scrollViewer = FindVisualChild<ScrollViewer>(PostsListView);
             if (_scrollViewer != null)
             {
+                _scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;
                 _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
             }
         }

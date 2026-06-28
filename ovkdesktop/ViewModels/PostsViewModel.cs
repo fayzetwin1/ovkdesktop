@@ -28,8 +28,11 @@ namespace ovkdesktop.ViewModels
         [ObservableProperty]
         private ObservableCollection<NewsFeedPost> _newsPosts = new();
 
-        public PostsViewModel()
+        private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
+
+        public PostsViewModel(ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
+            _dispatcherService = dispatcherService;
             // Initial load
             LoadNewsPostsCommand.Execute(true);
         }
@@ -91,7 +94,7 @@ namespace ovkdesktop.ViewModels
 
                 var profiles = authorIds.Any() ? await _apiService.GetUsersAsync(token.Token, authorIds) : new Dictionary<int, UserProfile>();
 
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _dispatcherService.TryEnqueue(() =>
                 {
                     try
                     {
@@ -138,7 +141,7 @@ namespace ovkdesktop.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Exception in LoadNewsPostsAsync: {ex}");
-                App.MainWindow.DispatcherQueue.TryEnqueue(() =>
+                _dispatcherService.TryEnqueue(() =>
                 {
                     IsLoading = false;
                     IsLoadingMore = false;

@@ -12,9 +12,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
-using Windows.Storage;
-using Windows.Storage.FileProperties;
-using Windows.Storage.Pickers;
 using ovkdesktop.Models;
 using Visibility = Microsoft.UI.Xaml.Visibility;
 
@@ -79,63 +76,49 @@ namespace ovkdesktop
 
         private async void UploadPhotoButton(object sender, RoutedEventArgs e)
         {
-            var photoPicker = new FileOpenPicker();
-            var window = App.MainWindow;
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(photoPicker, hWnd);
-
-            photoPicker.ViewMode = PickerViewMode.Thumbnail;
-            photoPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-            photoPicker.FileTypeFilter.Add(".jpg");
-            photoPicker.FileTypeFilter.Add(".jpeg");
-            photoPicker.FileTypeFilter.Add(".png");
-
-            var files = await photoPicker.PickMultipleFilesAsync();
+            var pickerService = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<ovkdesktop.Services.Interfaces.IFilePickerService>();
+            var files = await pickerService.PickMultipleFilesAsync(new[] { ".jpg", ".jpeg", ".png" });
+            
             if (files != null)
             {
-                foreach (var file in files)
+                foreach (var filePath in files)
                 {
-                    await AddAttachmentFromFile(file, AttachmentType.Photo);
+                    await AddAttachmentFromFile(filePath, AttachmentType.Photo);
                 }
             }
         }
 
         private async void UploadVideoButton(object sender, RoutedEventArgs e)
         {
-            var videoPicker = new FileOpenPicker();
-            var window = App.MainWindow;
-            var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-            WinRT.Interop.InitializeWithWindow.Initialize(videoPicker, hWnd);
-
-            videoPicker.ViewMode = PickerViewMode.Thumbnail;
-            videoPicker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
-            videoPicker.FileTypeFilter.Add(".mp4");
-            videoPicker.FileTypeFilter.Add(".mov");
-            videoPicker.FileTypeFilter.Add(".avi");
-
-            var file = await videoPicker.PickSingleFileAsync();
-            if (file != null)
+            var pickerService = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<ovkdesktop.Services.Interfaces.IFilePickerService>();
+            var file = await pickerService.PickSingleFileAsync(new[] { ".mp4", ".mov", ".avi" });
+            
+            if (!string.IsNullOrEmpty(file))
             {
                 await AddAttachmentFromFile(file, AttachmentType.Video);
             }
         }
 
-        private async Task AddAttachmentFromFile(StorageFile file, AttachmentType type)
+        private async Task AddAttachmentFromFile(string filePath, AttachmentType type)
         {
             var thumbnail = new BitmapImage();
             try
             {
-                using var stream = await file.GetThumbnailAsync(ThumbnailMode.PicturesView, 200);
-                await thumbnail.SetSourceAsync(stream);
+                if (type == AttachmentType.Photo)
+                {
+                    // Load image directly without Windows.Storage
+                    thumbnail = new BitmapImage(new Uri(filePath));
+                    thumbnail.DecodePixelHeight = 200;
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Could not create thumbnail for {file.Name}: {ex.Message}");
+                Debug.WriteLine($"Could not create thumbnail for {filePath}: {ex.Message}");
             }
 
             _attachments.Add(new AttachmentViewModel
             {
-                FilePath = file.Path,
+                FilePath = filePath,
                 Thumbnail = thumbnail,
                 Type = type
             });

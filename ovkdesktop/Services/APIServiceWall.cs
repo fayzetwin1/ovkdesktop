@@ -36,7 +36,7 @@ namespace ovkdesktop.Services
             return null;
         }
 
-        public async Task<List<UserWallPost>> GetHydratedWallAsync(string token, long ownerId, UserProfile userOwner, GroupProfile groupOwner, int offset = 0, int count = 20, CancellationToken cancellationToken = default)
+        public async Task<(List<UserWallPost> Items, int TotalCount)> GetHydratedWallAsync(string token, long ownerId, UserProfile userOwner, GroupProfile groupOwner, int offset = 0, int count = 20, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -53,7 +53,8 @@ namespace ovkdesktop.Services
                 initialResponse.EnsureSuccessStatusCode();
 
                 var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
-                if (wallData?.Response == null) return new List<UserWallPost>();
+                if (wallData?.Response == null) return (new List<UserWallPost>(), 0);
+                int totalCount = wallData.Response.Count;
 
                 var pinnedPostSummary = wallData.Response.Items.FirstOrDefault(p => p.IsPinned);
 
@@ -107,29 +108,28 @@ namespace ovkdesktop.Services
                 foreach (var g in wallData.Response.Groups ?? new()) groupsDict[g.Id] = g;
 
                 var fetchedIds = new HashSet<string>(allPostsById.Keys);
-                while (idsToFetch.Count > 0)
+                if (idsToFetch.Count > 0)
                 {
-                    var currentId = idsToFetch.Dequeue();
-                    if (fetchedIds.Contains(currentId)) continue;
-
-                    var getByIdUrl = $"method/wall.getById?access_token={token}&posts={currentId}&extended=1&v=5.126";
-                    var hydratedResponse = await httpClient.GetAsync(getByIdUrl, cancellationToken);
-                    if (!hydratedResponse.IsSuccessStatusCode) continue;
-
-                    var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
-                    if (hydratedData?.Response?.Items?.FirstOrDefault() is UserWallPost fullPost)
+                    // Batch up to 100 post IDs per request
+                    var uniqueIdsToFetch = idsToFetch.Where(id => !fetchedIds.Contains(id)).Distinct().ToList();
+                    for (int i = 0; i < uniqueIdsToFetch.Count; i += 100)
                     {
-                        allPostsById[currentId] = fullPost;
-                        fetchedIds.Add(currentId);
-                        foreach (var p in hydratedData.Response.Profiles ?? new()) if (!profilesDict.ContainsKey(p.Id)) profilesDict[p.Id] = p;
-                        foreach (var g in hydratedData.Response.Groups ?? new()) if (!groupsDict.ContainsKey(g.Id)) groupsDict[g.Id] = g;
-                        if (fullPost.HasRepost)
+                        var batchIds = string.Join(",", uniqueIdsToFetch.Skip(i).Take(100));
+                        var getByIdUrl = $"method/wall.getById?access_token={token}&posts={batchIds}&extended=1&v=5.126";
+                        var hydratedResponse = await httpClient.GetAsync(getByIdUrl, cancellationToken);
+                        if (!hydratedResponse.IsSuccessStatusCode) continue;
+
+                        var hydratedData = await hydratedResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+                        if (hydratedData?.Response?.Items != null)
                         {
-                            foreach (var nestedRepost in fullPost.CopyHistory)
+                            foreach (var fullPost in hydratedData.Response.Items)
                             {
-                                var nestedId = $"{nestedRepost.OwnerId}_{nestedRepost.Id}";
-                                if (!fetchedIds.Contains(nestedId)) idsToFetch.Enqueue(nestedId);
+                                var currentId = $"{fullPost.OwnerId}_{fullPost.Id}";
+                                allPostsById[currentId] = fullPost;
+                                fetchedIds.Add(currentId);
                             }
+                            foreach (var p in hydratedData.Response.Profiles ?? new()) if (!profilesDict.ContainsKey(p.Id)) profilesDict[p.Id] = p;
+                            foreach (var g in hydratedData.Response.Groups ?? new()) if (!groupsDict.ContainsKey(g.Id)) groupsDict[g.Id] = g;
                         }
                     }
                 }
@@ -161,13 +161,13 @@ namespace ovkdesktop.Services
                     }
                 }
 
-                return wallData.Response.Items;
+                return (wallData.Response.Items, totalCount);
             }
             catch (Exception ex)
             {
                 if (ex is not OperationCanceledException)
                     Debug.WriteLine($"[APIServiceWall] GetHydratedWallAsync error: {ex.Message}\n{ex.StackTrace}");
-                return new List<UserWallPost>();
+                return (new List<UserWallPost>(), 0);
             }
         }
 

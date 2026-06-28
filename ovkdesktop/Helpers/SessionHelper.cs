@@ -353,7 +353,7 @@ namespace ovkdesktop.Helpers
         /// <param name="ownerId">Object owner ID</param>
         /// <param name="itemId">Object ID</param>
         /// <returns>true if liked, false if not</returns>
-        public static async Task<bool> IsLikedAsync(string type, int ownerId, int itemId, CancellationToken cancellationToken = default) // <<< ИЗМЕНЕНИЕ
+        public static async Task<bool> IsLikedAsync(string type, int ownerId, int itemId, CancellationToken cancellationToken = default) // <<< MODIFICATION
         {
             try
             {

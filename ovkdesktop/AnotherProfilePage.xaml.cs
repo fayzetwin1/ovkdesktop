@@ -78,7 +78,7 @@ namespace ovkdesktop
 
         private void PlayAudio_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement element && element.Tag is Audio audio)
+            if (sender is FrameworkElement element && element.DataContext is Audio audio)
             {
                 ViewModel.PlayAudioCommand.Execute(audio);
             }
@@ -86,7 +86,7 @@ namespace ovkdesktop
 
         private void LikeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is FrameworkElement element && element.Tag is UserWallPost post)
+            if (sender is FrameworkElement element && element.DataContext is UserWallPost post)
             {
                 ViewModel.ToggleLikeCommand.Execute(post);
             }

@@ -48,10 +48,13 @@ namespace ovkdesktop.ViewModels
         private enum AudioMode { Popular, MyAudio, Search }
         private AudioMode _currentMode = AudioMode.Popular;
 
-        public MusicViewModel(IAPIServiceMusic musicService, AudioPlayerService audioPlayerService)
+        private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
+
+        public MusicViewModel(IAPIServiceMusic musicService, AudioPlayerService audioPlayerService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _musicService = musicService;
             _audioPlayerService = audioPlayerService;
+            _dispatcherService = dispatcherService;
 
             if (_audioPlayerService != null)
             {
@@ -336,7 +339,7 @@ namespace ovkdesktop.ViewModels
             // Sync with UI from service events
             if (_currentMode == AudioMode.MyAudio)
             {
-                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()?.TryEnqueue(() =>
+                _dispatcherService.TryEnqueue(() =>
                 {
                     if (!audio.IsAdded)
                     {

@@ -6,12 +6,12 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Windows.Media.Core;
-using Windows.Media.Playback;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using ovkdesktop.Models; // add an explicit import of the model
 using Newtonsoft.Json.Linq;
+using ovkdesktop.Services.Interfaces;
+using Windows.Storage;
+using System.IO;
 
 namespace ovkdesktop.Services
 {
@@ -24,16 +24,10 @@ namespace ovkdesktop.Services
 
 
         // main player for audio playback
-        private readonly MediaPlayer _mediaPlayer;
-        
-        // timer for tracking the playback position
-        private readonly DispatcherTimer _positionTimer;
+        private readonly IMediaPlayerService _mediaPlayer;
         
         // current index of the track in the playlist
         private int _currentIndex = -1;
-        
-        // flag of the playback state
-        private bool _isPlaying = false;
         
         // current playlist
         public ObservableCollection<Models.Audio> Playlist { get; private set; } = new ObservableCollection<Models.Audio>();
@@ -51,44 +45,29 @@ namespace ovkdesktop.Services
         public event EventHandler<Models.Audio> FavoriteStatusChanged;
         
         // properties for accessing the state of the player
-        public bool IsPlaying => _isPlaying;
-        public TimeSpan CurrentPosition => _mediaPlayer?.PlaybackSession?.Position ?? TimeSpan.Zero;
+        public bool IsPlaying => _mediaPlayer?.IsPlaying ?? false;
+        public TimeSpan CurrentPosition => _mediaPlayer?.Position ?? TimeSpan.Zero;
         public TimeSpan TotalDuration 
         {
             get 
             {
                 try 
                 {
-                    if (_mediaPlayer?.PlaybackSession == null)
+                    if (_mediaPlayer == null)
                         return TimeSpan.Zero;
 
-                    // try to get the duration from the playback session
-                    TimeSpan naturalDuration = _mediaPlayer.PlaybackSession.NaturalDuration;
-                    
-                    // if the duration is incorrect, try to get it from the media source
-                    if (naturalDuration.TotalSeconds <= 0 && _mediaPlayer.Source is MediaSource mediaSource && mediaSource.Duration.HasValue)
-                    {
-                        TimeSpan sourceDuration = mediaSource.Duration.Value;
-                        
-                        // use the duration from the source if it is valid
-                        if (sourceDuration.TotalSeconds > 0)
-                        {
-                            Debug.WriteLine($"[AudioPlayerService] Using duration from MediaSource: {sourceDuration.TotalMinutes:F1} min");
-                            return sourceDuration;
-                        }
-                    }
+                    TimeSpan duration = _mediaPlayer.Duration;
                     
                     // if the duration is valid, use it
-                    if (naturalDuration.TotalSeconds > 0)
+                    if (duration.TotalSeconds > 0)
                     {
-                        return naturalDuration;
+                        return duration;
                     }
                     
                     // check if there is information about the duration in the current track
                     if (CurrentAudio != null && CurrentAudio.Duration > 0)
                     {
                         TimeSpan metadataDuration = TimeSpan.FromSeconds(CurrentAudio.Duration);
-                        Debug.WriteLine($"[AudioPlayerService] Using duration from metadata: {metadataDuration.TotalMinutes:F1} min");
                         return metadataDuration;
                     }
                     
@@ -104,28 +83,18 @@ namespace ovkdesktop.Services
         }
         
         // constructor
-        public AudioPlayerService(LastFmService lastFmService)
+        public AudioPlayerService(LastFmService lastFmService, IMediaPlayerService mediaPlayerService)
         {
             try
             {
-                // initialization of the player
-                _mediaPlayer = new MediaPlayer();
-                _mediaPlayer.AudioCategory = MediaPlayerAudioCategory.Media;
-                _mediaPlayer.CommandManager.IsEnabled = true;
-                
-                // setting the initial volume
-                _mediaPlayer.Volume = 1.0;
+                _mediaPlayer = mediaPlayerService;
                 
                 // subscription to the events of the player
                 _mediaPlayer.MediaOpened += MediaPlayer_MediaOpened;
                 _mediaPlayer.MediaEnded += MediaPlayer_MediaEnded;
                 _mediaPlayer.MediaFailed += MediaPlayer_MediaFailed;
-                _mediaPlayer.PlaybackSession.PlaybackStateChanged += PlaybackSession_PlaybackStateChanged;
-                
-                // initialization of the timer for tracking the position
-                _positionTimer = new DispatcherTimer();
-                _positionTimer.Interval = TimeSpan.FromMilliseconds(200); // reduce the interval for smoother update
-                _positionTimer.Tick += PositionTimer_Tick;
+                _mediaPlayer.PlaybackStateChanged += PlaybackSession_PlaybackStateChanged;
+                _mediaPlayer.PositionChanged += PositionTimer_Tick;
 
                 _lastFmService = lastFmService;
 
@@ -156,22 +125,30 @@ namespace ovkdesktop.Services
 
                 if (shouldScrobble)
                 {
-                    await _lastFmService.ScrobbleAsync(CurrentAudio, _currentTrackStartTime);
-                    _hasScrobbledCurrentTrack = true;
+                    _hasScrobbledCurrentTrack = true; // Set BEFORE await to prevent concurrent calls
+                    try
+                    {
+                        await _lastFmService.ScrobbleAsync(CurrentAudio, _currentTrackStartTime);
+                    }
+                    catch (Exception ex)
+                    {
+                        _hasScrobbledCurrentTrack = false; // Revert on failure
+                        Debug.WriteLine($"[AudioPlayerService] Scrobbling failed: {ex.Message}");
+                    }
                 }
             }
         }
 
-        // getting the MediaPlayer for binding to the MediaPlayerElement
-        public MediaPlayer GetMediaPlayer()
+        // getting the MediaPlayer for binding to the MediaPlayerElement (Not supported natively with abstractions, returns null or throw)
+        public object GetMediaPlayer()
         {
-            return _mediaPlayer;
+            return null; // Note: UI shouldn't use this directly anymore
         }
         
         // getting the current volume (0-100)
         public double GetVolume()
         {
-            return _mediaPlayer?.Volume * 100.0 ?? 0;
+            return _mediaPlayer?.Volume ?? 0;
         }
         
         // setting the playlist and starting playback from the specified index
@@ -361,7 +338,7 @@ namespace ovkdesktop.Services
         }
         
         // playback of the specified track
-        public void PlayAudio(Models.Audio audio)
+        public async void PlayAudio(Models.Audio audio)
         {
             try
             {
@@ -416,12 +393,41 @@ namespace ovkdesktop.Services
                     Debug.WriteLine($"[AudioPlayerService] Error in CurrentAudioChanged event: {eventEx.Message}");
                 }
                 
-                // create a source for playback
+                // CACHING LOGIC
                 try
                 {
-                    Debug.WriteLine("[AudioPlayerService] Creating media source from URI");
-                    var source = MediaSource.CreateFromUri(new Uri(audio.Url));
-                    _mediaPlayer.Source = source;
+                    string appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                    string cacheDir = Path.Combine(appData, "ovkdesktop", "AudioCache");
+                    if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+
+                    string cacheFile = Path.Combine(cacheDir, $"{audio.Id}_{audio.OwnerId}.mp3");
+
+                    if (File.Exists(cacheFile))
+                    {
+                        Debug.WriteLine($"[AudioPlayerService] CACHE HIT: Playing from local file {cacheFile}");
+                        await _mediaPlayer.SetSourceAsync(new Uri(cacheFile));
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[AudioPlayerService] CACHE MISS: Playing from URL and downloading in background");
+                        await _mediaPlayer.SetSourceAsync(new Uri(audio.Url));
+
+                        // Fire and forget download
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                using var httpClient = new HttpClient();
+                                var bytes = await httpClient.GetByteArrayAsync(audio.Url);
+                                await File.WriteAllBytesAsync(cacheFile, bytes);
+                                Debug.WriteLine($"[AudioPlayerService] Successfully cached audio {audio.Id} to {cacheFile}");
+                            }
+                            catch (Exception dlEx)
+                            {
+                                Debug.WriteLine($"[AudioPlayerService] Error caching audio: {dlEx.Message}");
+                            }
+                        });
+                    }
                 }
                 catch (Exception sourceEx)
                 {
@@ -434,14 +440,7 @@ namespace ovkdesktop.Services
                 try
                 {
                     Debug.WriteLine("[AudioPlayerService] Starting playback");
-                _mediaPlayer.Play();
-                    _isPlaying = true;
-                    
-                        // notify the UI about the change of the playback state
-                    PlaybackStateChanged?.Invoke(this, _isPlaying);
-                
-                // start the timer for tracking the position
-                _positionTimer.Start();
+                    _mediaPlayer.Play();
                 }
                 catch (Exception playEx)
                 {
@@ -472,41 +471,21 @@ namespace ovkdesktop.Services
                     return;
                 }
                 
-                if (_mediaPlayer.Source == null)
-                {
-                    Debug.WriteLine("[AudioPlayerService] ERROR: No media source to play/pause");
-                    return;
-                }
-                
-                Debug.WriteLine($"[AudioPlayerService] TogglePlayPause called, current state: {(_isPlaying ? "Playing" : "Paused")}");
+                Debug.WriteLine($"[AudioPlayerService] TogglePlayPause called, current state: {(_mediaPlayer.IsPlaying ? "Playing" : "Paused")}");
                 
                 try
                 {
-                if (_isPlaying)
-                {
-                    // if playback is in progress, put it on pause
-                    Debug.WriteLine("[AudioPlayerService] Pausing playback");
-                    _mediaPlayer.Pause();
-                        _isPlaying = false;
-                }
-                else
-                {
-                    // if paused, continue playback
-                    Debug.WriteLine("[AudioPlayerService] Resuming playback");
-                    _mediaPlayer.Play();
-                        _isPlaying = true;
-                    }
-                    
-                    // notify the UI about the change of the playback state
-                    try
+                    if (_mediaPlayer.IsPlaying)
                     {
-                        Debug.WriteLine("[AudioPlayerService] Invoking PlaybackStateChanged event");
-                        PlaybackStateChanged?.Invoke(this, _isPlaying);
+                        // if playback is in progress, put it on pause
+                        Debug.WriteLine("[AudioPlayerService] Pausing playback");
+                        _mediaPlayer.Pause();
                     }
-                    catch (Exception eventEx)
+                    else
                     {
-                        Debug.WriteLine($"[AudioPlayerService] Error in PlaybackStateChanged event: {eventEx.GetType().FullName}: {eventEx.Message}");
-                        Debug.WriteLine($"[AudioPlayerService] Stack trace: {eventEx.StackTrace}");
+                        // if paused, continue playback
+                        Debug.WriteLine("[AudioPlayerService] Resuming playback");
+                        _mediaPlayer.Play();
                     }
                 }
                 catch (InvalidCastException icEx)
@@ -589,10 +568,9 @@ namespace ovkdesktop.Services
                 }
                 
                     // if the current position is more than 3 seconds, start the track from the beginning
-                if (_mediaPlayer != null && _mediaPlayer.PlaybackSession != null && 
-                    _mediaPlayer.PlaybackSession.Position.TotalSeconds > 3)
+                if (_mediaPlayer != null && _mediaPlayer.Position.TotalSeconds > 3)
                 {
-                    _mediaPlayer.PlaybackSession.Position = TimeSpan.Zero;
+                    _mediaPlayer.Position = TimeSpan.Zero;
                     Debug.WriteLine("[AudioPlayerService] Restarting current track");
                     return;
                 }
@@ -641,12 +619,12 @@ namespace ovkdesktop.Services
         {
             try
             {
-                if (_mediaPlayer?.PlaybackSession != null && _mediaPlayer.PlaybackSession.CanSeek)
+                if (_mediaPlayer != null)
                 {
                     // check that the position is within the permissible limits
-                    var duration = _mediaPlayer.PlaybackSession.NaturalDuration;
+                    var duration = TotalDuration;
                     
-                    if (position > duration)
+                    if (position > duration && duration.TotalSeconds > 0)
                     {
                         position = duration;
                     }
@@ -656,12 +634,9 @@ namespace ovkdesktop.Services
                     }
                     
                     // set the position
-                    _mediaPlayer.PlaybackSession.Position = position;
+                    _mediaPlayer.Position = position;
                     
                     Debug.WriteLine($"[AudioPlayerService] Position set to {FormatTimeSpan(position)} of {FormatTimeSpan(duration)}");
-                    
-                    // notify the UI about the current position of playback
-                    PositionChanged?.Invoke(this, position);
                 }
                 else
                 {
@@ -689,8 +664,8 @@ namespace ovkdesktop.Services
                     volume = 100;
                 }
                 
-                // set the volume (0-1)
-                _mediaPlayer.Volume = volume / 100.0;
+                // set the volume (0-100)
+                _mediaPlayer.Volume = volume;
                 
                 // notify the UI about the change of the volume
                 VolumeChanged?.Invoke(this, volume);
@@ -1001,20 +976,14 @@ namespace ovkdesktop.Services
         }
         
         // handler of the event of opening media
-        private void MediaPlayer_MediaOpened(MediaPlayer sender, object args)
+        private void MediaPlayer_MediaOpened(object sender, EventArgs args)
         {
             Debug.WriteLine("[AudioPlayerService] Media opened successfully");
             
             // when opening media, try to get the actual duration of the track
             try
             {
-                var duration = _mediaPlayer.PlaybackSession.NaturalDuration;
-                
-                // check if we have a valid duration
-                if (duration.TotalSeconds <= 0 && _mediaPlayer.Source is MediaSource mediaSource && mediaSource.Duration.HasValue)
-                {
-                    duration = mediaSource.Duration.Value;
-                }
+                var duration = _mediaPlayer.Duration;
                 
                 // log the duration of the track for diagnostics
                 if (duration.TotalSeconds > 0)
@@ -1033,48 +1002,25 @@ namespace ovkdesktop.Services
         }
         
         // handler of the event of the end of playback
-        private void MediaPlayer_MediaEnded(MediaPlayer sender, object args)
+        private void MediaPlayer_MediaEnded(object sender, EventArgs args)
         {
             Debug.WriteLine("[AudioPlayerService] Media ended, playing next track");
             PlayNext();
         }
         
         // handler of the event of the error of playback
-        private void MediaPlayer_MediaFailed(MediaPlayer sender, MediaPlayerFailedEventArgs args)
+        private void MediaPlayer_MediaFailed(object sender, Exception args)
         {
-            Debug.WriteLine($"[AudioPlayerService] Media playback failed: {args.ErrorMessage}");
-            _isPlaying = false;
-            PlaybackStateChanged?.Invoke(this, _isPlaying);
-            _positionTimer.Stop();
+            Debug.WriteLine($"[AudioPlayerService] Media playback failed: {args.Message}");
+            PlaybackStateChanged?.Invoke(this, false);
         }
         
         // handler of the event of the change of the state of playback
-        private void PlaybackSession_PlaybackStateChanged(MediaPlaybackSession sender, object args)
+        private void PlaybackSession_PlaybackStateChanged(object sender, bool isPlaying)
         {
             try
             {
-                switch (sender.PlaybackState)
-                {
-                    case MediaPlaybackState.Playing:
-                        _isPlaying = true;
-                        Debug.WriteLine("[AudioPlayerService] Playback state: Playing");
-                        _positionTimer.Start(); // start the timer when playback starts
-                        break;
-                    case MediaPlaybackState.Paused:
-                        _isPlaying = false;
-                        Debug.WriteLine("[AudioPlayerService] Playback state: Paused");
-                        _positionTimer.Stop(); // stop the timer when pause
-                        break;
-                    case MediaPlaybackState.None:
-                    case MediaPlaybackState.Opening:
-                    case MediaPlaybackState.Buffering:
-                    default:
-                        Debug.WriteLine($"[AudioPlayerService] Playback state: {sender.PlaybackState}");
-                        break;
-                }
-                
-                // notify the UI about the change of the state of playback
-                PlaybackStateChanged?.Invoke(this, _isPlaying);
+                PlaybackStateChanged?.Invoke(this, isPlaying);
             }
             catch (Exception ex)
             {
@@ -1083,38 +1029,19 @@ namespace ovkdesktop.Services
         }
         
         // handler of the timer for tracking the position of playback
-        private void PositionTimer_Tick(object sender, object e)
+        private void PositionTimer_Tick(object sender, TimeSpan position)
         {
             try
-        {
-            if (_mediaPlayer?.PlaybackSession != null && _isPlaying)
             {
-                    var position = _mediaPlayer.PlaybackSession.Position;
-                    var duration = _mediaPlayer.PlaybackSession.NaturalDuration;
+                if (_mediaPlayer != null && _mediaPlayer.IsPlaying)
+                {
+                    var duration = TotalDuration;
                     
                     // additional check for the validity of values
                     if (position.TotalSeconds < 0)
                     {
                         Debug.WriteLine($"[AudioPlayerService] Warning: Invalid position value: {position.TotalSeconds}s");
                         position = TimeSpan.Zero;
-                    }
-                    
-                    if (duration.TotalSeconds <= 0)
-                    {
-                        Debug.WriteLine("[AudioPlayerService] Warning: Invalid duration value. Trying to get duration from media source.");
-                        // in some cases, NaturalDuration may be unavailable, let's try to get it from other properties
-                        try
-                        {
-                            if (_mediaPlayer.Source is MediaSource mediaSource && mediaSource.Duration.HasValue && mediaSource.Duration.Value.TotalSeconds > 0)
-                            {
-                                duration = mediaSource.Duration.Value;
-                                Debug.WriteLine($"[AudioPlayerService] Got duration from media source: {FormatTimeSpan(duration)}");
-                            }
-                        }
-                        catch (Exception durationEx)
-                        {
-                            Debug.WriteLine($"[AudioPlayerService] Error getting duration from media source: {durationEx.Message}");
-                        }
                     }
                     
                     // if we have a valid duration of the track
@@ -1236,17 +1163,14 @@ namespace ovkdesktop.Services
         {
             try
             {
-                // stop the timer
-                _positionTimer.Stop();
-                
                 // unsubscribe from events
                 _mediaPlayer.MediaOpened -= MediaPlayer_MediaOpened;
                 _mediaPlayer.MediaEnded -= MediaPlayer_MediaEnded;
                 _mediaPlayer.MediaFailed -= MediaPlayer_MediaFailed;
-                _mediaPlayer.PlaybackSession.PlaybackStateChanged -= PlaybackSession_PlaybackStateChanged;
+                _mediaPlayer.PlaybackStateChanged -= PlaybackSession_PlaybackStateChanged;
+                _mediaPlayer.PositionChanged -= PositionTimer_Tick;
                 
                 // free
-                _mediaPlayer.Source = null;
                 _mediaPlayer.Dispose();
                 
                 Debug.WriteLine("[AudioPlayerService] Disposed");

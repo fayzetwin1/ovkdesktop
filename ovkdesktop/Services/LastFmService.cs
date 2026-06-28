@@ -133,7 +133,7 @@ namespace ovkdesktop.Services
             Debug.WriteLine("[LastFmService] User logged out.");
         }
 
-        // Отправка "Now Playing"
+        // Send "Now Playing" status
         public async Task UpdateNowPlayingAsync(Audio audio)
         {
             if (!Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled || string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey) || audio == null)
@@ -154,7 +154,7 @@ namespace ovkdesktop.Services
             Debug.WriteLine($"[LastFmService] Sent 'Now Playing': {audio.Artist} - {audio.Title}");
         }
 
-        // Отправка скроббла
+        // Send scrobble
         public async Task ScrobbleAsync(Audio audio, DateTime startTime)
         {
             if (!Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled || string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey) || audio == null)

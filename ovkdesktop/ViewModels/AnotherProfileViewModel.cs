@@ -61,11 +61,14 @@ namespace ovkdesktop.ViewModels
 
         private CancellationTokenSource _cts;
 
-        public AnotherProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService)
+        private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
+
+        public AnotherProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _profileService = profileService;
             _wallService = wallService;
             _audioPlayerService = audioPlayerService;
+            _dispatcherService = dispatcherService;
         }
 
         public async Task InitializeAsync(long id)
@@ -130,18 +133,17 @@ namespace ovkdesktop.ViewModels
                 _currentOffset = 0;
                 CanLoadMore = true;
                 IsLoadingMore = false;
-                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, id, User, Group, _currentOffset, PostsPerPage, token);
-                
-                Posts.Clear();
-                foreach (var post in wallPosts)
+                var wallResult = await _wallService.GetHydratedWallAsync(sessionToken, id, User, Group, _currentOffset, PostsPerPage, token);
+                _dispatcherService.TryEnqueue(() =>
                 {
-                    Posts.Add(post);
-                }
+                    Posts.Clear();
+                    foreach (var post in wallResult.Items)
+                    {
+                        Posts.Add(post);
+                    }
+                });
 
-                // Try to get total count
-                var rawWall = await _wallService.GetWallAsync(sessionToken, id, 0, 1, token);
-                var count = rawWall?.Response?.Count ?? Posts.Count;
-                PostsCountText = $"{count} записей";
+                PostsCountText = $"{wallResult.TotalCount} записей";
             }
             catch (OperationCanceledException)
             {
@@ -168,17 +170,23 @@ namespace ovkdesktop.ViewModels
                 var sessionToken = await SessionHelper.GetTokenAsync();
                 if (string.IsNullOrEmpty(sessionToken)) return;
 
-                _currentOffset += PostsPerPage;
-                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, ProfileId, User, Group, _currentOffset, PostsPerPage, _cts?.Token ?? CancellationToken.None);
-                
-                if (wallPosts.Count < PostsPerPage)
+                var wallResult = await _wallService.GetHydratedWallAsync(sessionToken, ProfileId, User, Group, _currentOffset, PostsPerPage, _cts?.Token ?? CancellationToken.None);
+
+                if (wallResult.Items.Count > 0)
                 {
-                    CanLoadMore = false;
+                    _dispatcherService.TryEnqueue(() =>
+                    {
+                        foreach (var post in wallResult.Items)
+                        {
+                            Posts.Add(post);
+                        }
+                    });
+                    _currentOffset += wallResult.Items.Count;
                 }
 
-                foreach (var post in wallPosts)
+                if (wallResult.Items.Count < PostsPerPage)
                 {
-                    Posts.Add(post);
+                    CanLoadMore = false;
                 }
             }
             catch (Exception ex)

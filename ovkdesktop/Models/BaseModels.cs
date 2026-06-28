@@ -221,10 +221,10 @@ namespace ovkdesktop.Models
             get => _profile;
             set
             {
-                // Используем SetProperty из вашего базового класса ObservableObject
+                // Use SetProperty from base class ObservableObject
                 if (SetProperty(ref _profile, value))
                 {
-                    // ЯВНО уведомляем UI, что зависимые свойства тоже изменились!
+                    // EXPLICITLY notify UI that dependent properties changed too!
                     OnPropertyChanged(nameof(AuthorName));
                     OnPropertyChanged(nameof(AuthorAvatarUrl));
                 }
@@ -669,7 +669,7 @@ namespace ovkdesktop.Models
 
         private string GetLargestImageUrl()
         {
-            // Логика для получения лучшего превью для видео
+            // Logic to get the best preview for video
             var bestImage = Image?.OrderByDescending(i => i.Width).FirstOrDefault();
             if (bestImage != null && !string.IsNullOrEmpty(bestImage.Url))
             {
@@ -682,7 +682,7 @@ namespace ovkdesktop.Models
                 return bestFrame.Url;
             }
 
-            return "ms-appx:///Assets/Images/video_placeholder.png"; // Фолбэк-изображение
+            return "ms-appx:///Assets/Images/video_placeholder.png"; // Fallback image
         }
 
         [JsonPropertyName("id")]
@@ -963,6 +963,27 @@ namespace ovkdesktop.Models
                 
             // Return first available URL if nothing found
             return Sizes.FirstOrDefault(s => !string.IsNullOrEmpty(s.Url))?.Url;
+        }
+
+        [JsonIgnore]
+        public string TimelinePhotoUrl => GetTimelinePhotoUrl();
+
+        private string GetTimelinePhotoUrl()
+        {
+            if (Sizes == null || !Sizes.Any())
+                return null;
+
+            // photo size priority for timeline (807px or 604px, fallback to larger or smaller)
+            var priorityTypes = new[] { "y", "x", "z", "m", "w", "s" };
+
+            foreach (var type in priorityTypes)
+            {
+                var size = Sizes.FirstOrDefault(s => s.Type == type);
+                if (size != null && !string.IsNullOrEmpty(size.Url))
+                    return size.Url;
+            }
+
+            return GetLargestPhotoUrl();
         }
     }
 

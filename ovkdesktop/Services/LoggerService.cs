@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Windows.Storage;
 
 namespace ovkdesktop.Services
 {
@@ -99,7 +98,7 @@ namespace ovkdesktop.Services
         {
             Log("[LoggerService] Service Disposing...");
 
-            // Корректное удаление listener'а
+            // Correct removal of the listener
             var listenerToRemove = Trace.Listeners.OfType<FileTraceListener>().FirstOrDefault();
             if (listenerToRemove != null)
             {
