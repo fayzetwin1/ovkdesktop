@@ -127,6 +127,8 @@ namespace ovkdesktop
             // Services
             services.AddSingleton<Services.INavigationService, Services.NavigationService>();
             services.AddSingleton<Services.IDialogService, Services.DialogService>();
+            services.AddSingleton<Services.IAPIServiceNewsPosts, Services.APIServiceNewsPosts>();
+            services.AddSingleton<Services.IAPIServiceMusic, Services.APIServiceMusic>();
             services.AddSingleton<AudioPlayerService>();
             services.AddSingleton<LastFmService>();
             services.AddSingleton(settings);
@@ -134,6 +136,7 @@ namespace ovkdesktop
             // ViewModels
             services.AddTransient<ViewModels.WelcomeViewModel>();
             services.AddTransient<ViewModels.AuthViewModel>();
+            services.AddTransient<ViewModels.MusicViewModel>();
 
             return services.BuildServiceProvider();
         }
