@@ -32,6 +32,15 @@ namespace ovkdesktop.ViewModels
         [ObservableProperty]
         private string _postsCountText = "Загрузка постов...";
 
+        [ObservableProperty]
+        private bool _isLoadingMore;
+
+        [ObservableProperty]
+        private bool _canLoadMore = true;
+
+        private int _currentOffset = 0;
+        private const int PostsPerPage = 30;
+
         private CancellationTokenSource _cts;
 
         public ProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService)
@@ -73,12 +82,21 @@ namespace ovkdesktop.ViewModels
                     return;
                 }
 
-                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, 0, 20, token);
+                _currentOffset = 0;
+                CanLoadMore = true;
+                IsLoadingMore = false;
+                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, _currentOffset, PostsPerPage, token);
                 
                 Posts.Clear();
                 foreach (var post in wallPosts)
                 {
                     Posts.Add(post);
+                }
+
+                _currentOffset += wallPosts.Count;
+                if (wallPosts.Count < PostsPerPage)
+                {
+                    CanLoadMore = false;
                 }
 
                 // Try to get total count
@@ -97,6 +115,44 @@ namespace ovkdesktop.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        [RelayCommand]
+        public async Task LoadMorePostsAsync()
+        {
+            if (IsLoading || IsLoadingMore || !CanLoadMore || CurrentUserProfile == null) return;
+
+            IsLoadingMore = true;
+            try
+            {
+                var sessionToken = await SessionHelper.GetTokenAsync();
+                if (string.IsNullOrEmpty(sessionToken)) return;
+
+                var wallPosts = await _wallService.GetHydratedWallAsync(sessionToken, CurrentUserProfile.Id, CurrentUserProfile, null, _currentOffset, PostsPerPage, _cts?.Token ?? CancellationToken.None);
+
+                if (wallPosts.Count > 0)
+                {
+                    foreach (var post in wallPosts)
+                    {
+                        Posts.Add(post);
+                    }
+                    _currentOffset += wallPosts.Count;
+                }
+
+                if (wallPosts.Count < PostsPerPage)
+                {
+                    CanLoadMore = false;
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[ProfileViewModel] LoadMorePostsAsync error: {ex.Message}");
+            }
+            finally
+            {
+                IsLoadingMore = false;
             }
         }
 

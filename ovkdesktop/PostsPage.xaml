@@ -25,20 +25,20 @@
                         </Grid.ColumnDefinitions>
                         <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
                             <Ellipse.Fill>
-                                <ImageBrush ImageSource="{Binding Profile.BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                <ImageBrush ImageSource="{x:Bind Profile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill"/>
                             </Ellipse.Fill>
                         </Ellipse>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{Binding FromId}" Click="OnAvatarClicked">
-                                <TextBlock Text="{Binding Profile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{x:Bind FromId}" Click="OnAvatarClicked">
+                                <TextBlock Text="{x:Bind Profile.FullName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </Button>
-                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" Opacity="0.7" FontSize="12"/>
                         </StackPanel>
                     </Grid>
 
-                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"/>
                     
-                    <controls:PostMediaControl Attachments="{Binding Attachments}" />
+                    <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -56,24 +56,24 @@
                         </Grid.ColumnDefinitions>
                         <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
                             <Ellipse.Fill>
-                                <ImageBrush ImageSource="{Binding Profile.BestAvailablePhoto}" Stretch="UniformToFill"/>
+                                <ImageBrush ImageSource="{x:Bind Profile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill"/>
                             </Ellipse.Fill>
                         </Ellipse>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{Binding FromId}" Click="OnAvatarClicked">
-                                <TextBlock Text="{Binding Profile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{x:Bind FromId}" Click="OnAvatarClicked">
+                                <TextBlock Text="{x:Bind Profile.FullName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
                             </Button>
-                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" Opacity="0.7" FontSize="12"/>
                         </StackPanel>
                     </Grid>
 
-                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"/>
                     
-                    <controls:PostMediaControl Attachments="{Binding Attachments}" />
+                    <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
 
-                    <ItemsControl ItemsSource="{Binding RepostsList}" 
+                    <ItemsControl ItemsSource="{x:Bind RepostsList, Mode=OneWay}" 
                                   ItemTemplate="{StaticResource RepostItemTemplateLevel2}" 
-                                  Visibility="{Binding HasRepostsList, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                  Visibility="{x:Bind HasRepostsList, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -195,5 +195,14 @@
                 </StackPanel>
             </ListView.Footer>
         </ListView>
+
+        <!-- Initial Loading Overlay -->
+        <StackPanel HorizontalAlignment="Center" 
+                    VerticalAlignment="Center" 
+                    Spacing="15"
+                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ProgressRing IsActive="True" Width="60" Height="60" />
+            <TextBlock Text="Собираем свежие посты..." FontSize="16" Opacity="0.7" HorizontalAlignment="Center"/>
+        </StackPanel>
     </Grid>
 </Page>
