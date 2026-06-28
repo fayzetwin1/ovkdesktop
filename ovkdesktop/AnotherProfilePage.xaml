@@ -4,10 +4,130 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:local="using:ovkdesktop"
+    xmlns:models="using:ovkdesktop.Models"
+    xmlns:converters="using:ovkdesktop.Converters"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Page.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
+        <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
+        <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
+        
+        <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:UserWallPost">
+            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="4"
+                Padding="10" Margin="0,5,0,0">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                            <Ellipse.Fill>
+                                <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Tag="{Binding FromId}" Click="RepostAuthor_Click">
+                                <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Button>
+                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    <Image Source="{Binding MainImageUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Image Source="{Binding GifUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Grid Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,0" HorizontalAlignment="Left">
+                        <MediaPlayerElement Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}" MaxHeight="300" AreTransportControlsEnabled="True"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <converters:AttachmentTemplateSelector x:Key="AttachmentTemplateSelector">
+            <converters:AttachmentTemplateSelector.PhotoTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <Image Source="{Binding Photo.BestQualityUrl}"
+                   Stretch="Uniform" MaxHeight="400"
+                   HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.PhotoTemplate>
+
+            <!-- video -->
+            <converters:AttachmentTemplateSelector.VideoTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <MediaPlayerElement 
+                Source="{Binding Video.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
+                MaxHeight="400" AreTransportControlsEnabled="True"
+                HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.VideoTemplate>
+
+            <!-- gif (doc) -->
+            <converters:AttachmentTemplateSelector.GifTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <Image Source="{Binding Doc.Url}"
+                   Stretch="Uniform" MaxHeight="400"
+                   HorizontalAlignment="Left" Margin="0,0,0,10"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.GifTemplate>
+
+            <!-- unknown types -->
+            <converters:AttachmentTemplateSelector.OtherTemplate>
+                <DataTemplate x:DataType="models:Attachment">
+                    <TextBlock Text="{Binding Type, FallbackValue='Вложение'}" 
+                       FontWeight="SemiBold" Margin="0,5"/>
+                </DataTemplate>
+            </converters:AttachmentTemplateSelector.OtherTemplate>
+
+        </converters:AttachmentTemplateSelector>
+
+        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:UserWallPost">
+            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1" CornerRadius="4"
+                Padding="10" Margin="0,5,0,0">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
+                            <Ellipse.Fill>
+                                <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Tag="{Binding FromId}" Click="RepostAuthor_Click">
+                                <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                            </Button>
+                            <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{Binding Text, Converter={StaticResource StringToVisibilityConverter}}"/>
+                    <Image Source="{Binding MainImageUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Image Source="{Binding GifUrl}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{Binding HasGif, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <Grid Visibility="{Binding HasVideo, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,0" HorizontalAlignment="Left">
+                        <MediaPlayerElement Source="{Binding MainVideo.Player, Converter={StaticResource StringToMediaPlaybackSourceConverter}}" MaxHeight="300" AreTransportControlsEnabled="True"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding CopyHistory}" 
+                              ItemTemplate="{StaticResource RepostItemTemplateLevel2}" 
+                              Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Page.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -20,7 +140,7 @@
                    CornerRadius="5" Margin="0,0,0,0" HorizontalAlignment="Left">
                 <FontIcon Glyph="&#xE72B;" />
             </Button>
-            <TextBlock x:Name="ErrorText" Foreground="Red" Visibility="Collapsed" 
+            <TextBlock x:Name="ErrorText" Foreground="Red" Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                       TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
@@ -32,82 +152,220 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Width="150" Height="150" CornerRadius="70" Margin="50,25,20,0">
-                        <Border.Background>
-                            <ImageBrush x:Name="ProfileImage" Stretch="UniformToFill"/>
-                        </Border.Background>
-                    </Border>
+                    <PersonPicture Grid.Column="0" 
+                          x:Name="ProfileAvatar" 
+                          ProfilePicture="{x:Bind ViewModel.ProfilePhotoUrl, Mode=OneWay}"
+                          Width="150" Height="150" Margin="50,25,20,0"
+                          VerticalAlignment="Top"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock x:Name="ProfileNameTextBlock" Text="Загрузка..." 
+                        <TextBlock x:Name="ProfileNameTextBlock" Text="{x:Bind ViewModel.ProfileName, Mode=OneWay, FallbackValue='Загрузка...'}" 
                                   Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" Margin="10,20,20,0"/>
-                        <TextBlock x:Name="GroupDescriptionTextBlock"
-                                  TextWrapping="Wrap" Margin="10,10,0,0" FontSize="16" 
-                                  Visibility="Collapsed"/>
-
-                        <StackPanel x:Name="FriendActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="Collapsed">
-                            <TextBlock x:Name="FriendshipStatusBadge" 
-                                       Text="У вас в друзьях" Margin="0,0,10,0" FontSize="14" VerticalAlignment="Center"
-                                       Foreground="{ThemeResource SystemAccentColor}" Visibility="Collapsed"/>
-
-                            <Button x:Name="AddFriendButton" Click="AddFriend_Click" Visibility="Collapsed" Margin="0,0,10,0">
+                        
+                        <StackPanel x:Name="FriendActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="{x:Bind ViewModel.IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Button x:Name="AddFriendButton" Command="{x:Bind ViewModel.ToggleFriendshipCommand}" Margin="0,0,10,0">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <FontIcon Glyph="" FontSize="16"/>
                                     <TextBlock Text="Добавить в друзья"/>
-                                    <ProgressRing x:Name="AddFriendProgress" IsActive="False" Width="16" Height="16" Visibility="Collapsed" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Button x:Name="RemoveFriendButton" Click="RemoveFriend_Click" Visibility="Collapsed">
-                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <FontIcon Glyph="" FontSize="16"/>
-                                    <TextBlock Text="Удалить из друзей"/>
-                                    <ProgressRing x:Name="RemoveFriendProgress" IsActive="False" Width="16" Height="16" Visibility="Collapsed" Margin="5,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
 
-                        <StackPanel x:Name="GroupActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="Collapsed" Spacing="10">
-                            <Button x:Name="JoinLeaveGroupButton" Click="JoinLeaveGroup_Click">
+                        <StackPanel x:Name="GroupActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="{x:Bind ViewModel.IsGroup, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="10">
+                            <Button x:Name="JoinLeaveGroupButton" Command="{x:Bind ViewModel.ToggleGroupMembershipCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <FontIcon x:Name="JoinLeaveIcon" Glyph=""/>
                                     <TextBlock x:Name="JoinLeaveText" Text="Подписаться"/>
-                                    <ProgressRing x:Name="JoinLeaveProgress" IsActive="False" Width="16" Height="16" Visibility="Collapsed" Margin="5,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-
-                            <Button x:Name="PostToGroupWallButton" Click="PostToGroupWall_Click" Visibility="Collapsed">
-                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <FontIcon Glyph=""/>
-                                    <TextBlock Text="Предложить запись"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
                     </StackPanel>
                 </Grid>
 
-                <!-- posts section -->
-                <TextBlock Text="Записи на стене" Style="{ThemeResource SubtitleTextBlockStyle}" 
+                <TextBlock Text="{x:Bind ViewModel.PostsCountText, Mode=OneWay, FallbackValue='Загрузка записей на стене'}" Style="{ThemeResource SubtitleTextBlockStyle}" 
                           Margin="60,10,0,10"/>
 
-                <TextBlock x:Name="NoPostsTextBlock" Text="Нет записей" 
-                          Visibility="Collapsed" Opacity="0.7" Margin="60,10,0,0"/>
-
-                <!-- container for posts -->
-                <StackPanel x:Name="PostsContainer" Margin="0,5,0,0"/>
-
-                <!-- progressring for page -->
-                <ProgressRing x:Name="LoadingProgressRing" IsActive="True" 
+                <ProgressRing x:Name="LoadingProgressRing" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
                              Width="50" Height="50" 
                              HorizontalAlignment="Center" Margin="0,20,0,0"/>
-                
-                
-                <Button x:Name="LoadMorePostsButton"
-                        Content="Загрузить ещё..."
-                        Click="LoadMorePostsButton_Click"
-                        Visibility="Collapsed"
-                        HorizontalAlignment="Stretch"
-                        Margin="60,10,0,20"/>
+
+                <ListView x:Name="PostsListView" 
+                         ItemsSource="{x:Bind ViewModel.Posts, Mode=OneWay}"
+                         HorizontalAlignment="Stretch">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="models:UserWallPost">
+                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                   BorderThickness="1" CornerRadius="8"
+                                   Margin="60,5,60,10" Padding="15"
+                                   HorizontalAlignment="Stretch">
+
+                                <Border.ContextFlyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Репост" 
+                                            Click="RepostItem_Click"/>
+                                    </MenuFlyout>
+                                </Border.ContextFlyout>
+
+                                <Grid HorizontalAlignment="Stretch">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Row 0: Post Header -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Author Avatar -->
+                                        <Button Grid.Column="0" Padding="0" BorderThickness="0" Background="Transparent"
+                                            Tag="{Binding FromId}" Click="Author_Click"
+                                            VerticalAlignment="Top">
+                                            <Ellipse Width="48" Height="48" Margin="0,0,12,0">
+                                                <Ellipse.Fill>
+                                                    <ImageBrush ImageSource="{Binding AuthorProfile, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
+                                                </Ellipse.Fill>
+                                            </Ellipse>
+                                        </Button>
+
+                                        <!-- Author Info & Date -->
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="5">
+                                                <Button Padding="0" Margin="0,-2,0,0" BorderThickness="0" Background="Transparent"
+                                                    Tag="{Binding FromId}" Click="Author_Click">
+                                                    <TextBlock Text="{Binding AuthorProfile.FullName}" FontWeight="SemiBold"
+                                                       Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                                                </Button>
+
+                                                <StackPanel Orientation="Horizontal" Spacing="5"
+                                                    Visibility="{Binding IsWallPostByAnotherUser, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                    <TextBlock Text=">" FontWeight="SemiBold" Opacity="0.7"/>
+                                                    <TextBlock Text="{Binding ElementName=ProfileNameTextBlock, Path=Text}" FontWeight="SemiBold" Opacity="0.7"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Date and Pinned Icon -->
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,0">
+                                                <TextBlock Text="{Binding FormattedDate}" Opacity="0.7" FontSize="12"/>
+                                                <FontIcon Glyph="" FontSize="12"
+                                                      Foreground="{ThemeResource SystemAccentColor}"
+                                                      ToolTipService.ToolTip="Закрепленная запись"
+                                                      Visibility="{Binding IsPinned, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                      VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Post text -->
+                                    <TextBlock Grid.Row="1"
+                                              Text="{Binding Text}"
+                                              TextWrapping="Wrap" Margin="0,0,0,10"
+                                              Foreground="{ThemeResource TextFillColorPrimary}"/>
+
+                                    <ItemsControl Grid.Row="2"
+                                      ItemsSource="{Binding Attachments}"
+                                      ItemTemplateSelector="{StaticResource AttachmentTemplateSelector}"
+                                      Visibility="{Binding Attachments.Count, Converter={StaticResource IntToVisibilityConverter}}" 
+                                      Margin="0,0,0,10">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Vertical"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                    </ItemsControl>
+
+                                    <!-- Audio -->
+                                    <ItemsControl Grid.Row="5"
+                                                 ItemsSource="{Binding Audios}"
+                                                 Visibility="{Binding HasAudio, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                 Margin="0,0,0,10"
+                                                 HorizontalAlignment="Stretch">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:Audio">
+                                                <Grid Height="60" Margin="0,5" HorizontalAlignment="Stretch">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="40"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Button Grid.Column="0" Width="40" Height="40" 
+                                                            Padding="0" Background="Transparent"
+                                                            Tag="{Binding}" Click="PlayAudio_Click">
+                                                        <FontIcon Glyph="&#xE768;" FontSize="16"/>
+                                                    </Button>
+
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5,0,0,0">
+                                                        <TextBlock Text="{Binding Title}" 
+                                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                                   FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding Artist}" 
+                                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                                                   Opacity="0.8" FontSize="12"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Column="2" Text="{Binding FormattedDuration}" 
+                                                               VerticalAlignment="Center" Margin="10,0,0,0"
+                                                               Opacity="0.8" FontSize="12"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <!-- Repost -->
+                                    <ItemsControl Grid.Row="6"
+                                          ItemsSource="{Binding CopyHistory}"
+                                          Visibility="{Binding HasRepost, Converter={StaticResource BoolToVisibilityConverter}}"
+                                          ItemTemplate="{StaticResource RepostItemTemplate}"
+                                          Margin="0,0,0,10"/>
+
+                                    <!-- Likes and comments -->
+                                    <StackPanel Grid.Row="7" 
+                                              Orientation="Horizontal" 
+                                              Spacing="15" 
+                                              Margin="0,20,0,0"
+                                              VerticalAlignment="Bottom">
+                                        <!-- Like button -->
+                                        <Button Tag="{Binding}" 
+                                                Click="LikeButton_Click" 
+                                                Background="Transparent" 
+                                                BorderThickness="0" 
+                                                Padding="5,2">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <TextBlock Text="❤" />
+                                                <TextBlock Text="{Binding Likes.Count, FallbackValue=0, TargetNullValue=0}" 
+                                                           Foreground="{Binding Likes.UserLikes, Converter={StaticResource LikeButtonColorConverter}, FallbackValue=Black}"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Comments button -->
+                                        <Button Tag="{Binding}" 
+                                                Tapped="ShowPostComments_Tapped" 
+                                                Background="Transparent" 
+                                                BorderThickness="0" 
+                                                Padding="5,2">
+                                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                                <TextBlock Text="💬" />
+                                                <TextBlock Text="{Binding Comments.Count, FallbackValue=0, TargetNullValue=0}" 
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
             </StackPanel>
         </ScrollViewer>
     </Grid>

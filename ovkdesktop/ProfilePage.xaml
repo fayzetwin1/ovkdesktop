@@ -146,25 +146,27 @@
             <!-- User avatar -->
             <PersonPicture Grid.Column="0" 
                           x:Name="ProfileAvatar" 
+                          ProfilePicture="{x:Bind ViewModel.CurrentUserProfile, Mode=OneWay, Converter={StaticResource ProfileToImageConverter}}"
                           Width="120" Height="120"
                           VerticalAlignment="Top"/>
 
             <!-- User information -->
             <StackPanel Grid.Column="1" Margin="20,0,0,0">
                 <TextBlock x:Name="ProfileName" 
-                          Text="Загрузка..." 
+                          Text="{x:Bind ViewModel.CurrentUserProfile.FullName, Mode=OneWay, FallbackValue='Загрузка...'}" 
                           Style="{ThemeResource TitleLargeTextBlockStyle}" 
                           FontSize="32"/>
 
                 <TextBlock x:Name="PostsCountText" 
-                          Text="Загрузка постов..." 
+                          Text="{x:Bind ViewModel.PostsCountText, Mode=OneWay, FallbackValue='Загрузка постов...'}" 
                           Opacity="0.7" 
                           Style="{ThemeResource BodyTextBlockStyle}"
                           Margin="0,5,0,15"/>
 
                 <TextBlock x:Name="ErrorTextBlock" 
                           Foreground="Red" 
-                          Visibility="Collapsed" 
+                          Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" 
+                          Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                           TextWrapping="Wrap"
                           Margin="0,0,0,10"/>
 
@@ -179,13 +181,13 @@
         <!-- Posts list -->
         <Grid Grid.Row="1" Margin="110,20,20,20" x:Name="GridPostsMyProfile">
             <ProgressRing x:Name="LoadingProgressRing" 
-                         IsActive="True" 
+                         IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
                          Width="50" Height="50" 
                          HorizontalAlignment="Center" 
                          VerticalAlignment="Center"/>
 
             <ListView x:Name="PostsListView" 
-                     ItemsSource="{x:Bind Posts}"
+                     ItemsSource="{x:Bind ViewModel.Posts, Mode=OneWay}"
                      HorizontalAlignment="Stretch">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:UserWallPost">
