@@ -72,7 +72,7 @@ namespace ovkdesktop
             ContentFrame.Navigate(typeof(WelcomePage));
 
             // use the global instance of AudioPlayerService from App
-            _audioPlayerService = App.AudioService;
+            _audioPlayerService = Ioc.Default.GetRequiredService<AudioPlayerService>();
             
             // setting the window title
             Title = "OVK Desktop";

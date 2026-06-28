@@ -1380,7 +1380,7 @@ namespace ovkdesktop
                 {
                     Debug.WriteLine($"[ProfilePage] Playing audio: {audio.Artist} - {audio.Title}");
 
-                    var audioService = App.AudioService;
+                    var audioService = Ioc.Default.GetRequiredService<AudioPlayerService>();
                     if (audioService != null)
                     {
                         var playlist = new ObservableCollection<Models.Audio> { audio };

@@ -2320,7 +2320,7 @@ namespace ovkdesktop
                     Debug.WriteLine($"[AnotherProfilePage] Playing audio: {audio.Artist} - {audio.Title}");
                     
                     // Get audio service from App
-                    var audioService = App.AudioService;
+                    var audioService = Ioc.Default.GetRequiredService<AudioPlayerService>();
                     if (audioService != null)
                     {
                         // Create playlist from single track and play it

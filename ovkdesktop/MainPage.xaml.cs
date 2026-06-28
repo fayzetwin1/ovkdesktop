@@ -36,7 +36,7 @@ namespace ovkdesktop
             
             // get the audio player service from MainWindow
             var mainWindow = App.MainWindow as MainWindow;
-            _audioPlayerService = mainWindow?.GetAudioPlayerService() ?? App.AudioService;
+            _audioPlayerService = mainWindow?.GetAudioPlayerService() ?? Ioc.Default.GetRequiredService<AudioPlayerService>();
             
             // initialize the mini player
             InitializeMiniPlayer();
@@ -62,7 +62,7 @@ namespace ovkdesktop
                 Debug.WriteLine("[MainPage] Initializing mini player");
                 if (_audioPlayerService == null)
                 {
-                    _audioPlayerService = App.AudioService;
+                    _audioPlayerService = Ioc.Default.GetRequiredService<AudioPlayerService>();
                 if (_audioPlayerService == null)
                 {
                     Debug.WriteLine("[MainPage] AudioPlayerService is null, cannot initialize mini player");

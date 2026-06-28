@@ -37,15 +37,9 @@ namespace ovkdesktop
     {
         // service for playing audio
         public static DispatcherQueue Dispatcher { get; private set; }
-        public static AudioPlayerService AudioService { get; private set; }
-        public static LastFmService LastFmService { get; private set; }
-        public static SettingsHelper Settings { get; private set; }
         public static string LocalFolderPath { get; private set; }
 
         public IServiceProvider Services { get; private set; }
-
-        public static Services.INavigationService NavigationService { get; private set; }
-        public static Services.IDialogService DialogService { get; private set; }
 
         // main window of the application
         public static Window MainWindow { get; private set; }
@@ -87,17 +81,18 @@ namespace ovkdesktop
                 LoggerService.Instance.Initialize();
 
                 LocalFolderPath = AppContext.BaseDirectory;
-                Settings = await SettingsHelper.CreateAsync();
+                var settings = await SettingsHelper.CreateAsync();
 
-                Services = ConfigureServices();
+                Services = ConfigureServices(settings);
+                CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.ConfigureServices(Services);
 
-                LastFmService = Services.GetRequiredService<LastFmService>();
-                AudioService = Services.GetRequiredService<AudioPlayerService>();
+                var lastFmService = Services.GetRequiredService<LastFmService>();
+                var audioService = Services.GetRequiredService<AudioPlayerService>();
                 
-                NavigationService = Services.GetRequiredService<Services.INavigationService>();
-                DialogService = Services.GetRequiredService<Services.IDialogService>();
+                var navigationService = Services.GetRequiredService<Services.INavigationService>();
+                var dialogService = Services.GetRequiredService<Services.IDialogService>();
 
-                await LastFmService.InitializeAsync();
+                await lastFmService.InitializeAsync();
 
                 m_window = new MainWindow();
                 MainWindow = m_window;
@@ -106,7 +101,7 @@ namespace ovkdesktop
                 Frame rootFrame = new Frame();
                 m_window.Content = rootFrame;
                 
-                ((Services.NavigationService)NavigationService).Initialize(rootFrame);
+                ((Services.NavigationService)navigationService).Initialize(rootFrame);
 
                 // --- Блок 3: Навигация и активация ---
                 bool isTokenValid = await SessionHelper.IsTokenValidAsync();
@@ -125,7 +120,7 @@ namespace ovkdesktop
 
 
 
-        private IServiceProvider ConfigureServices()
+        private IServiceProvider ConfigureServices(SettingsHelper settings)
         {
             var services = new ServiceCollection();
 
@@ -134,6 +129,7 @@ namespace ovkdesktop
             services.AddSingleton<Services.IDialogService, Services.DialogService>();
             services.AddSingleton<AudioPlayerService>();
             services.AddSingleton<LastFmService>();
+            services.AddSingleton(settings);
 
             // ViewModels
             services.AddTransient<ViewModels.WelcomeViewModel>();

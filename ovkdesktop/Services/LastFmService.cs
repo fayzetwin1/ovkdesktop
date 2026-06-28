@@ -35,7 +35,7 @@ namespace ovkdesktop.Services
             var parameters = new Dictionary<string, string>
             {
                 {"method", "auth.getToken"},
-                {"api_key", App.Settings.LastFmApiKey}
+                {"api_key", Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey}
             };
 
             var responseJson = await SendRequestAsync(parameters, HttpMethod.Get);
@@ -56,8 +56,8 @@ namespace ovkdesktop.Services
 
         public bool IsConfigured()
         {
-            return !string.IsNullOrEmpty(App.Settings.LastFmApiKey) &&
-                   !string.IsNullOrEmpty(App.Settings.LastFmApiSecret);
+            return !string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey) &&
+                   !string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret);
         }
 
         public async Task<bool> GetSessionKeyAsync(string token)
@@ -65,7 +65,7 @@ namespace ovkdesktop.Services
             var parameters = new Dictionary<string, string>
             {
                 {"method", "auth.getSession"},
-                {"api_key", App.Settings.LastFmApiKey},
+                {"api_key", Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey},
                 {"token", token}
             };
 
@@ -75,8 +75,8 @@ namespace ovkdesktop.Services
                 var sessionKey = sessionElement.GetProperty("key").GetString();
                 var username = sessionElement.GetProperty("name").GetString();
 
-                App.Settings.LastFmSessionKey = sessionKey;
-                App.Settings.LastFmUsername = username;
+                Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey = sessionKey;
+                Ioc.Default.GetRequiredService<SettingsHelper>().LastFmUsername = username;
 
                 Debug.WriteLine($"[LastFmService] Successfully got session key for user: {username}");
                 return true;
@@ -98,7 +98,7 @@ namespace ovkdesktop.Services
                     return false;
                 }
 
-                var authUrl = $"https://www.last.fm/api/auth/?api_key={App.Settings.LastFmApiKey}&token={token}";
+                var authUrl = $"https://www.last.fm/api/auth/?api_key={Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey}&token={token}";
                 await Launcher.LaunchUriAsync(new Uri(authUrl));
 
 
@@ -128,15 +128,15 @@ namespace ovkdesktop.Services
 
         public void Logout()
         {
-            App.Settings.LastFmSessionKey = null;
-            App.Settings.LastFmUsername = null;
+            Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey = null;
+            Ioc.Default.GetRequiredService<SettingsHelper>().LastFmUsername = null;
             Debug.WriteLine("[LastFmService] User logged out.");
         }
 
         // Отправка "Now Playing"
         public async Task UpdateNowPlayingAsync(Audio audio)
         {
-            if (!App.Settings.IsLastFmEnabled || string.IsNullOrEmpty(App.Settings.LastFmSessionKey) || audio == null)
+            if (!Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled || string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey) || audio == null)
             {
                 return;
             }
@@ -146,8 +146,8 @@ namespace ovkdesktop.Services
                 {"method", "track.updateNowPlaying"},
                 {"artist", audio.Artist},
                 {"track", audio.Title},
-                {"api_key", App.Settings.LastFmApiKey},
-                {"sk", App.Settings.LastFmSessionKey}
+                {"api_key", Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey},
+                {"sk", Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey}
             };
 
             await SendRequestAsync(parameters, HttpMethod.Post, true);
@@ -157,7 +157,7 @@ namespace ovkdesktop.Services
         // Отправка скроббла
         public async Task ScrobbleAsync(Audio audio, DateTime startTime)
         {
-            if (!App.Settings.IsLastFmEnabled || string.IsNullOrEmpty(App.Settings.LastFmSessionKey) || audio == null)
+            if (!Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled || string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey) || audio == null)
             {
                 return;
             }
@@ -170,8 +170,8 @@ namespace ovkdesktop.Services
                 {"artist", audio.Artist},
                 {"track", audio.Title},
                 {"timestamp", timestamp},
-                {"api_key", App.Settings.LastFmApiKey},
-                {"sk", App.Settings.LastFmSessionKey}
+                {"api_key", Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey},
+                {"sk", Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey}
             };
 
             await SendRequestAsync(parameters, HttpMethod.Post, true);
@@ -233,7 +233,7 @@ namespace ovkdesktop.Services
                 signatureString.Append(param.Key);
                 signatureString.Append(param.Value);
             }
-            signatureString.Append(App.Settings.LastFmApiSecret);
+            signatureString.Append(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret);
 
             // Hash with MD5
             using (var md5 = MD5.Create())

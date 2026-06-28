@@ -95,7 +95,7 @@ namespace ovkdesktop
             this.InitializeComponent();
             
             // get instance of audio service
-            _audioService = App.AudioService;
+            _audioService = Ioc.Default.GetRequiredService<AudioPlayerService>();
             
             // set initial mode
             _currentMode = AudioMode.Popular;

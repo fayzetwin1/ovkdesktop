@@ -37,7 +37,7 @@ namespace ovkdesktop
             this.InitializeComponent();
             
             // initialization with the global service when creating
-            Initialize(App.AudioService);
+            Initialize(Ioc.Default.GetRequiredService<AudioPlayerService>());
             
             // hide the player when initializing
             Hide();
@@ -51,7 +51,7 @@ namespace ovkdesktop
             // if the audio service is not installed, initialize it
             if (_audioService == null)
             {
-                Initialize(App.AudioService);
+                Initialize(Ioc.Default.GetRequiredService<AudioPlayerService>());
             }
         }
         

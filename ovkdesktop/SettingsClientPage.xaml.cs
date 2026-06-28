@@ -34,8 +34,8 @@ namespace ovkdesktop
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            LastFmApiKeyBox.Text = App.Settings.LastFmApiKey ?? "";
-            LastFmApiSecretBox.Password = App.Settings.LastFmApiSecret ?? "";
+            LastFmApiKeyBox.Text = Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey ?? "";
+            LastFmApiSecretBox.Password = Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret ?? "";
 
             UpdateLastFmUi();
 
@@ -47,20 +47,20 @@ namespace ovkdesktop
 
         private void UpdateLastFmUi()
         {
-            bool keysAreSet = !string.IsNullOrEmpty(App.Settings.LastFmApiKey) && !string.IsNullOrEmpty(App.Settings.LastFmApiSecret);
+            bool keysAreSet = !string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey) && !string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret);
 
-            LastFmToggle.IsEnabled = keysAreSet && !string.IsNullOrEmpty(App.Settings.LastFmSessionKey);
+            LastFmToggle.IsEnabled = keysAreSet && !string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey);
             LastFmLoginButton.IsEnabled = keysAreSet;
 
-            LastFmToggle.IsOn = App.Settings.IsLastFmEnabled;
+            LastFmToggle.IsOn = Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled;
             if (!LastFmToggle.IsEnabled)
             {
                 LastFmToggle.IsOn = false;
             }
 
-            if (!string.IsNullOrEmpty(App.Settings.LastFmSessionKey))
+            if (!string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey))
             {
-                LastFmStatusText.Text = $"Статус: выполнен вход как {App.Settings.LastFmUsername}";
+                LastFmStatusText.Text = $"Статус: выполнен вход как {Ioc.Default.GetRequiredService<SettingsHelper>().LastFmUsername}";
                 LastFmLoginButton.Content = "Войти в Last.fm";
             }
             else
@@ -72,10 +72,10 @@ namespace ovkdesktop
 
         private async void LastFmSaveKeysButton_Click(object sender, RoutedEventArgs e)
         {
-            App.Settings.LastFmApiKey = LastFmApiKeyBox.Text.Trim();
-            App.Settings.LastFmApiSecret = LastFmApiSecretBox.Password.Trim();
+            Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey = LastFmApiKeyBox.Text.Trim();
+            Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret = LastFmApiSecretBox.Password.Trim();
 
-            await App.Settings.SaveAsync();
+            await Ioc.Default.GetRequiredService<SettingsHelper>().SaveAsync();
 
             LastFmKeysInfoBar.IsOpen = true;
 
@@ -84,23 +84,23 @@ namespace ovkdesktop
 
         private async void LastFmToggle_Toggled(object sender, RoutedEventArgs e)
         {
-            App.Settings.IsLastFmEnabled = LastFmToggle.IsOn;
-            await App.Settings.SaveAsync();
+            Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled = LastFmToggle.IsOn;
+            await Ioc.Default.GetRequiredService<SettingsHelper>().SaveAsync();
         }
 
         private async void LastFmLoginButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(App.Settings.LastFmSessionKey))
+            if (!string.IsNullOrEmpty(Ioc.Default.GetRequiredService<SettingsHelper>().LastFmSessionKey))
             {
-                App.LastFmService.Logout();
-                await App.Settings.SaveAsync();
+                Ioc.Default.GetRequiredService<LastFmService>().Logout();
+                await Ioc.Default.GetRequiredService<SettingsHelper>().SaveAsync();
             }
             else
             {
-                bool success = await App.LastFmService.AuthenticateAsync(this.XamlRoot);
+                bool success = await Ioc.Default.GetRequiredService<LastFmService>().AuthenticateAsync(this.XamlRoot);
                 if (success)
                 {
-                    await App.Settings.SaveAsync();
+                    await Ioc.Default.GetRequiredService<SettingsHelper>().SaveAsync();
                 }
                 else
                 {

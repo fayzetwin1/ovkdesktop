@@ -104,7 +104,7 @@ namespace ovkdesktop.Services
         }
         
         // constructor
-        public AudioPlayerService()
+        public AudioPlayerService(LastFmService lastFmService)
         {
             try
             {
@@ -127,11 +127,11 @@ namespace ovkdesktop.Services
                 _positionTimer.Interval = TimeSpan.FromMilliseconds(200); // reduce the interval for smoother update
                 _positionTimer.Tick += PositionTimer_Tick;
 
-                _lastFmService = App.LastFmService;
+                _lastFmService = lastFmService;
 
                 if (_lastFmService == null)
                 {
-                    Debug.WriteLine("[AudioPlayerService] CRITICAL ERROR: App.LastFmService is null during initialization!");
+                    Debug.WriteLine("[AudioPlayerService] CRITICAL ERROR: lastFmService is null during initialization!");
                 }
 
                 Debug.WriteLine("[AudioPlayerService] Successfully initialized");
@@ -150,7 +150,7 @@ namespace ovkdesktop.Services
         private async Task ScrobbleTrackIfNeededAsync(TimeSpan position, TimeSpan duration)
         {
 
-            if (App.Settings.IsLastFmEnabled && !_hasScrobbledCurrentTrack && CurrentAudio != null && duration.TotalSeconds > 30)
+            if (Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled && !_hasScrobbledCurrentTrack && CurrentAudio != null && duration.TotalSeconds > 30)
             {
                 bool shouldScrobble = position.TotalSeconds >= duration.TotalSeconds / 2 || position.TotalSeconds >= 240;
 
@@ -1136,7 +1136,7 @@ namespace ovkdesktop.Services
                         // update the UI with the current position
                         PositionChanged?.Invoke(this, position);
 
-                        if (App.Settings.IsLastFmEnabled && !_hasScrobbledCurrentTrack && CurrentAudio != null && duration.TotalSeconds > 30)
+                        if (Ioc.Default.GetRequiredService<SettingsHelper>().IsLastFmEnabled && !_hasScrobbledCurrentTrack && CurrentAudio != null && duration.TotalSeconds > 30)
                         {
                             bool shouldScrobble = position.TotalSeconds >= duration.TotalSeconds / 2 || position.TotalSeconds >= 240;
 
