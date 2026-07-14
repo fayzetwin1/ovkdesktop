@@ -57,7 +57,7 @@ namespace ovkdesktop.Services
                     url += $"&message={Uri.EscapeDataString(message)}";
                 }
 
-                Debug.WriteLine($"[APIServiceNewsPosts] Repost URL: {instanceUrl}{url}");
+                Debug.WriteLine("[APIServiceNewsPosts] Calling wall.repost");
 
                 var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -105,7 +105,7 @@ namespace ovkdesktop.Services
                         $"&item_id={itemId}" +
                         $"&v=5.126";
 
-                Debug.WriteLine($"[APIServiceNewsPosts] Like URL: {instanceUrl}{url}");
+                Debug.WriteLine($"[APIServiceNewsPosts] Calling likes.add for {type} {ownerId}_{itemId}");
 
                 var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -154,7 +154,7 @@ namespace ovkdesktop.Services
                         $"&item_id={itemId}" +
                         $"&v=5.126";
 
-                Debug.WriteLine($"[APIServiceNewsPosts] Unlike URL: {instanceUrl}{url}");
+                Debug.WriteLine($"[APIServiceNewsPosts] Calling likes.delete for {type} {ownerId}_{itemId}");
 
                 var response = await httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -267,7 +267,7 @@ namespace ovkdesktop.Services
                         $"&user_ids={idsParam}" +
                         $"&fields=screen_name,photo_200&v=5.126";
 
-                Debug.WriteLine($"[APIServiceNewsPosts] GetUserProfiles URL: {instanceUrl}{url}");
+                Debug.WriteLine($"[APIServiceNewsPosts] Loading {userIds.Count} user profiles");
 
                 HttpResponseMessage response;
                 try
@@ -331,13 +331,14 @@ namespace ovkdesktop.Services
                 if (!groupIds.Any())
                     return new List<GroupProfile>();
 
+                groupIds = groupIds.Where(id => id > 0).Distinct().ToList();
                 var idsParam = string.Join(",", groupIds);
                 // use API method groups.getById to get information about groups
                 var url = $"method/groups.getById?access_token={token}" +
                         $"&group_ids={idsParam}" +
-                        $"&fields=photo_50,photo_100,photo_200,photo_max,description,members_count,site,contacts&v=5.126";
+                        $"&fields=photo_50,photo_100,photo_200,screen_name&v=5.126";
 
-                Debug.WriteLine($"[APIServiceNewsPosts] GetGroupInfo URL: {instanceUrl}{url}");
+                Debug.WriteLine($"[APIServiceNewsPosts] Loading {groupIds.Count} group profiles");
 
                 HttpResponseMessage response;
                 try
@@ -348,6 +349,14 @@ namespace ovkdesktop.Services
                 catch (HttpRequestException ex)
                 {
                     Debug.WriteLine($"[APIServiceNewsPosts] HTTP error in GetGroupInfoAsync: {ex.Message}");
+                    if (groupIds.Count > 1)
+                    {
+                        Debug.WriteLine("[APIServiceNewsPosts] Retrying group profiles one by one");
+                        var recoveredGroups = new List<GroupProfile>();
+                        foreach (int groupId in groupIds)
+                            recoveredGroups.AddRange(await GetGroupInfoAsync(token, new List<int> { groupId }));
+                        return recoveredGroups;
+                    }
                     return new List<GroupProfile>();
                 }
 
@@ -355,7 +364,7 @@ namespace ovkdesktop.Services
                 try
                 {
                     json = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[APIServiceNewsPosts] GetGroupInfo response: {json}");
+                    Debug.WriteLine($"[APIServiceNewsPosts] Group response length: {json.Length}");
 
                     // Removed heavy debug logging that enumerated every property of every group
                 }
@@ -386,6 +395,15 @@ namespace ovkdesktop.Services
                     {
                         return JsonSerializer.Deserialize<List<GroupProfile>>(responseElement.GetRawText(), options);
                     }
+
+                    if (groupIds.Count > 1)
+                    {
+                        Debug.WriteLine("[APIServiceNewsPosts] Group batch returned no response; retrying one by one");
+                        var recoveredGroups = new List<GroupProfile>();
+                        foreach (int groupId in groupIds)
+                            recoveredGroups.AddRange(await GetGroupInfoAsync(token, new List<int> { groupId }));
+                        return recoveredGroups;
+                    }
                     return new List<GroupProfile>();
                 }
                 catch (JsonException ex)
@@ -415,7 +433,7 @@ namespace ovkdesktop.Services
 
                 // use older API version for better compatibility
                 var url = $"method/users.get?access_token={token}&user_ids={userId}&fields=photo_200&v=5.126";
-                Debug.WriteLine($"[APIServiceNewsPosts] GetProfileInfo URL: {instanceUrl}{url}");
+                Debug.WriteLine($"[APIServiceNewsPosts] Loading profile {userId}");
 
                 var response = await httpClient.GetAsync(url);
                 Debug.WriteLine($"[APIServiceNewsPosts] Status: {(int)response.StatusCode} {response.ReasonPhrase}");
@@ -499,7 +517,7 @@ namespace ovkdesktop.Services
 
                 // use older API version for better compatibility
                 string url = $"method/newsfeed.getGlobal?access_token={token}&v=5.126";
-                Debug.WriteLine($"[APIServiceNewsPosts] GET {instanceUrl}{url}");
+                Debug.WriteLine($"[APIServiceNewsPosts] GET {instanceUrl}method/newsfeed.getGlobal");
                 if (!string.IsNullOrEmpty(nextFrom))
                 {
                     url += $"&start_from={nextFrom}";

@@ -11,71 +11,13 @@
     <Page.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
-        
-        <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:UserWallPost">
-            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1" CornerRadius="4"
-                Padding="10" Margin="0,5,0,0">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
-                            <Ellipse.Fill>
-                                <ImageBrush ImageSource="{x:Bind Profile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill"/>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{x:Bind FromId}" Click="OnAvatarClicked">
-                                <TextBlock Text="{x:Bind Profile.FullName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                            </Button>
-                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" Opacity="0.7" FontSize="12"/>
-                        </StackPanel>
-                    </Grid>
 
-                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"/>
-                    
-                    <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-        
-        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:UserWallPost">
-            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1" CornerRadius="4"
-                Padding="10" Margin="0,5,0,0">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
-                            <Ellipse.Fill>
-                                <ImageBrush ImageSource="{x:Bind Profile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill"/>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" CommandParameter="{x:Bind FromId}" Click="OnAvatarClicked">
-                                <TextBlock Text="{x:Bind Profile.FullName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                            </Button>
-                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" Opacity="0.7" FontSize="12"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"/>
-                    
-                    <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
-
-                    <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
-                                  ItemTemplate="{StaticResource RepostItemTemplateLevel2}" 
-                                  Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-            </Border>
+        <DataTemplate x:Key="UnifiedPostTemplate" x:DataType="models:BasePost">
+            <controls:PostCardControl Post="{Binding}"
+                                      AuthorInvoked="PostCard_AuthorInvoked"
+                                      LikeInvoked="PostCard_LikeInvoked"
+                                      CommentInvoked="PostCard_CommentInvoked"
+                                      RepostInvoked="PostCard_RepostInvoked"/>
         </DataTemplate>
     </Page.Resources>
 
@@ -83,6 +25,7 @@
         <ListView x:Name="PostsListView"
                   Loaded="PostsListView_Loaded"
                   ItemsSource="{x:Bind ViewModel.NewsPosts, Mode=OneWay}"
+                  ItemTemplate="{StaticResource UnifiedPostTemplate}"
                   SelectionMode="None"
                   Margin="125,24,125,0"
                   ShowsScrollingPlaceholders="False">
@@ -104,82 +47,6 @@
                 </Style>
             </ListView.ItemContainerStyle>
 
-            <ListView.ItemTemplate>
-                <DataTemplate x:DataType="models:NewsFeedPost">
-                    <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="15"
-                            HorizontalAlignment="Stretch">
-                        <StackPanel>
-                            
-                            <!-- Header -->
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                
-                                <Button Padding="0" Background="Transparent" BorderThickness="0" 
-                                        CommandParameter="{x:Bind FromId}"
-                                        Click="OnAvatarClicked">
-                                    <Ellipse Width="48" Height="48">
-                                        <Ellipse.Fill>
-                                            <ImageBrush ImageSource="{x:Bind Profile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill" />
-                                        </Ellipse.Fill>
-                                    </Ellipse>
-                                </Button>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                                    <TextBlock Text="{x:Bind Profile.FullName, Mode=OneWay}" FontWeight="SemiBold" FontSize="16" />
-                                    <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" FontSize="13" Opacity="0.7" />
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Post Text -->
-                            <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" IsTextSelectionEnabled="True" />
-
-                            <!-- Media Attachments -->
-                            <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
-
-                            <!-- Repost -->
-                            <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
-                                          ItemTemplate="{StaticResource RepostItemTemplate}" 
-                                          Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                          Margin="0,0,0,10"/>
-
-                            <!-- Actions Panel -->
-                            <StackPanel Orientation="Horizontal" Margin="-5,10,0,0">
-                                <Button Margin="0,0,10,0" Style="{ThemeResource DefaultButtonStyle}" 
-                                        Click="OnLikeClicked"
-                                        Tag="{Binding}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="❤ " />
-                                        <TextBlock Text="{x:Bind Likes.Count, Mode=OneWay}" />
-                                    </StackPanel>
-                                </Button>
-                                
-                                <Button Style="{ThemeResource DefaultButtonStyle}"
-                                        Click="OnCommentClicked"
-                                        Tag="{Binding}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="💬 " />
-                                        <TextBlock Text="{x:Bind Comments.Count, Mode=OneWay}" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button Margin="10,0,0,0" Style="{ThemeResource DefaultButtonStyle}"
-                                        Click="OnRepostClicked"
-                                        Tag="{Binding}">
-                                    <TextBlock Text="🔁 Репост" />
-                                </Button>
-                            </StackPanel>
-
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ListView.ItemTemplate>
 
             <ListView.Footer>
                 <StackPanel Margin="0,10,0,40">

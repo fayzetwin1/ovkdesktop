@@ -1,0 +1,112 @@
+<UserControl
+    x:Class="ovkdesktop.Controls.PostCardControl"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:ovkdesktop.Controls"
+    xmlns:models="using:ovkdesktop.Models"
+    xmlns:converters="using:ovkdesktop.Converters">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
+
+        <DataTemplate x:Key="NestedPostTemplate" x:DataType="models:UserWallPost">
+            <local:PostCardControl Post="{x:Bind}"
+                                   IsNested="True"
+                                   ShowActions="False"
+                                   AuthorInvoked="NestedPost_AuthorInvoked"
+                                   CommentInvoked="NestedPost_CommentInvoked"/>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border x:Name="CardBorder"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="16"
+            HorizontalAlignment="Stretch">
+        <StackPanel Spacing="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        Padding="0"
+                        Click="AuthorButton_Click"
+                        AutomationProperties.Name="Открыть профиль автора">
+                    <PersonPicture x:Name="AuthorPicture"
+                                   Width="48"
+                                   Height="48"
+                                   ProfilePicture="{Binding Post.AuthorAvatarUrl, ElementName=Root}"/>
+                </Button>
+
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <Button Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Click="AuthorButton_Click">
+                        <TextBlock Text="{Binding Post.AuthorName, ElementName=Root}"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
+                    </Button>
+                    <TextBlock Text="{Binding Post.FormattedDate, ElementName=Root}"
+                               FontSize="12"
+                               Opacity="0.65"/>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Text="{Binding Post.Text, ElementName=Root}"
+                       TextWrapping="Wrap"
+                       IsTextSelectionEnabled="True"
+                       Visibility="{Binding Post.Text, ElementName=Root, Converter={StaticResource StringToVisibilityConverter}}"/>
+
+            <local:PostMediaControl Attachments="{Binding Post.Attachments, ElementName=Root}"/>
+
+            <ItemsControl ItemsSource="{Binding Post.CopyHistory, ElementName=Root}"
+                          ItemTemplate="{StaticResource NestedPostTemplate}"
+                          Visibility="{Binding Post.HasRepost, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                          Margin="12,2,0,0"/>
+
+            <Grid x:Name="ActionsPanel"
+                  Visibility="{Binding ShowActions, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                  Margin="0,2,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Style="{ThemeResource DefaultButtonStyle}" Click="LikeButton_Click" Padding="10,5" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xEB51;" FontSize="15"/>
+                        <TextBlock Text="{Binding Post.Likes.Count, ElementName=Root}"
+                                   Foreground="{Binding Post.Likes.UserLikes, ElementName=Root, Converter={StaticResource LikeButtonColorConverter}}"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="1" Style="{ThemeResource DefaultButtonStyle}" Click="CommentButton_Click" Padding="10,5" Margin="0,0,8,0">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8BD;" FontSize="15"/>
+                        <TextBlock Text="{Binding Post.Comments.Count, ElementName=Root}"/>
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="2" Style="{ThemeResource DefaultButtonStyle}" Click="RepostButton_Click" Padding="10,5">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE72D;" FontSize="15"/>
+                        <TextBlock Text="{Binding Post.Reposts.Count, ElementName=Root}"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

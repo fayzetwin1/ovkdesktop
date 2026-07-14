@@ -13,6 +13,13 @@ namespace ovkdesktop.Services
 {
     public class APIServiceWall : IAPIServiceWall
     {
+        private readonly IOpenVkExecuteService _executeService;
+
+        public APIServiceWall(IOpenVkExecuteService executeService)
+        {
+            _executeService = executeService;
+        }
+
         public async Task<APIResponse<WallResponse<UserWallPost>>> GetWallAsync(string token, long ownerId, int offset = 0, int count = 20, CancellationToken cancellationToken = default)
         {
             try
@@ -40,15 +47,42 @@ namespace ovkdesktop.Services
         {
             try
             {
-                var httpClient = await SessionHelper.GetHttpClientAsync();
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 options.Converters.Add(new Converters.IntToBoolJsonConverter());
 
-                var initialUrl = $"method/wall.get?access_token={token}&owner_id={ownerId}&offset={offset}&count={count}&extended=1&v=5.126";
-                var initialResponse = await httpClient.GetAsync(initialUrl, cancellationToken);
-                initialResponse.EnsureSuccessStatusCode();
+                APIResponse<WallResponse<UserWallPost>> wallData = null;
+                if (_executeService.IsEnabled)
+                {
+                    try
+                    {
+                        const string code = "return API.wall.get({owner_id:parseInt(Args.owner_id),offset:parseInt(Args.offset),count:parseInt(Args.count),extended:1});";
+                        var arguments = new Dictionary<string, string>
+                        {
+                            ["owner_id"] = ownerId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            ["offset"] = offset.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            ["count"] = count.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                        };
+                        var executeResponse = await _executeService.ExecuteAsync<WallResponse<UserWallPost>>(token, code, arguments, cancellationToken);
+                        wallData = new APIResponse<WallResponse<UserWallPost>> { Response = executeResponse };
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[APIServiceWall] Experimental execute failed, falling back to wall.get: {ex.Message}");
+                    }
+                }
 
-                var wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+                if (wallData == null)
+                {
+                    var httpClient = await SessionHelper.GetHttpClientAsync();
+                    var initialUrl = $"method/wall.get?access_token={token}&owner_id={ownerId}&offset={offset}&count={count}&extended=1&v=5.126";
+                    var initialResponse = await httpClient.GetAsync(initialUrl, cancellationToken);
+                    initialResponse.EnsureSuccessStatusCode();
+                    wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+                }
                 if (wallData?.Response == null) return (new List<UserWallPost>(), 0);
                 
                 int totalCount = wallData.Response.Count;

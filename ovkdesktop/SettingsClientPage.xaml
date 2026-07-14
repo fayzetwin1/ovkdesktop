@@ -70,7 +70,7 @@
                                Style="{ThemeResource SubtitleTextBlockStyle}" 
                                FontSize="28"/>
                     <TextBlock x:Name="VersionOfClientLabel" 
-                               Text="версия: Beta 1.5.8" 
+                               Text="версия: Beta 1.6" 
                                Style="{ThemeResource BodyTextBlockStyle}" 
                                Opacity="0.7"/>
                     <TextBlock x:Name="AuthorOfClientLabel" 
@@ -86,6 +86,18 @@
 
                 <ScrollViewer x:Name="SettingsScrollViewer" Visibility="Collapsed">
                     <StackPanel Spacing="20" Padding="0,0,0,20">
+
+                        <StackPanel Spacing="10" Padding="20" BorderBrush="{ThemeResource SmokeFillColorDefaultBrush}" Background="{ThemeResource SmokeFillColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                            <TextBlock Text="Экспериментальные возможности" Style="{ThemeResource SubtitleTextBlockStyle}"/>
+                            <ToggleSwitch x:Name="OpenVkApiV2Toggle"
+                                          Header="Использовать OpenVK API 2.0 (execute)"
+                                          OffContent="Выключено"
+                                          OnContent="Включено"
+                                          Toggled="OpenVkApiV2Toggle_Toggled"/>
+                            <TextBlock Text="Объединяет API-запросы через метод execute. На неподдерживаемых инстансах клиент автоматически вернётся к обычным методам API. Функция может работать нестабильно."
+                                       TextWrapping="Wrap"
+                                       Opacity="0.8"/>
+                        </StackPanel>
 
                         <StackPanel Spacing="10" Padding="20" BorderBrush="{ThemeResource SmokeFillColorDefaultBrush}" Background="{ThemeResource SmokeFillColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
                             <TextBlock Text="Интеграция с Last.fm" Style="{ThemeResource SubtitleTextBlockStyle}"/>

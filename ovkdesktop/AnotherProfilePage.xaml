@@ -19,116 +19,15 @@
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
         <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
         <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
+
+        <DataTemplate x:Key="UnifiedPostTemplate" x:DataType="models:BasePost">
+            <controls:PostCardControl Post="{Binding}"
+                                      AuthorInvoked="PostCard_AuthorInvoked"
+                                      LikeInvoked="PostCard_LikeInvoked"
+                                      CommentInvoked="PostCard_CommentInvoked"
+                                      RepostInvoked="PostCard_RepostInvoked"/>
+        </DataTemplate>
         <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
-        
-        <DataTemplate x:Key="RepostItemTemplateLevel2" x:DataType="models:UserWallPost">
-            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1" CornerRadius="4"
-                Padding="10" Margin="0,5,0,0">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
-                            <Ellipse.Fill>
-                                <ImageBrush ImageSource="{x:Bind AuthorProfile, Mode=OneWay, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Tag="{x:Bind FromId}" Click="RepostAuthor_Click">
-                                <TextBlock Text="{x:Bind AuthorProfile.FullName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                            </Button>
-                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" Opacity="0.7" FontSize="12"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"/>
-                    <Image Source="{x:Bind MainImageUrl, Mode=OneWay}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{x:Bind HasImage, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <Image Source="{x:Bind GifUrl, Mode=OneWay}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{x:Bind HasGif, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <Grid Visibility="{x:Bind HasVideo, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,0" HorizontalAlignment="Left">
-                        <MediaPlayerElement Source="{x:Bind MainVideo.Player, Mode=OneWay, Converter={StaticResource StringToMediaPlaybackSourceConverter}}" MaxHeight="300" AreTransportControlsEnabled="True"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-        <converters:AttachmentTemplateSelector x:Key="AttachmentTemplateSelector">
-            <converters:AttachmentTemplateSelector.PhotoTemplate>
-                <DataTemplate x:DataType="models:Attachment">
-                    <Image Source="{x:Bind Photo.BestQualityUrl, Mode=OneWay}"
-                   Stretch="Uniform" MaxHeight="400"
-                   HorizontalAlignment="Left" Margin="0,0,0,10"/>
-                </DataTemplate>
-            </converters:AttachmentTemplateSelector.PhotoTemplate>
-
-            <!-- video -->
-            <converters:AttachmentTemplateSelector.VideoTemplate>
-                <DataTemplate x:DataType="models:Attachment">
-                    <MediaPlayerElement 
-                Source="{x:Bind Video.Player, Mode=OneWay, Converter={StaticResource StringToMediaPlaybackSourceConverter}}"
-                MaxHeight="400" AreTransportControlsEnabled="True"
-                HorizontalAlignment="Left" Margin="0,0,0,10"/>
-                </DataTemplate>
-            </converters:AttachmentTemplateSelector.VideoTemplate>
-
-            <!-- gif (doc) -->
-            <converters:AttachmentTemplateSelector.GifTemplate>
-                <DataTemplate x:DataType="models:Attachment">
-                    <Image Source="{x:Bind Doc.Url, Mode=OneWay}"
-                   Stretch="Uniform" MaxHeight="400"
-                   HorizontalAlignment="Left" Margin="0,0,0,10"/>
-                </DataTemplate>
-            </converters:AttachmentTemplateSelector.GifTemplate>
-
-            <!-- unknown types -->
-            <converters:AttachmentTemplateSelector.OtherTemplate>
-                <DataTemplate x:DataType="models:Attachment">
-                    <TextBlock Text="{x:Bind Type, Mode=OneWay, FallbackValue='Вложение'}" 
-                       FontWeight="SemiBold" Margin="0,5"/>
-                </DataTemplate>
-            </converters:AttachmentTemplateSelector.OtherTemplate>
-
-        </converters:AttachmentTemplateSelector>
-
-        <DataTemplate x:Key="RepostItemTemplate" x:DataType="models:UserWallPost">
-            <Border Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1" CornerRadius="4"
-                Padding="10" Margin="0,5,0,0">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Ellipse Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0">
-                            <Ellipse.Fill>
-                                <ImageBrush ImageSource="{x:Bind AuthorProfile, Mode=OneWay, Converter={StaticResource ProfileToImageConverter}}" Stretch="UniformToFill"/>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <Button Background="Transparent" BorderThickness="0" Padding="0,2" Margin="0" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Tag="{x:Bind FromId}" Click="RepostAuthor_Click">
-                                <TextBlock Text="{x:Bind AuthorProfile.FullName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"/>
-                            </Button>
-                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" Opacity="0.7" FontSize="12"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}"/>
-                    <Image Source="{x:Bind MainImageUrl, Mode=OneWay}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{x:Bind HasImage, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <Image Source="{x:Bind GifUrl, Mode=OneWay}" Stretch="Uniform" MaxHeight="300" HorizontalAlignment="Left" Margin="0,0,0,10" Visibility="{x:Bind HasGif, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <Grid Visibility="{x:Bind HasVideo, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,0,0,0" HorizontalAlignment="Left">
-                        <MediaPlayerElement Source="{x:Bind MainVideo.Player, Mode=OneWay, Converter={StaticResource StringToMediaPlaybackSourceConverter}}" MaxHeight="300" AreTransportControlsEnabled="True"/>
-                    </Grid>
-
-                    <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
-                              ItemTemplate="{StaticResource RepostItemTemplateLevel2}" 
-                              Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-            </Border>
-        </DataTemplate>
     </Page.Resources>
 
     <Grid>
@@ -191,6 +90,7 @@
 
                 <ListView x:Name="PostsListView" 
                          ItemsSource="{x:Bind ViewModel.Posts, Mode=OneWay}"
+                         ItemTemplate="{StaticResource UnifiedPostTemplate}"
                          HorizontalAlignment="Stretch">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="ListViewItem">
@@ -199,94 +99,6 @@
                             <Setter Property="Padding" Value="0" />
                         </Style>
                     </ListView.ItemContainerStyle>
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:UserWallPost">
-                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1" CornerRadius="8"
-                                    Margin="60,0,60,0" Padding="15"
-                                    HorizontalAlignment="Stretch">
-
-                                <StackPanel>
-                                    <!-- Header -->
-                                    <Grid Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        
-                                        <Button Padding="0" Background="Transparent" BorderThickness="0" 
-                                                Tag="{x:Bind FromId}"
-                                                Click="Author_Click">
-                                            <Ellipse Width="48" Height="48">
-                                                <Ellipse.Fill>
-                                                    <ImageBrush ImageSource="{x:Bind AuthorProfile.BestAvailablePhoto, Mode=OneWay}" Stretch="UniformToFill" />
-                                                </Ellipse.Fill>
-                                            </Ellipse>
-                                        </Button>
-
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                                            <Button Padding="0" Background="Transparent" BorderThickness="0" 
-                                                    Tag="{x:Bind FromId}"
-                                                    Click="Author_Click">
-                                                <TextBlock Text="{x:Bind AuthorProfile.FullName, Mode=OneWay}" FontWeight="SemiBold" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                            </Button>
-                                            <TextBlock Text="{x:Bind FormattedDate, Mode=OneWay}" FontSize="13" Opacity="0.7" />
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <!-- Post Text -->
-                                    <TextBlock Text="{x:Bind Text, Mode=OneWay}" TextWrapping="Wrap" Margin="0,0,0,10" IsTextSelectionEnabled="True" Visibility="{x:Bind Text, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" />
-
-                                    <!-- Media Attachments -->
-                                    <controls:PostMediaControl Attachments="{x:Bind Attachments, Mode=OneWay}" />
-
-                                    <!-- Repost -->
-                                    <ItemsControl ItemsSource="{x:Bind CopyHistory, Mode=OneWay}" 
-                                                  ItemTemplate="{StaticResource RepostItemTemplate}" 
-                                                  Visibility="{x:Bind HasRepost, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                  Margin="0,0,0,10"/>
-
-                                    <!-- Likes and comments -->
-                                    <StackPanel Orientation="Horizontal" Spacing="15" Margin="0,15,0,0">
-                                        <!-- Like button -->
-                                        <Button Click="LikeButton_Click" 
-                                                Background="Transparent" 
-                                                BorderThickness="0" 
-                                                Padding="5,2">
-                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                <TextBlock Text="❤" />
-                                                <TextBlock Text="{x:Bind Likes.Count, Mode=OneWay}" 
-                                                           Foreground="{x:Bind Likes.UserLikes, Mode=OneWay, Converter={StaticResource LikeButtonColorConverter}}"/>
-                                            </StackPanel>
-                                        </Button>
-
-                                        <!-- Comments button -->
-                                        <Button Tapped="ShowPostComments_Tapped" 
-                                                Background="Transparent" 
-                                                BorderThickness="0" 
-                                                Padding="5,2">
-                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                <TextBlock Text="💬" />
-                                                <TextBlock Text="{x:Bind Comments.Count, Mode=OneWay}" />
-                                            </StackPanel>
-                                        </Button>
-
-                                        <!-- Repost button -->
-                                        <Button Click="RepostItem_Click" 
-                                                Background="Transparent" 
-                                                BorderThickness="0" 
-                                                Padding="5,2">
-                                            <StackPanel Orientation="Horizontal" Spacing="5">
-                                                <TextBlock Text="🔁" />
-                                                <TextBlock Text="{x:Bind Reposts.Count, Mode=OneWay}" />
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
                 </ListView>
                 
                 <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingMore, Mode=OneWay}" 

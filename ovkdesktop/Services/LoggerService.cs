@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace ovkdesktop.Services
@@ -17,6 +18,9 @@ namespace ovkdesktop.Services
 
         private StreamWriter? _logWriter;
         private readonly object _lock = new object();
+        private static readonly Regex SensitiveQueryValuePattern = new(
+            @"(?i)(?<name>access_token|token|password)=[^&\s]+",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         private LoggerService() { }
 
@@ -80,6 +84,8 @@ namespace ovkdesktop.Services
         {
             if (_logWriter == null) return;
 
+            fullMessage = RedactSensitiveData(fullMessage);
+
             string formattedMessage = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} | {fullMessage}";
 
             lock (_lock)
@@ -93,6 +99,14 @@ namespace ovkdesktop.Services
                     _recentLogs.Dequeue();
                 }
             }
+        }
+
+        public static string RedactSensitiveData(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return message;
+
+            return SensitiveQueryValuePattern.Replace(message, "${name}=<redacted>");
         }
         public void Dispose()
         {

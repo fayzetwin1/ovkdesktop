@@ -13,7 +13,7 @@ namespace ovkdesktop.ViewModels
 {
     public partial class PostsViewModel : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
     {
-        private readonly APIServiceNewsPosts _apiService = new();
+        private readonly IAPIServiceNewsPosts _apiService;
         private string _nextFrom = "";
 
         [ObservableProperty]
@@ -30,8 +30,9 @@ namespace ovkdesktop.ViewModels
 
         private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
 
-        public PostsViewModel(ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
+        public PostsViewModel(IAPIServiceNewsPosts apiService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
+            _apiService = apiService;
             _dispatcherService = dispatcherService;
             // Initial load
             LoadNewsPostsCommand.Execute(true);
@@ -103,14 +104,7 @@ namespace ovkdesktop.ViewModels
                         int addedCount = 0;
                         foreach (var post in postsToAdd)
                         {
-                            if (profiles.TryGetValue(post.FromId, out var profile)) post.Profile = profile;
-                            if (post.CopyHistory != null)
-                            {
-                                foreach (var repost in post.CopyHistory)
-                                {
-                                    if (profiles.TryGetValue(repost.FromId, out var repostProfile)) repost.Profile = repostProfile;
-                                }
-                            }
+                            ApplyProfiles(post, profiles);
                             NewsPosts.Add(post);
                             addedCount++;
                         }
@@ -147,6 +141,29 @@ namespace ovkdesktop.ViewModels
                     IsLoadingMore = false;
                 });
             }
+        }
+
+        private static void ApplyProfiles(BasePost post, IReadOnlyDictionary<int, UserProfile> profiles)
+        {
+            if (!profiles.TryGetValue(post.FromId, out var profile))
+            {
+                profile = new UserProfile
+                {
+                    Id = post.FromId,
+                    FirstName = post.FromId < 0 ? $"Сообщество {Math.Abs(post.FromId)}" : $"Пользователь {post.FromId}",
+                    LastName = string.Empty,
+                    Photo200 = "https://api.openvk.org/assets/packages/static/openvk/img/camera_200.png",
+                    IsGroup = post.FromId < 0
+                };
+            }
+
+            post.Profile = profile;
+
+            if (post.CopyHistory == null)
+                return;
+
+            foreach (var repost in post.CopyHistory)
+                ApplyProfiles(repost, profiles);
         }
 
         [RelayCommand]

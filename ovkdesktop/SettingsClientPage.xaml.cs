@@ -26,6 +26,7 @@ namespace ovkdesktop
     /// </summary>
     public sealed partial class SettingsClientPage : Page
     {
+        private bool _isLoadingSettings;
 
         public SettingsClientPage()
         {
@@ -34,8 +35,10 @@ namespace ovkdesktop
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
         {
+            _isLoadingSettings = true;
             LastFmApiKeyBox.Text = Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey ?? "";
             LastFmApiSecretBox.Password = Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret ?? "";
+            OpenVkApiV2Toggle.IsOn = Ioc.Default.GetRequiredService<SettingsHelper>().ExperimentalOpenVkApiV2Enabled;
 
             UpdateLastFmUi();
 
@@ -43,6 +46,17 @@ namespace ovkdesktop
             LoadingRing.Visibility = Visibility.Collapsed;
 
             SettingsScrollViewer.Visibility = Visibility.Visible;
+            _isLoadingSettings = false;
+        }
+
+        private async void OpenVkApiV2Toggle_Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_isLoadingSettings)
+                return;
+
+            var settings = Ioc.Default.GetRequiredService<SettingsHelper>();
+            settings.ExperimentalOpenVkApiV2Enabled = OpenVkApiV2Toggle.IsOn;
+            await settings.SaveAsync();
         }
 
         private void UpdateLastFmUi()

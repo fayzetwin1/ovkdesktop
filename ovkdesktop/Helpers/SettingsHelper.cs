@@ -89,5 +89,6 @@ namespace ovkdesktop.Helpers
         public string LastFmApiSecret { get => _config.ApiSecret; set => _config.ApiSecret = value; }
         public string LastFmSessionKey { get => _config.SessionKey; set => _config.SessionKey = value; }
         public string LastFmUsername { get => _config.Username; set => _config.Username = value; }
+        public bool ExperimentalOpenVkApiV2Enabled { get => _config.ExperimentalOpenVkApiV2Enabled; set => _config.ExperimentalOpenVkApiV2Enabled = value; }
     }
 }

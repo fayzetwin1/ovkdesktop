@@ -232,10 +232,15 @@ namespace ovkdesktop.Models
         }
 
         [JsonIgnore]
-        public string AuthorName => Profile?.FullName ?? "Загрузка...";
+        public string AuthorName => EffectiveAuthorProfile?.FullName ?? "Загрузка...";
 
         [JsonIgnore]
-        public string AuthorAvatarUrl => Profile?.BestAvailablePhoto;
+        public string AuthorAvatarUrl => EffectiveAuthorProfile?.BestAvailablePhoto;
+
+        [JsonIgnore]
+        private UserProfile EffectiveAuthorProfile => this is UserWallPost wallPost
+            ? wallPost.AuthorProfile ?? Profile
+            : Profile;
 
         [JsonIgnore]
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
@@ -279,7 +284,14 @@ namespace ovkdesktop.Models
         public UserProfile AuthorProfile
         {
             get => _authorProfile;
-            set => SetProperty(ref _authorProfile, value);
+            set
+            {
+                if (SetProperty(ref _authorProfile, value))
+                {
+                    OnPropertyChanged(nameof(AuthorName));
+                    OnPropertyChanged(nameof(AuthorAvatarUrl));
+                }
+            }
         }
 
         [JsonIgnore]
@@ -1351,6 +1363,9 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("username")]
         public string Username { get; set; }
+
+        [JsonPropertyName("experimentalOpenVkApiV2Enabled")]
+        public bool ExperimentalOpenVkApiV2Enabled { get; set; } = false;
     }
 
     public class AppSettings

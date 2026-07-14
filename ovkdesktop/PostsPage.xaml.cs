@@ -19,6 +19,42 @@ namespace ovkdesktop
             this.DataContext = ViewModel;
         }
 
+        private void PostCard_AuthorInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            Frame?.Navigate(typeof(AnotherProfilePage), e.Post.FromId);
+        }
+
+        private void PostCard_CommentInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            Frame?.Navigate(typeof(PostInfoPage), new PostInfoPage.PostInfoParameters
+            {
+                PostId = e.Post.Id,
+                OwnerId = e.Post.OwnerId
+            });
+        }
+
+        private void PostCard_LikeInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            if (e.Post is NewsFeedPost post)
+                ViewModel.LikePostCommand.Execute(post);
+        }
+
+        private async void PostCard_RepostInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            if (e.Post is not NewsFeedPost post)
+                return;
+
+            bool success = await ViewModel.RepostPostDirectlyAsync(post);
+            var dialog = new ContentDialog
+            {
+                Title = success ? "Успех" : "Ошибка",
+                Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
+                CloseButtonText = "OK",
+                XamlRoot = XamlRoot
+            };
+            await dialog.ShowAsync();
+        }
+
         private ScrollViewer _scrollViewer;
 
         private void PostsListView_Loaded(object sender, RoutedEventArgs e)

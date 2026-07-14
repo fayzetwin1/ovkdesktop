@@ -130,6 +130,7 @@ namespace ovkdesktop
             services.AddSingleton<Services.IAPIServiceNewsPosts, Services.APIServiceNewsPosts>();
             services.AddSingleton<Services.IAPIServiceMusic, Services.APIServiceMusic>();
             services.AddSingleton<Services.IAPIServiceProfile, Services.APIServiceProfile>();
+            services.AddSingleton<Services.IOpenVkExecuteService, Services.OpenVkExecuteService>();
             services.AddSingleton<Services.IAPIServiceWall, Services.APIServiceWall>();
             services.AddSingleton<Services.Interfaces.IDispatcherService, Services.WinUIDispatcherService>();
             services.AddSingleton<Services.Interfaces.IFilePickerService, Services.WinUIFilePickerService>();

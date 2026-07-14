@@ -39,9 +39,9 @@
 
 ## Соц. сети проекта 
 
-[Наш Telegram канал](https://t.me/ovkdesktop) (там же вы можете узнать как поддержать проект материально, btw) 
+[Наш Telegram канал](https://telegram.me/ovkdesktop) (там же вы можете узнать как поддержать проект материально, btw)
 
-[Telegram топик о нашем клиенте в OpenVKMobile](https://t.me/openvkmobile/18335)
+[Telegram топик о нашем клиенте в OpenVKMobile](https://telegram.me/openvkmobile/18335)
 
 ## Скриншоты
 

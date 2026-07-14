@@ -19,6 +19,34 @@ namespace ovkdesktop
             this.InitializeComponent();
         }
 
+        private void PostCard_AuthorInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            if (ViewModel.CurrentUserProfile != null && e.Post.FromId == ViewModel.CurrentUserProfile.Id)
+                return;
+            Frame.Navigate(typeof(AnotherProfilePage), e.Post.FromId);
+        }
+
+        private void PostCard_CommentInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            Frame.Navigate(typeof(PostInfoPage), new PostInfoPage.PostInfoParameters
+            {
+                PostId = e.Post.Id,
+                OwnerId = e.Post.OwnerId
+            });
+        }
+
+        private void PostCard_LikeInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            if (e.Post is UserWallPost post)
+                ViewModel.ToggleLikeCommand.Execute(post);
+        }
+
+        private void PostCard_RepostInvoked(object sender, Controls.PostInvokedEventArgs e)
+        {
+            if (e.Post is UserWallPost post)
+                ViewModel.RepostCommand.Execute(post);
+        }
+
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
