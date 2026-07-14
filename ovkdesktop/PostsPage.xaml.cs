@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Navigation;
 using ovkdesktop.Models;
 using ovkdesktop.ViewModels;
 using System.Diagnostics;
+using ovkdesktop.Helpers;
 
 namespace ovkdesktop
 {
@@ -20,20 +21,21 @@ namespace ovkdesktop
             this.DataContext = ViewModel;
         }
 
-        private double _savedVerticalOffset;
+        private readonly ScrollPositionKeeper _scrollPosition = new();
         private bool _restoreScrollPosition;
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            _restoreScrollPosition = _savedVerticalOffset > 0;
+            _restoreScrollPosition = _scrollPosition.SavedOffset > 0;
             RestoreScrollPosition();
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
             if (_scrollViewer != null)
-                _savedVerticalOffset = _scrollViewer.VerticalOffset;
+                _scrollPosition.Save(_scrollViewer);
+            _scrollPosition.CancelPendingRestore();
             base.OnNavigatedFrom(e);
         }
 
@@ -92,11 +94,8 @@ namespace ovkdesktop
                 return;
 
             _restoreScrollPosition = false;
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                _scrollViewer.ChangeView(null, _savedVerticalOffset, null, true);
-                Debug.WriteLine($"[PostsPage] Restored feed position: {_savedVerticalOffset:0}px");
-            });
+            _scrollPosition.Restore(_scrollViewer);
+            Debug.WriteLine($"[PostsPage] Requested feed position restore: {_scrollPosition.SavedOffset:0}px");
         }
 
         private void ScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)

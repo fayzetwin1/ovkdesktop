@@ -15,6 +15,7 @@ using ovkdesktop.Models;
 using ovkdesktop.Converters;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 
 namespace ovkdesktop
 {
@@ -33,6 +34,7 @@ namespace ovkdesktop
         private string accessToken;
         private HttpClient httpClient;
         private string instanceUrl;
+        private CancellationTokenSource navigationCts;
         
         // variables for pagination of comments
         private int commentsOffset = 0;
@@ -55,6 +57,9 @@ namespace ovkdesktop
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            navigationCts?.Cancel();
+            navigationCts?.Dispose();
+            navigationCts = new CancellationTokenSource();
             if (e.Parameter is PostInfoParameters parameters)
             {
                 postId = parameters.PostId;
@@ -66,6 +71,12 @@ namespace ovkdesktop
             {
                 ShowError("Invalid parameters for loading post.");
             }
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            navigationCts?.Cancel();
+            base.OnNavigatedFrom(e);
         }
 
         private async Task InitializeClientAndLoadAsync()
@@ -149,12 +160,14 @@ namespace ovkdesktop
                 {
                     commentsOffset = 0;
                     Comments.Clear();
+                    EmptyCommentsState.Visibility = Visibility.Collapsed;
                 }
                 
                 string url = $"method/wall.getComments?owner_id={ownerId}&post_id={postId}&extended=1&count={commentsPerPage}&offset={commentsOffset}&access_token={accessToken}&v=5.126";
                 Debug.WriteLine($"[PostInfoPage] request comments: {instanceUrl}{url} (offset={commentsOffset}, count={commentsPerPage})");
                 
-                var response = await httpClient.GetAsync(url);
+                var response = await httpClient.GetAsync(url, navigationCts?.Token ?? CancellationToken.None);
+                if (navigationCts?.IsCancellationRequested == true) return;
                 Debug.WriteLine($"[PostInfoPage] response status: {response.StatusCode}");
 
                 var json = await response.Content.ReadAsStringAsync();
@@ -202,14 +215,13 @@ namespace ovkdesktop
                         
                         // update visibility of "Load more" button
                         LoadMoreButton.Visibility = HasMoreComments ? Visibility.Visible : Visibility.Collapsed;
+                        EmptyCommentsState.Visibility = Comments.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
                     }
                     else
                     {
                         Debug.WriteLine("[PostInfoPage] no comments in response."); // no comments in response
                         if (isInitialLoad)
-                        {
-                            ShowError("No comments."); // comments are absent
-                        }
+                            EmptyCommentsState.Visibility = Visibility.Visible;
                     }
                 }
                 else
@@ -217,6 +229,10 @@ namespace ovkdesktop
                     Debug.WriteLine("[PostInfoPage] no 'response' property in JSON."); // no 'response' property in JSON
                     ShowError("No 'response' property in response."); // no 'response' property in response
                 }
+            }
+            catch (OperationCanceledException) when (navigationCts?.IsCancellationRequested == true)
+            {
+                Debug.WriteLine("[PostInfoPage] Comment loading cancelled on navigation.");
             }
             catch (Exception ex)
             {
@@ -226,13 +242,19 @@ namespace ovkdesktop
             finally
             {
                 isLoadingComments = false;
-                LoadMoreButton.IsEnabled = HasMoreComments;
-                LoadingProgressRing.IsActive = false;
+                if (navigationCts?.IsCancellationRequested != true && IsLoaded)
+                {
+                    LoadMoreButton.IsEnabled = HasMoreComments;
+                    LoadingProgressRing.IsActive = false;
+                }
             }
         }
 
         private async void ShowError(string message)
         {
+            if (navigationCts?.IsCancellationRequested == true || !IsLoaded || XamlRoot == null)
+                return;
+
             try
             {
                 Debug.WriteLine($"[PostInfoPage] ERROR: {message}");
@@ -278,6 +300,9 @@ namespace ovkdesktop
                 // Create comment
                 await CreateCommentAsync(commentText);
 
+                if (navigationCts?.IsCancellationRequested == true)
+                    return;
+
                 // Clear input field after successful sending
                 CommentTextBox.Text = string.Empty;
             }
@@ -290,7 +315,8 @@ namespace ovkdesktop
             finally
             {
                 // enable button again
-                SendCommentButton.IsEnabled = true;
+                if (navigationCts?.IsCancellationRequested != true && IsLoaded)
+                    SendCommentButton.IsEnabled = true;
             }
         }
 
@@ -317,7 +343,8 @@ namespace ovkdesktop
                 string url = $"method/wall.createComment";
                 Debug.WriteLine($"[PostInfoPage] request to create comment: {instanceUrl}{url}");
                 
-                var response = await httpClient.PostAsync(url, content);
+                var response = await httpClient.PostAsync(url, content, navigationCts?.Token ?? CancellationToken.None);
+                if (navigationCts?.IsCancellationRequested == true) return;
                 var responseContent = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[PostInfoPage] server response: {responseContent}");
 
@@ -344,6 +371,9 @@ namespace ovkdesktop
                 commentsCount = 0;
                 Comments.Clear();
                 await LoadCommentsAsync(true);
+
+                if (navigationCts?.IsCancellationRequested == true || !IsLoaded || XamlRoot == null)
+                    return;
                 
                 // show notification about successful sending
                 var successDialog = new ContentDialog
@@ -354,6 +384,10 @@ namespace ovkdesktop
                     XamlRoot = this.XamlRoot
                 };
                 await successDialog.ShowAsync();
+            }
+            catch (OperationCanceledException) when (navigationCts?.IsCancellationRequested == true)
+            {
+                Debug.WriteLine("[PostInfoPage] Comment sending cancelled on navigation.");
             }
             catch (Exception ex)
             {

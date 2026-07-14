@@ -134,13 +134,17 @@ namespace ovkdesktop
                 {
                     // first make the player visible, but with zero transparency (it will be animated)
                     if (this.Visibility != Visibility.Visible)
-            {
-                        this.Opacity = 0;
+                    {
+                        // The storyboard targets RootGrid. Setting the UserControl
+                        // itself to zero opacity keeps the entire subtree invisible
+                        // even after the RootGrid animation has completed.
+                        this.Opacity = 1;
+                        RootGrid.Opacity = 0;
                         this.Visibility = Visibility.Visible;
                         _isVisible = true;
                         
                         // start the animation of appearance
-                ShowPlayerStoryboard.Begin();
+                        ShowPlayerStoryboard.Begin();
                         
                         Debug.WriteLine("[MiniPlayerControl] Show mini player with animation");
                     }

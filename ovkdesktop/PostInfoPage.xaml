@@ -13,7 +13,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid MaxWidth="1240" HorizontalAlignment="Center" Margin="0,12,0,20">
+        <Grid MaxWidth="1240" HorizontalAlignment="Stretch" Margin="0,12,0,20">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -32,10 +32,9 @@
             </StackPanel>
         </Grid>
 
+        <Grid Grid.Row="1" MaxWidth="1240" HorizontalAlignment="Stretch">
         <ListView x:Name="CommentsListView"
-                  Grid.Row="1"
-                  MaxWidth="1240"
-                  HorizontalAlignment="Center"
+                  HorizontalAlignment="Stretch"
                   HorizontalContentAlignment="Stretch"
                   ItemsSource="{x:Bind Comments, Mode=OneWay}"
                   SelectionMode="None">
@@ -81,9 +80,25 @@
             </ListView.Footer>
         </ListView>
 
+        <StackPanel x:Name="EmptyCommentsState"
+                    Visibility="Collapsed"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="10">
+            <FontIcon Glyph="&#xE8BD;" FontSize="32" Opacity="0.55"/>
+            <TextBlock Text="Комментариев пока нет"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"/>
+            <TextBlock Text="Начните обсуждение этой публикации"
+                       Style="{StaticResource PageSubtitleTextStyle}"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+        </Grid>
+
         <Border Grid.Row="2"
                 MaxWidth="1240"
-                HorizontalAlignment="Center"
+                HorizontalAlignment="Stretch"
                 Style="{StaticResource SurfaceCardStyle}"
                 Padding="10"
                 Margin="0,12,0,0">

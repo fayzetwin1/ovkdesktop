@@ -8,6 +8,9 @@ using System.Diagnostics;
 using Windows.Media.Core;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI;
+using System.Linq;
+using CommunityToolkit.Mvvm.DependencyInjection;
+using Microsoft.UI.Xaml.Documents;
 
 namespace ovkdesktop.Controls
 {
@@ -45,6 +48,11 @@ namespace ovkdesktop.Controls
 
             if (attachments == null) return;
 
+            var audioPlaylist = attachments
+                .Where(attachment => attachment.Type == "audio" && attachment.Audio != null)
+                .Select(attachment => attachment.Audio)
+                .ToList();
+
             foreach (var attachment in attachments)
             {
                 if (attachment.Type == "photo" && attachment.Photo != null && !string.IsNullOrEmpty(attachment.Photo.TimelinePhotoUrl))
@@ -81,7 +89,102 @@ namespace ovkdesktop.Controls
                     var videoHost = CreateVideoElement(attachment.Video);
                     MediaContainer.Children.Add(videoHost);
                 }
+                else if (attachment.Type == "audio" && attachment.Audio != null)
+                {
+                    MediaContainer.Children.Add(CreateAudioElement(attachment.Audio, audioPlaylist));
+                }
             }
+        }
+
+        private FrameworkElement CreateAudioElement(Audio audio, List<Audio> playlist)
+        {
+            var playButton = new Button
+            {
+                Width = 38,
+                Height = 38,
+                MinWidth = 38,
+                Padding = new Thickness(0),
+                CornerRadius = new CornerRadius(19),
+                Background = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 91, 157, 229)),
+                Content = new FontIcon
+                {
+                    Glyph = "\uE768",
+                    FontSize = 15,
+                    Foreground = new SolidColorBrush(Colors.White)
+                },
+                IsEnabled = !string.IsNullOrWhiteSpace(audio.Url),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            ToolTipService.SetToolTip(playButton,
+                playButton.IsEnabled ? $"Воспроизвести {audio.FullTitle}" : "Аудиозапись недоступна");
+
+            string artist = string.IsNullOrWhiteSpace(audio.Artist)
+                ? "Неизвестный исполнитель"
+                : audio.Artist;
+            string title = string.IsNullOrWhiteSpace(audio.Title)
+                ? "Без названия"
+                : audio.Title;
+
+            var trackText = new TextBlock
+            {
+                Margin = new Thickness(12, 0, 12, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                TextWrapping = TextWrapping.NoWrap
+            };
+            trackText.Inlines.Add(new Run
+            {
+                Text = artist,
+                FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Windows.UI.Color.FromArgb(255, 91, 157, 229))
+            });
+            trackText.Inlines.Add(new Run
+            {
+                Text = $" — {title}"
+            });
+
+            var duration = new TextBlock
+            {
+                Text = audio.FormattedDuration,
+                Opacity = 0.68,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Grid.SetColumn(trackText, 1);
+            Grid.SetColumn(duration, 2);
+            grid.Children.Add(playButton);
+            grid.Children.Add(trackText);
+            grid.Children.Add(duration);
+
+            playButton.Click += (_, _) =>
+            {
+                try
+                {
+                    var service = Ioc.Default.GetRequiredService<AudioPlayerService>();
+                    int index = Math.Max(0, playlist.IndexOf(audio));
+                    service.SetPlaylist(playlist, index);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[PostMediaControl] Audio playback error: {ex.Message}");
+                }
+            };
+
+            return new Border
+            {
+                Background = Application.Current.Resources["ClientNestedSurfaceBrush"] as Brush,
+                BorderBrush = Application.Current.Resources["CardStrokeColorDefaultBrush"] as Brush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(10),
+                Margin = new Thickness(0, 4, 0, 4),
+                Child = grid
+            };
         }
 
         private FrameworkElement CreateVideoElement(Video video)

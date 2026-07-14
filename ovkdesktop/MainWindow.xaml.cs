@@ -63,6 +63,7 @@ namespace ovkdesktop
             var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
             AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
 
+            ApplyWindowIcon(appWindow);
             appWindow.Resize(new Windows.Graphics.SizeInt32(1600, 900));
 
             SetScreenSize();
@@ -79,17 +80,37 @@ namespace ovkdesktop
             _audioPlayerService = Ioc.Default.GetRequiredService<AudioPlayerService>();
             
             // setting the window title
-            Title = "OVK Desktop";
+            Title = "OpenVK Desktop";
             
             // setting the size and centering the window
             SetWindowSize(1280, 720);
             CenterWindow();
 
-            // initialize the mini player
-            InitializeMiniPlayer();
-            
             Debug.WriteLine("[MainWindow] Initialized");
         }
+
+#if WINDOWS
+        private static void ApplyWindowIcon(AppWindow appWindow)
+        {
+            try
+            {
+                string iconPath = Path.Combine(AppContext.BaseDirectory, "window-icon.ico");
+                if (File.Exists(iconPath))
+                {
+                    appWindow.SetIcon(iconPath);
+                    Debug.WriteLine($"[MainWindow] Window icon loaded from {iconPath}");
+                }
+                else
+                {
+                    Debug.WriteLine($"[MainWindow] Window icon was not copied to {iconPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindow] Error setting window icon: {ex.Message}");
+            }
+        }
+#endif
         
         private void ContentFrame_Navigated(object sender, NavigationEventArgs e)
         {

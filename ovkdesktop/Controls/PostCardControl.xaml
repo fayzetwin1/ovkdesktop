@@ -87,11 +87,6 @@
                        Visibility="{Binding Post.HasRepost, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
                        Margin="0,2,0,-2"/>
 
-            <TextBlock Text="{Binding Post.RepostChainComment, ElementName=Root}"
-                       TextWrapping="Wrap"
-                       IsTextSelectionEnabled="True"
-                       Visibility="{Binding Post.RepostChainComment, ElementName=Root, Converter={StaticResource StringToVisibilityConverter}}"/>
-
             <ItemsControl ItemsSource="{Binding Post.DisplayCopyHistory, ElementName=Root}"
                           ItemTemplate="{StaticResource NestedPostTemplate}"
                           Visibility="{Binding Post.HasRepost, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"

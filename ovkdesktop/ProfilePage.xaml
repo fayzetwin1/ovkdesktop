@@ -36,7 +36,7 @@
         </Grid.RowDefinitions>
 
         <!-- User profile (avatar and information) -->
-        <Grid Grid.Row="0" Margin="24,48,24,0" MaxWidth="1240" HorizontalAlignment="Center">
+        <Grid Grid.Row="0" Margin="24,48,24,0" MaxWidth="1240" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
@@ -78,7 +78,7 @@
         </Grid>
 
         <!-- Posts list -->
-        <Grid Grid.Row="1" Margin="24,24,24,20" MaxWidth="1240" HorizontalAlignment="Center" x:Name="GridPostsMyProfile">
+        <Grid Grid.Row="1" Margin="24,24,24,20" MaxWidth="1240" HorizontalAlignment="Stretch" x:Name="GridPostsMyProfile">
             <ProgressRing x:Name="LoadingProgressRing" 
                          IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
                          Width="50" Height="50" 
@@ -86,6 +86,7 @@
                          VerticalAlignment="Center"/>
 
             <ListView x:Name="PostsListView" 
+                     Loaded="PostsListView_Loaded"
                      ItemsSource="{x:Bind ViewModel.Posts, Mode=OneWay}"
                      ItemTemplate="{StaticResource UnifiedPostTemplate}"
                      HorizontalAlignment="Stretch">

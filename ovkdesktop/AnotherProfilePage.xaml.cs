@@ -6,6 +6,8 @@ using Microsoft.UI.Xaml.Navigation;
 using ovkdesktop.ViewModels;
 using ovkdesktop.Models;
 using CommunityToolkit.Mvvm.DependencyInjection;
+using ovkdesktop.Helpers;
+using System.Collections.Generic;
 
 namespace ovkdesktop
 {
@@ -17,7 +19,12 @@ namespace ovkdesktop
         {
             ViewModel = Ioc.Default.GetRequiredService<AnotherProfileViewModel>();
             this.InitializeComponent();
+            NavigationCacheMode = NavigationCacheMode.Required;
         }
+
+        private static readonly Dictionary<long, double> SavedOffsets = new();
+        private readonly ScrollPositionKeeper _scrollPosition = new();
+        private long _requestedProfileId;
 
         private void PostCard_AuthorInvoked(object sender, Controls.PostInvokedEventArgs e)
         {
@@ -53,12 +60,20 @@ namespace ovkdesktop
             if (e.Parameter is IConvertible convertible)
             {
                 long ownerId = convertible.ToInt64(null);
-                await ViewModel.InitializeAsync(ownerId);
+                _requestedProfileId = ownerId;
+                if (ViewModel.ProfileId != ownerId || ViewModel.Posts.Count == 0)
+                    await ViewModel.InitializeAsync(ownerId);
+
+                if (SavedOffsets.TryGetValue(ownerId, out var offset))
+                    DispatcherQueue.TryEnqueue(() => _scrollPosition.Restore(PageScrollViewer, offset));
             }
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
+            if (_requestedProfileId != 0)
+                SavedOffsets[_requestedProfileId] = PageScrollViewer.VerticalOffset;
+            _scrollPosition.CancelPendingRestore();
             base.OnNavigatedFrom(e);
             ViewModel.Cancel();
         }

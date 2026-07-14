@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Navigation;
 using ovkdesktop.ViewModels;
 using ovkdesktop.Models;
 using CommunityToolkit.Mvvm.DependencyInjection;
+using ovkdesktop.Helpers;
 
 namespace ovkdesktop
 {
@@ -17,7 +18,11 @@ namespace ovkdesktop
         {
             ViewModel = Ioc.Default.GetRequiredService<ProfileViewModel>();
             this.InitializeComponent();
+            NavigationCacheMode = NavigationCacheMode.Required;
         }
+
+        private readonly ScrollPositionKeeper _scrollPosition = new();
+        private bool _restoreScrollPosition;
 
         private void PostCard_AuthorInvoked(object sender, Controls.PostInvokedEventArgs e)
         {
@@ -50,11 +55,16 @@ namespace ovkdesktop
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            ViewModel.InitializeCommand.Execute(null);
+            _restoreScrollPosition = _scrollPosition.SavedOffset > 0;
+            if (ViewModel.Posts.Count == 0)
+                ViewModel.InitializeCommand.Execute(null);
+            RestoreScrollPosition();
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
+            _scrollPosition.Save(_scrollViewer);
+            _scrollPosition.CancelPendingRestore();
             base.OnNavigatedFrom(e);
             ViewModel.Cancel();
         }
@@ -71,8 +81,19 @@ namespace ovkdesktop
             _scrollViewer = FindVisualChild<ScrollViewer>(PostsListView);
             if (_scrollViewer != null)
             {
+                _scrollViewer.ViewChanged -= PageScrollViewer_ViewChanged;
                 _scrollViewer.ViewChanged += PageScrollViewer_ViewChanged;
+                RestoreScrollPosition();
             }
+        }
+
+        private void RestoreScrollPosition()
+        {
+            if (!_restoreScrollPosition || _scrollViewer == null)
+                return;
+
+            _restoreScrollPosition = false;
+            _scrollPosition.Restore(_scrollViewer);
         }
 
         private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject

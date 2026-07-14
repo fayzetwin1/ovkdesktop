@@ -36,7 +36,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="24,16,24,0" MaxWidth="1240" HorizontalAlignment="Center">
+        <Grid Grid.Row="0" Margin="24,16,24,0" MaxWidth="1240" HorizontalAlignment="Stretch">
             <Button Click="BackPostsClick" AutomationProperties.Name="Back" 
                    Style="{StaticResource CompactActionButtonStyle}" HorizontalAlignment="Left">
                 <FontIcon Glyph="&#xE72B;" />
@@ -45,8 +45,10 @@
                       TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
 
-        <ScrollViewer x:Name="PageScrollViewer" Grid.Row="1" Margin="0,10,0,0" ViewChanged="PageScrollViewer_ViewChanged">
-            <StackPanel Margin="24,0,24,24" MaxWidth="1240" HorizontalAlignment="Center">
+        <ScrollViewer x:Name="PageScrollViewer" Grid.Row="1" Margin="0,10,0,0"
+                      HorizontalContentAlignment="Stretch"
+                      ViewChanged="PageScrollViewer_ViewChanged">
+            <StackPanel Margin="24,0,24,24" MaxWidth="1240" HorizontalAlignment="Stretch">
                 <Grid Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>

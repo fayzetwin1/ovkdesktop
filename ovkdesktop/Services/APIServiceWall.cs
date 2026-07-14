@@ -100,9 +100,17 @@ namespace ovkdesktop.Services
                 int totalCount = wallData.Response.Count;
                 var items = wallData.Response.Items ?? new List<UserWallPost>();
 
+                // wall.get on some OpenVK instances returns only one copy_history
+                // level. Resolve all visible repost sources in one bounded batch;
+                // wall.getById then supplies the remaining chain via
+                // copy_history_depth without an N+1 request per card.
+                var repostDetails = await LoadRepostDetailsAsync(items, token, options, cancellationToken);
+
                 var finalProfiles = new Dictionary<long, UserProfile>();
                 foreach (var p in wallData.Response.Profiles ?? new()) finalProfiles[p.Id] = p;
                 foreach (var g in wallData.Response.Groups ?? new()) finalProfiles[-g.Id] = g.ToUserProfile();
+                foreach (var p in repostDetails?.Profiles ?? new()) finalProfiles[p.Id] = p;
+                foreach (var g in repostDetails?.Groups ?? new()) finalProfiles[-g.Id] = g.ToUserProfile();
                 
                 if (userOwner != null) finalProfiles[userOwner.Id] = userOwner;
                 if (groupOwner != null) finalProfiles[-groupOwner.Id] = groupOwner.ToUserProfile();
@@ -117,6 +125,86 @@ namespace ovkdesktop.Services
                 if (ex is not OperationCanceledException)
                     Debug.WriteLine($"[APIServiceWall] GetHydratedWallAsync error: {ex.Message}\n{ex.StackTrace}");
                 return (new List<UserWallPost>(), 0);
+            }
+        }
+
+        private static async Task<WallResponse<UserWallPost>> LoadRepostDetailsAsync(
+            IReadOnlyList<UserWallPost> posts,
+            string token,
+            JsonSerializerOptions options,
+            CancellationToken cancellationToken)
+        {
+            var repostSources = posts
+                .Where(post => post.CopyHistory != null)
+                .SelectMany(post => post.CopyHistory)
+                .Where(post => post != null && post.OwnerId != 0 && post.Id != 0)
+                .GroupBy(post => (post.OwnerId, post.Id))
+                .Select(group => group.First())
+                .Take(100)
+                .ToList();
+
+            if (repostSources.Count == 0)
+                return null;
+
+            try
+            {
+                string references = string.Join(",", repostSources.Select(post => $"{post.OwnerId}_{post.Id}"));
+                var httpClient = await SessionHelper.GetHttpClientAsync();
+                string url = $"method/wall.getById?posts={Uri.EscapeDataString(references)}&extended=1&copy_history_depth=8&access_token={Uri.EscapeDataString(token)}&v=5.126";
+                using var response = await httpClient.GetAsync(url, cancellationToken);
+                response.EnsureSuccessStatusCode();
+                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+                if (!document.RootElement.TryGetProperty("response", out var responseElement))
+                    return null;
+
+                // OpenVK instances in the wild expose both the legacy array shape
+                // and the extended {items, profiles, groups} shape.
+                WallResponse<UserWallPost> details = responseElement.ValueKind switch
+                {
+                    JsonValueKind.Object => responseElement.Deserialize<WallResponse<UserWallPost>>(options),
+                    JsonValueKind.Array => new WallResponse<UserWallPost>
+                    {
+                        Items = responseElement.Deserialize<List<UserWallPost>>(options)
+                    },
+                    _ => null
+                };
+
+                if (details?.Items == null)
+                    return details;
+
+                var detailedById = details.Items
+                    .GroupBy(post => (post.OwnerId, post.Id))
+                    .ToDictionary(group => group.Key, group => group.First());
+
+                foreach (var source in repostSources)
+                {
+                    if (!detailedById.TryGetValue((source.OwnerId, source.Id), out var detailed))
+                        continue;
+
+                    if ((source.CopyHistory == null || source.CopyHistory.Count == 0) && detailed.CopyHistory?.Count > 0)
+                        source.CopyHistory = detailed.CopyHistory;
+
+                    if ((source.Attachments == null || source.Attachments.Count == 0) && detailed.Attachments?.Count > 0)
+                        source.Attachments = detailed.Attachments;
+
+                    if (string.IsNullOrWhiteSpace(source.Text) && !string.IsNullOrWhiteSpace(detailed.Text))
+                        source.Text = detailed.Text;
+                }
+
+                Debug.WriteLine($"[APIServiceWall] Hydrated {repostSources.Count} repost source(s) with copy_history_depth=8");
+                return details;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Repost hydration is additive: unsupported/older instances keep
+                // the original wall.get payload instead of failing the whole wall.
+                Debug.WriteLine($"[APIServiceWall] Repost chain hydration skipped: {ex.Message}");
+                return null;
             }
         }
 

@@ -37,7 +37,7 @@
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
-        <Grid Margin="0">
+        <Grid Margin="0" MaxWidth="1240" HorizontalAlignment="Stretch">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <!-- header -->
@@ -70,7 +70,7 @@
                                Style="{ThemeResource SubtitleTextBlockStyle}" 
                                FontSize="28"/>
                     <TextBlock x:Name="VersionOfClientLabel" 
-                               Text="версия: Beta 1.6" 
+                               Text="версия: Release 2.2" 
                                Style="{ThemeResource BodyTextBlockStyle}" 
                                Opacity="0.7"/>
                     <TextBlock x:Name="AuthorOfClientLabel" 

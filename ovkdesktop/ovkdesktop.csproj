@@ -6,16 +6,19 @@
     <UnoSingleProject>true</UnoSingleProject>
 
     <!-- Display name -->
-    <ApplicationTitle>ovkdesktop</ApplicationTitle>
+    <ApplicationTitle>OpenVK Desktop</ApplicationTitle>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <AssemblyTitle>OpenVK Desktop</AssemblyTitle>
+    <Product>OpenVK Desktop</Product>
     <!-- App Identifier -->
     <ApplicationId>com.companyname.ovkdesktop</ApplicationId>
     <!-- Versions -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <!-- Package Publisher -->
-    <ApplicationPublisher>ovkdesktop</ApplicationPublisher>
+    <ApplicationPublisher>Fayzetwin</ApplicationPublisher>
     <!-- Package Description -->
-    <Description>ovkdesktop powered by Uno Platform.</Description>
+    <Description>Cross-platform desktop client for OpenVK.</Description>
     <!--
       If you encounter this error message:
 
@@ -41,6 +44,14 @@
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Newtonsoft.Json" />
+  </ItemGroup>
+
+  <!-- Keep a dedicated copy for AppWindow.SetIcon. Uno also generates an
+       icon.ico from Assets/Icons, so using that output name is ambiguous. -->
+  <ItemGroup>
+    <None Update="icon.ico"
+          CopyToOutputDirectory="PreserveNewest"
+          TargetPath="window-icon.ico" />
   </ItemGroup>
 
 </Project>

@@ -95,7 +95,10 @@ namespace ovkdesktop
                 DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
                 {
                     // show the mini player if there is a current track
-                    if (audio != null && _audioPlayerService?.IsPlaying == true)
+                    // CurrentAudioChanged is raised while the media source is still
+                    // opening, before IsPlaying becomes true. Showing immediately
+                    // avoids losing the player because of that short race.
+                    if (audio != null)
                     {
                         // do not show the player on the welcome and authorization pages
                         if (_currentPageType != typeof(WelcomePage) && _currentPageType != typeof(AuthPage))
