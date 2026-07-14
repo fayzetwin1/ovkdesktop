@@ -46,6 +46,12 @@ namespace ovkdesktop
             this.InitializeComponent();
         }
 
+        private void BackButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Frame?.CanGoBack == true)
+                Frame.GoBack();
+        }
+
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);

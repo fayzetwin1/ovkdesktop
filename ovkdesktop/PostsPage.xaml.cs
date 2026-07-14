@@ -15,8 +15,26 @@ namespace ovkdesktop
         public PostsPage()
         {
             this.InitializeComponent();
+            NavigationCacheMode = NavigationCacheMode.Required;
             ViewModel = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<PostsViewModel>();
             this.DataContext = ViewModel;
+        }
+
+        private double _savedVerticalOffset;
+        private bool _restoreScrollPosition;
+
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            base.OnNavigatedTo(e);
+            _restoreScrollPosition = _savedVerticalOffset > 0;
+            RestoreScrollPosition();
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            if (_scrollViewer != null)
+                _savedVerticalOffset = _scrollViewer.VerticalOffset;
+            base.OnNavigatedFrom(e);
         }
 
         private void PostCard_AuthorInvoked(object sender, Controls.PostInvokedEventArgs e)
@@ -64,7 +82,21 @@ namespace ovkdesktop
             {
                 _scrollViewer.ViewChanged -= ScrollViewer_ViewChanged;
                 _scrollViewer.ViewChanged += ScrollViewer_ViewChanged;
+                RestoreScrollPosition();
             }
+        }
+
+        private void RestoreScrollPosition()
+        {
+            if (!_restoreScrollPosition || _scrollViewer == null)
+                return;
+
+            _restoreScrollPosition = false;
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                _scrollViewer.ChangeView(null, _savedVerticalOffset, null, true);
+                Debug.WriteLine($"[PostsPage] Restored feed position: {_savedVerticalOffset:0}px");
+            });
         }
 
         private void ScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)

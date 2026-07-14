@@ -16,6 +16,7 @@ namespace ovkdesktop.ViewModels
         private readonly IAPIServiceProfile _profileService;
         private readonly IAPIServiceWall _wallService;
         private readonly AudioPlayerService _audioPlayerService;
+        private readonly IOpenVkExecuteService _executeService;
 
         [ObservableProperty]
         private UserProfile _currentUserProfile;
@@ -45,17 +46,20 @@ namespace ovkdesktop.ViewModels
 
         private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
 
-        public ProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
+        public ProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, IOpenVkExecuteService executeService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _profileService = profileService;
             _wallService = wallService;
             _audioPlayerService = audioPlayerService;
+            _executeService = executeService;
             _dispatcherService = dispatcherService;
         }
 
         [RelayCommand]
         public async Task InitializeAsync()
         {
+            var loadTimer = Stopwatch.StartNew();
+            var transport = _executeService.IsEnabled ? "execute" : "legacy";
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
@@ -116,6 +120,9 @@ namespace ovkdesktop.ViewModels
             }
             finally
             {
+                loadTimer.Stop();
+                ApiPerformanceTracker.Record("profile.initial_ready", transport, loadTimer.ElapsedMilliseconds);
+                Debug.WriteLine($"[API Performance] profile.load kind=self transport={transport}, duration_ms={loadTimer.ElapsedMilliseconds}");
                 IsLoading = false;
             }
         }

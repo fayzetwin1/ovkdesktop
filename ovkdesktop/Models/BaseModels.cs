@@ -211,7 +211,16 @@ namespace ovkdesktop.Models
         public List<UserWallPost> CopyHistory
         {
             get => _copyHistory;
-            set => SetProperty(ref _copyHistory, value);
+            set
+            {
+                if (SetProperty(ref _copyHistory, value))
+                {
+                    OnPropertyChanged(nameof(HasRepost));
+                    OnPropertyChanged(nameof(DisplayCopyHistory));
+                    OnPropertyChanged(nameof(RepostSummary));
+                    OnPropertyChanged(nameof(RepostChainComment));
+                }
+            }
         }
 
         private UserProfile _profile;
@@ -244,6 +253,68 @@ namespace ovkdesktop.Models
 
         [JsonIgnore]
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
+
+        [JsonIgnore]
+        public IReadOnlyList<UserWallPost> DisplayCopyHistory
+        {
+            get
+            {
+                if (!HasRepost)
+                    return Array.Empty<UserWallPost>();
+
+                var current = CopyHistory[0];
+                var depth = 0;
+                while (current?.CopyHistory != null && current.CopyHistory.Count > 0 && depth++ < 16)
+                    current = current.CopyHistory[0];
+
+                return current == null ? Array.Empty<UserWallPost>() : new[] { current };
+            }
+        }
+
+        [JsonIgnore]
+        public string RepostSummary
+        {
+            get
+            {
+                if (!HasRepost)
+                    return string.Empty;
+
+                var authors = new List<string>();
+                var current = CopyHistory[0];
+                var depth = 0;
+                while (current != null && depth++ < 16)
+                {
+                    var name = current.AuthorName;
+                    if (!string.IsNullOrWhiteSpace(name) && name != "Загрузка..." && !authors.Contains(name))
+                        authors.Add(name);
+                    current = current.CopyHistory?.FirstOrDefault();
+                }
+
+                return authors.Count > 0 ? $"Репост · {string.Join(" → ", authors)}" : "Репост";
+            }
+        }
+
+        [JsonIgnore]
+        public string RepostChainComment
+        {
+            get
+            {
+                if (!HasRepost)
+                    return string.Empty;
+
+                var comments = new List<string>();
+                var current = CopyHistory[0];
+                var depth = 0;
+                while (current?.CopyHistory != null && current.CopyHistory.Count > 0 && depth++ < 16)
+                {
+                    if (!string.IsNullOrWhiteSpace(current.Text))
+                        comments.Add(current.Text.Trim());
+                    current = current.CopyHistory[0];
+                }
+
+                return string.Join(Environment.NewLine, comments);
+            }
+        }
 
         [JsonIgnore]
         public UserWallPost Repost => HasRepost ? CopyHistory[0] : null;

@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
+using ovkdesktop.Helpers;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -39,6 +40,7 @@ namespace ovkdesktop
             LastFmApiKeyBox.Text = Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiKey ?? "";
             LastFmApiSecretBox.Password = Ioc.Default.GetRequiredService<SettingsHelper>().LastFmApiSecret ?? "";
             OpenVkApiV2Toggle.IsOn = Ioc.Default.GetRequiredService<SettingsHelper>().ExperimentalOpenVkApiV2Enabled;
+            ApiPerformanceSummaryText.Text = ApiPerformanceTracker.GetSummary();
 
             UpdateLastFmUi();
 
@@ -47,6 +49,11 @@ namespace ovkdesktop
 
             SettingsScrollViewer.Visibility = Visibility.Visible;
             _isLoadingSettings = false;
+        }
+
+        private void RefreshApiPerformance_Click(object sender, RoutedEventArgs e)
+        {
+            ApiPerformanceSummaryText.Text = ApiPerformanceTracker.GetSummary();
         }
 
         private async void OpenVkApiV2Toggle_Toggled(object sender, RoutedEventArgs e)

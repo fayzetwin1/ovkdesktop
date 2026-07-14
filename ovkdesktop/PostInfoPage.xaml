@@ -3,70 +3,113 @@
     x:Class="ovkdesktop.PostInfoPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:ovkdesktop"
     xmlns:models="using:ovkdesktop.Models"
-    xmlns:converters="using:ovkdesktop.Converters"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}">
 
-    <Grid>
+    <Grid Padding="24,16,24,16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="Информация о посте"
-               Style="{ThemeResource TitleLargeTextBlockStyle}"
-               FontSize="42" Margin="125,105,0,0"/>
-
-        <ScrollViewer Grid.Row="1" Margin="20">
-            <StackPanel>
-
-                <TextBlock Text="Комментарии:" FontWeight="SemiBold" FontSize="26" Margin="105,0,0,10" Style="{ThemeResource SubtitleTextBlockStyle}" />
-                <ListView x:Name="CommentsListView" ItemsSource="{x:Bind Comments, Mode=OneWay}" Margin="105,0,0,0">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="models:CommentPIP">
-                            <StackPanel Orientation="Horizontal" Margin="0,5">
-                                <PersonPicture ProfilePicture="{x:Bind FromUserPhoto}" Width="40" Height="40" Margin="0,0,10,0" Tapped="CommentAuthor_Tapped"/>
-                                <StackPanel>
-                                    <TextBlock Text="{x:Bind FromUserName}" FontWeight="SemiBold"/>
-                                    <TextBlock Text="{x:Bind FormattedDate}" FontSize="12" Foreground="Gray"/>
-                                    <TextBlock Text="{x:Bind Text}" TextWrapping="Wrap"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-                
-                <!-- Panel for "Load more" button and loading indicator -->
-                <Grid Margin="105,10,0,10">
-                    <Button x:Name="LoadMoreButton" 
-                            Content="Загрузить еще комментарии" 
-                            HorizontalAlignment="Center" 
-                            Click="LoadMoreButton_Click" 
-                            Visibility="Collapsed" />
-                    <ProgressRing x:Name="LoadingProgressRing" 
-                                 IsActive="False" 
-                                 Width="20" 
-                                 Height="20" 
-                                 Margin="10,0,0,0"
-                                 HorizontalAlignment="Center" />
-                </Grid>
-            </StackPanel>
-        </ScrollViewer>
-        
-        <!-- Comment addition panel -->
-        <Grid Grid.Row="2" Margin="105,10,20,20">
+        <Grid MaxWidth="1240" HorizontalAlignment="Center" Margin="0,12,0,20">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            
-            <TextBox x:Name="CommentTextBox" PlaceholderText="Напишите комментарий..." TextWrapping="Wrap" AcceptsReturn="True" MinHeight="40" MaxHeight="100" Margin="0,0,10,0"/>
-            <Button x:Name="SendCommentButton" Content="Отправить" Grid.Column="1" Click="SendCommentButton_Click"/>
+            <Button Style="{StaticResource CompactActionButtonStyle}"
+                    Click="BackButton_Click"
+                    VerticalAlignment="Center"
+                    Margin="0,0,14,0"
+                    ToolTipService.ToolTip="Назад"
+                    AutomationProperties.Name="Вернуться назад">
+                <FontIcon Glyph="&#xE72B;" FontSize="17"/>
+            </Button>
+            <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="Комментарии" Style="{StaticResource PageTitleTextStyle}"/>
+                <TextBlock Text="Обсуждение публикации" Style="{StaticResource PageSubtitleTextStyle}"/>
+            </StackPanel>
         </Grid>
+
+        <ListView x:Name="CommentsListView"
+                  Grid.Row="1"
+                  MaxWidth="1240"
+                  HorizontalAlignment="Center"
+                  HorizontalContentAlignment="Stretch"
+                  ItemsSource="{x:Bind Comments, Mode=OneWay}"
+                  SelectionMode="None">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Margin" Value="0,0,0,8"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate x:DataType="models:CommentPIP">
+                    <Border Style="{StaticResource SurfaceCardStyle}" Padding="14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <PersonPicture ProfilePicture="{x:Bind FromUserPhoto}"
+                                           Width="42" Height="42" Margin="0,0,12,0"
+                                           Tapped="CommentAuthor_Tapped"/>
+                            <StackPanel Grid.Column="1" Spacing="3">
+                                <TextBlock Text="{x:Bind FromUserName}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{x:Bind FormattedDate}" FontSize="12" Opacity="0.62"/>
+                                <TextBlock Text="{x:Bind Text}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+            <ListView.Footer>
+                <Grid Margin="0,8,0,16">
+                    <Button x:Name="LoadMoreButton"
+                            Content="Показать ещё"
+                            HorizontalAlignment="Center"
+                            Click="LoadMoreButton_Click"
+                            Visibility="Collapsed"/>
+                    <ProgressRing x:Name="LoadingProgressRing"
+                                  IsActive="False"
+                                  Width="28" Height="28"
+                                  HorizontalAlignment="Center"/>
+                </Grid>
+            </ListView.Footer>
+        </ListView>
+
+        <Border Grid.Row="2"
+                MaxWidth="1240"
+                HorizontalAlignment="Center"
+                Style="{StaticResource SurfaceCardStyle}"
+                Padding="10"
+                Margin="0,12,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="CommentTextBox"
+                         PlaceholderText="Напишите комментарий…"
+                         TextWrapping="Wrap"
+                         AcceptsReturn="True"
+                         MinHeight="40" MaxHeight="110"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Margin="0,0,8,0"/>
+                <Button x:Name="SendCommentButton"
+                        Grid.Column="1"
+                        Style="{StaticResource CompactActionButtonStyle}"
+                        Click="SendCommentButton_Click"
+                        VerticalAlignment="Bottom"
+                        ToolTipService.ToolTip="Отправить комментарий"
+                        AutomationProperties.Name="Отправить комментарий">
+                    <FontIcon Glyph="&#xE724;" FontSize="17"/>
+                </Button>
+            </Grid>
+        </Border>
     </Grid>
 </Page>

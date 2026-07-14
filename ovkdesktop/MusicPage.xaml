@@ -9,7 +9,7 @@
     xmlns:converters="using:ovkdesktop.Converters"
     xmlns:models="using:ovkdesktop.Models"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}">
 
     <Page.Resources>
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
@@ -65,24 +65,27 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="125,105,20,20" CornerRadius="8" Padding="15">
+        <Grid Grid.Row="0" Margin="24,48,24,20" MaxWidth="1240" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <TextBlock Text="Музыка" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" VerticalAlignment="Center"/>
+            <StackPanel Spacing="4">
+                <TextBlock Text="Музыка" Style="{StaticResource PageTitleTextStyle}"/>
+                <TextBlock Text="Ваша медиатека и рекомендации" Style="{StaticResource PageSubtitleTextStyle}"/>
+            </StackPanel>
             
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
-                <Button x:Name="RefreshButton" Click="RefreshButton_Click" CornerRadius="4">
+                <Button x:Name="RefreshButton" Click="RefreshButton_Click" Style="{StaticResource CompactActionButtonStyle}" ToolTipService.ToolTip="Обновить">
                     <FontIcon Glyph="&#xE72C;"/>
                 </Button>
             </StackPanel>
         </Grid>
         
-        <Grid Grid.Row="1" Margin="125,0,20,20" CornerRadius="10">
+        <Grid Grid.Row="1" Margin="24,0,24,20" MaxWidth="1240" HorizontalAlignment="Stretch">
             <Pivot x:Name="AudioPivot" SelectionChanged="AudioPivot_SelectionChanged" 
-                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8">
+                   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" CornerRadius="14">
                 <PivotItem Header="Мои аудиозаписи">
                     <Grid>
                         <Grid.RowDefinitions>

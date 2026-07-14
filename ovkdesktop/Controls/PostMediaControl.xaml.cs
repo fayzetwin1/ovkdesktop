@@ -60,6 +60,8 @@ namespace ovkdesktop.Controls
                             Source = bitmapImage,
                             Stretch = Stretch.Uniform,
                             MaxHeight = 400,
+                            MaxWidth = 900,
+                            HorizontalAlignment = HorizontalAlignment.Center,
                             Margin = new Thickness(0, 5, 0, 5)
                         };
 

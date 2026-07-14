@@ -1,6 +1,7 @@
 using System;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using ovkdesktop.Models;
 
 namespace ovkdesktop.Controls
@@ -70,6 +71,9 @@ namespace ovkdesktop.Controls
 
             control.CardBorder.Padding = isNested ? new Thickness(12) : new Thickness(16);
             control.CardBorder.CornerRadius = isNested ? new CornerRadius(6) : new CornerRadius(8);
+            control.CardBorder.BorderThickness = isNested ? new Thickness(0) : new Thickness(1);
+            if (isNested && Application.Current.Resources["ClientNestedSurfaceBrush"] is Brush nestedBrush)
+                control.CardBorder.Background = nestedBrush;
             control.AuthorPicture.Width = control.AuthorPicture.Height = isNested ? 38 : 48;
         }
 

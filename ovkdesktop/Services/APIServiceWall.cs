@@ -13,6 +13,11 @@ namespace ovkdesktop.Services
 {
     public class APIServiceWall : IAPIServiceWall
     {
+        private static readonly object PerformanceLock = new();
+        private static long _executeTotalMilliseconds;
+        private static int _executeMeasurements;
+        private static long _legacyTotalMilliseconds;
+        private static int _legacyMeasurements;
         private readonly IOpenVkExecuteService _executeService;
 
         public APIServiceWall(IOpenVkExecuteService executeService)
@@ -53,6 +58,7 @@ namespace ovkdesktop.Services
                 APIResponse<WallResponse<UserWallPost>> wallData = null;
                 if (_executeService.IsEnabled)
                 {
+                    var executeTimer = Stopwatch.StartNew();
                     try
                     {
                         const string code = "return API.wall.get({owner_id:parseInt(Args.owner_id),offset:parseInt(Args.offset),count:parseInt(Args.count),extended:1});";
@@ -64,6 +70,8 @@ namespace ovkdesktop.Services
                         };
                         var executeResponse = await _executeService.ExecuteAsync<WallResponse<UserWallPost>>(token, code, arguments, cancellationToken);
                         wallData = new APIResponse<WallResponse<UserWallPost>> { Response = executeResponse };
+                        executeTimer.Stop();
+                        RecordPerformance("execute", executeTimer.ElapsedMilliseconds);
                     }
                     catch (OperationCanceledException)
                     {
@@ -71,17 +79,21 @@ namespace ovkdesktop.Services
                     }
                     catch (Exception ex)
                     {
+                        executeTimer.Stop();
                         Debug.WriteLine($"[APIServiceWall] Experimental execute failed, falling back to wall.get: {ex.Message}");
                     }
                 }
 
                 if (wallData == null)
                 {
+                    var legacyTimer = Stopwatch.StartNew();
                     var httpClient = await SessionHelper.GetHttpClientAsync();
                     var initialUrl = $"method/wall.get?access_token={token}&owner_id={ownerId}&offset={offset}&count={count}&extended=1&v=5.126";
                     var initialResponse = await httpClient.GetAsync(initialUrl, cancellationToken);
                     initialResponse.EnsureSuccessStatusCode();
                     wallData = await initialResponse.Content.ReadFromJsonAsync<APIResponse<WallResponse<UserWallPost>>>(options, cancellationToken);
+                    legacyTimer.Stop();
+                    RecordPerformance("legacy", legacyTimer.ElapsedMilliseconds);
                 }
                 if (wallData?.Response == null) return (new List<UserWallPost>(), 0);
                 
@@ -96,19 +108,7 @@ namespace ovkdesktop.Services
                 if (groupOwner != null) finalProfiles[-groupOwner.Id] = groupOwner.ToUserProfile();
 
                 foreach (var post in items)
-                {
-                    if (finalProfiles.TryGetValue(post.FromId, out var authorProfile))
-                        post.AuthorProfile = authorProfile;
-
-                    if (post.HasRepost && post.CopyHistory != null)
-                    {
-                        foreach (var repost in post.CopyHistory)
-                        {
-                            if (finalProfiles.TryGetValue(repost.FromId, out var repostAuthorProfile))
-                                repost.AuthorProfile = repostAuthorProfile;
-                        }
-                    }
-                }
+                    ApplyAuthorProfiles(post, finalProfiles);
 
                 return (items, totalCount);
             }
@@ -117,6 +117,48 @@ namespace ovkdesktop.Services
                 if (ex is not OperationCanceledException)
                     Debug.WriteLine($"[APIServiceWall] GetHydratedWallAsync error: {ex.Message}\n{ex.StackTrace}");
                 return (new List<UserWallPost>(), 0);
+            }
+        }
+
+        private static void ApplyAuthorProfiles(BasePost post, IReadOnlyDictionary<long, UserProfile> profiles)
+        {
+            if (profiles.TryGetValue(post.FromId, out var authorProfile))
+            {
+                post.Profile = authorProfile;
+                if (post is UserWallPost wallPost)
+                    wallPost.AuthorProfile = authorProfile;
+            }
+
+            if (post.CopyHistory == null)
+                return;
+
+            foreach (var repost in post.CopyHistory)
+                ApplyAuthorProfiles(repost, profiles);
+        }
+
+        private static void RecordPerformance(string transport, long elapsedMilliseconds)
+        {
+            lock (PerformanceLock)
+            {
+                long average;
+                int measurements;
+                if (transport == "execute")
+                {
+                    _executeTotalMilliseconds += elapsedMilliseconds;
+                    measurements = ++_executeMeasurements;
+                    average = _executeTotalMilliseconds / measurements;
+                }
+                else
+                {
+                    _legacyTotalMilliseconds += elapsedMilliseconds;
+                    measurements = ++_legacyMeasurements;
+                    average = _legacyTotalMilliseconds / measurements;
+                }
+
+                string comparison = _executeMeasurements > 0 && _legacyMeasurements > 0
+                    ? $", execute_avg_ms={_executeTotalMilliseconds / _executeMeasurements}, legacy_avg_ms={_legacyTotalMilliseconds / _legacyMeasurements}"
+                    : string.Empty;
+                Debug.WriteLine($"[API Performance] wall.get transport={transport}, duration_ms={elapsedMilliseconds}, average_ms={average}, samples={measurements}{comparison}");
             }
         }
 

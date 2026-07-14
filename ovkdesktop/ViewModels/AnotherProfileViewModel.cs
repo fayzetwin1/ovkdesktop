@@ -17,6 +17,7 @@ namespace ovkdesktop.ViewModels
         private readonly IAPIServiceWall _wallService;
         private readonly AudioPlayerService _audioPlayerService;
         private readonly INavigationService _navigationService;
+        private readonly IOpenVkExecuteService _executeService;
 
         [ObservableProperty]
         private long _profileId;
@@ -64,17 +65,20 @@ namespace ovkdesktop.ViewModels
 
         private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
 
-        public AnotherProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, INavigationService navigationService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
+        public AnotherProfileViewModel(IAPIServiceProfile profileService, IAPIServiceWall wallService, AudioPlayerService audioPlayerService, INavigationService navigationService, IOpenVkExecuteService executeService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _profileService = profileService;
             _wallService = wallService;
             _audioPlayerService = audioPlayerService;
             _navigationService = navigationService;
+            _executeService = executeService;
             _dispatcherService = dispatcherService;
         }
 
         public async Task InitializeAsync(long id)
         {
+            var loadTimer = Stopwatch.StartNew();
+            var transport = _executeService.IsEnabled ? "execute" : "legacy";
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
             var token = _cts.Token;
@@ -157,6 +161,9 @@ namespace ovkdesktop.ViewModels
             }
             finally
             {
+                loadTimer.Stop();
+                ApiPerformanceTracker.Record(id < 0 ? "group.initial_ready" : "profile.initial_ready", transport, loadTimer.ElapsedMilliseconds);
+                Debug.WriteLine($"[API Performance] profile.load kind={(id < 0 ? "group" : "user")} transport={transport}, duration_ms={loadTimer.ElapsedMilliseconds}");
                 IsLoading = false;
             }
         }

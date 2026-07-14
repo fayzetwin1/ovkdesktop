@@ -95,7 +95,7 @@ namespace ovkdesktop
                 DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
                 {
                     // show the mini player if there is a current track
-                    if (audio != null)
+                    if (audio != null && _audioPlayerService?.IsPlaying == true)
                     {
                         // do not show the player on the welcome and authorization pages
                         if (_currentPageType != typeof(WelcomePage) && _currentPageType != typeof(AuthPage))
@@ -124,6 +124,7 @@ namespace ovkdesktop
             {
                 // update the current page type
                 _currentPageType = e.SourcePageType;
+                NavView.IsBackEnabled = ContentFrame.CanGoBack;
                 
                 // update the selected item in the NavigationView
                 if (e.SourcePageType == typeof(PostsPage))
@@ -209,7 +210,7 @@ namespace ovkdesktop
                 }
                 
                 // show the player on other pages if there is a current track
-                if (_audioPlayerService?.CurrentAudio != null)
+                if (_audioPlayerService?.CurrentAudio != null && _audioPlayerService.IsPlaying)
                 {
                     Debug.WriteLine($"[MainPage] Showing mini player on {pageType.Name} - current audio exists");
                     _miniPlayerControl?.Show();
@@ -255,7 +256,10 @@ namespace ovkdesktop
                     
                     if (pageType != null && _currentPageType != pageType)
                     {
-                        ContentFrame.Navigate(pageType, null, new DrillInNavigationTransitionInfo());
+                        if (ContentFrame.CanGoBack && ContentFrame.BackStack.LastOrDefault()?.SourcePageType == pageType)
+                            ContentFrame.GoBack(new SlideNavigationTransitionInfo { Effect = SlideNavigationTransitionEffect.FromLeft });
+                        else
+                            ContentFrame.Navigate(pageType, null, new DrillInNavigationTransitionInfo());
                     }
                     
                     Debug.WriteLine($"[MainPage] Navigation item invoked: {navItemTag}");
@@ -265,6 +269,12 @@ namespace ovkdesktop
             {
                 Debug.WriteLine($"[MainPage] Error in NavView_ItemInvoked: {ex.Message}");
             }
+        }
+
+        private void NavView_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
+        {
+            if (ContentFrame.CanGoBack)
+                ContentFrame.GoBack(new SlideNavigationTransitionInfo { Effect = SlideNavigationTransitionEffect.FromLeft });
         }
         
         // handler of the click on the exit button

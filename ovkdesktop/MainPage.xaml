@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}">
 
     <Grid x:Name="RootGrid" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Grid.RowDefinitions>
@@ -18,9 +18,28 @@
         <Grid Grid.Row="0" HorizontalAlignment="Stretch">
             <NavigationView x:Name="NavView"
                             IsSettingsVisible="False"
-                            IsBackButtonVisible="Collapsed"
+                            IsBackButtonVisible="Auto"
+                            BackRequested="NavView_BackRequested"
+                            PaneDisplayMode="Auto"
+                            CompactPaneLength="56"
+                            OpenPaneLength="260"
                             HorizontalAlignment="Stretch"
                             ItemInvoked="NavView_ItemInvoked">
+                <NavigationView.Resources>
+                    <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#191C22"/>
+                    <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#191C22"/>
+                </NavigationView.Resources>
+                <NavigationView.PaneHeader>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,8,0,12">
+                        <Border Width="32" Height="32" CornerRadius="9" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                            <Image Source="/Assets/Images/openvklogoScaled.png" Margin="5"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="OpenVK" FontWeight="SemiBold"/>
+                            <TextBlock Text="Desktop" FontSize="11" Opacity="0.62"/>
+                        </StackPanel>
+                    </StackPanel>
+                </NavigationView.PaneHeader>
                 <NavigationView.MenuItems>
                     <NavigationViewItem x:Name="NewsItem" Content="Новости" Icon="Message" Tag="news"/>
                     <NavigationViewItem x:Name="ProfileItem" Content="Профиль" Icon="Contact" Tag="profile"/>
@@ -31,8 +50,10 @@
                     </NavigationViewItem>
                     <NavigationViewItem x:Name="MusicItem" Content="Музыка" Icon="MusicInfo" Tag="music"/>
                     <NavigationViewItem x:Name="FriendsItem" Content="Друзья" Icon="People" Tag="friends"/>
-                    <NavigationViewItem x:Name="SettingsItem" Content="Настройки" Icon="Setting" Tag="settings"/>
                 </NavigationView.MenuItems>
+                <NavigationView.FooterMenuItems>
+                    <NavigationViewItem x:Name="SettingsItem" Content="Настройки" Icon="Setting" Tag="settings"/>
+                </NavigationView.FooterMenuItems>
                 <Frame x:Name="ContentFrame" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
             </NavigationView>
         </Grid>
@@ -40,7 +61,7 @@
         <!-- Container for mini player -->
         <ContentControl Grid.Row="1" 
                 x:Name="MiniPlayerContainer" 
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                Background="{ThemeResource ClientPlayerBackgroundBrush}"
                 BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" 
                 BorderThickness="0,1,0,0"
                 HorizontalAlignment="Stretch"

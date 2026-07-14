@@ -17,11 +17,23 @@ using Visibility = Microsoft.UI.Xaml.Visibility;
 
 namespace ovkdesktop
 {
-    public class AttachmentViewModel
+    public class AttachmentViewModel : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
     {
-        public string FilePath { get; set; }
-        public BitmapImage Thumbnail { get; set; }
-        public AttachmentType Type { get; set; }
+        private string _filePath;
+        private BitmapImage _thumbnail;
+        private AttachmentType _type;
+
+        public string FilePath { get => _filePath; set => SetProperty(ref _filePath, value); }
+        public BitmapImage Thumbnail { get => _thumbnail; set => SetProperty(ref _thumbnail, value); }
+        public AttachmentType Type
+        {
+            get => _type;
+            set
+            {
+                if (SetProperty(ref _type, value))
+                    OnPropertyChanged(nameof(IsVideo));
+            }
+        }
 
         public bool IsVideo => Type == AttachmentType.Video;
     }

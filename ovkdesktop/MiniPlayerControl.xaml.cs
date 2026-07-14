@@ -30,6 +30,7 @@ namespace ovkdesktop
         
         // flag for displaying the player
         private bool _isVisible = false;
+        private DispatcherQueueTimer _autoHideTimer;
         
         // constructor
         public MiniPlayerControl()
@@ -162,7 +163,12 @@ namespace ovkdesktop
         {
             try
             {
-                if (!_isVisible) return; // already hidden
+                if (!_isVisible || Visibility != Visibility.Visible)
+                {
+                    Visibility = Visibility.Collapsed;
+                    _isVisible = false;
+                    return;
+                }
                 
                 DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
                 {
@@ -200,7 +206,12 @@ namespace ovkdesktop
         {
             try
             {
-                if (_audioService == null || audio == null) return;
+                if (_audioService == null) return;
+                if (audio == null)
+                {
+                    Hide();
+                    return;
+                }
                 
                 DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
                 {
@@ -247,7 +258,12 @@ namespace ovkdesktop
                     // show or hide the player depending on the state and the presence of the current track
                     if (isPlaying && _audioService != null && _audioService.CurrentAudio != null)
                     {
+                        _autoHideTimer?.Stop();
                         Show();
+                    }
+                    else
+                    {
+                        ScheduleAutoHide();
                     }
                 }
                 catch (Exception ex)
@@ -256,6 +272,23 @@ namespace ovkdesktop
                     Debug.WriteLine($"[MiniPlayerControl] Stack trace: {ex.StackTrace}");
                 }
             });
+        }
+
+        private void ScheduleAutoHide()
+        {
+            _autoHideTimer ??= DispatcherQueue.CreateTimer();
+            _autoHideTimer.Stop();
+            _autoHideTimer.Interval = TimeSpan.FromSeconds(8);
+            _autoHideTimer.IsRepeating = false;
+            _autoHideTimer.Tick -= AutoHideTimer_Tick;
+            _autoHideTimer.Tick += AutoHideTimer_Tick;
+            _autoHideTimer.Start();
+        }
+
+        private void AutoHideTimer_Tick(DispatcherQueueTimer sender, object args)
+        {
+            if (_audioService?.IsPlaying != true)
+                Hide();
         }
         
         private void AudioService_PositionChanged(object sender, TimeSpan position)

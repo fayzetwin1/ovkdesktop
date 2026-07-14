@@ -10,7 +10,7 @@
     xmlns:controls="using:ovkdesktop.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}">
 
     <Page.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
@@ -36,7 +36,7 @@
         </Grid.RowDefinitions>
 
         <!-- User profile (avatar and information) -->
-        <Grid Grid.Row="0" Margin="125,105,20,0">
+        <Grid Grid.Row="0" Margin="24,48,24,0" MaxWidth="1240" HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
@@ -54,8 +54,7 @@
             <StackPanel Grid.Column="1" Margin="20,0,0,0">
                 <TextBlock x:Name="ProfileName" 
                           Text="{x:Bind ViewModel.CurrentUserProfile.FullName, Mode=OneWay, FallbackValue='Загрузка...'}" 
-                          Style="{ThemeResource TitleLargeTextBlockStyle}" 
-                          FontSize="32"/>
+                          Style="{StaticResource PageTitleTextStyle}"/>
 
                 <TextBlock x:Name="PostsCountText" 
                           Text="{x:Bind ViewModel.PostsCountText, Mode=OneWay, FallbackValue='Загрузка постов...'}" 
@@ -72,14 +71,14 @@
 
                 <!-- Action buttons -->
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                    <Button Content="Опубликовать пост" Click="PublishNewPostButton"/>
-                    <Button Content="Отредактировать профиль"/>
+                    <Button Content="Опубликовать" Click="PublishNewPostButton"/>
+                    <Button Content="Редактировать профиль"/>
                 </StackPanel>
             </StackPanel>
         </Grid>
 
         <!-- Posts list -->
-        <Grid Grid.Row="1" Margin="110,20,20,20" x:Name="GridPostsMyProfile">
+        <Grid Grid.Row="1" Margin="24,24,24,20" MaxWidth="1240" HorizontalAlignment="Center" x:Name="GridPostsMyProfile">
             <ProgressRing x:Name="LoadingProgressRing" 
                          IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
                          Width="50" Height="50" 
@@ -90,6 +89,13 @@
                      ItemsSource="{x:Bind ViewModel.Posts, Mode=OneWay}"
                      ItemTemplate="{StaticResource UnifiedPostTemplate}"
                      HorizontalAlignment="Stretch">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Margin" Value="0,0,0,10"/>
+                        <Setter Property="Padding" Value="0"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
             </ListView>
         </Grid>
 

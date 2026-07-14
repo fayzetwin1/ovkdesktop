@@ -10,7 +10,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}">
 
     <Page.Resources>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
@@ -36,9 +36,9 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="20,10,20,0">
+        <Grid Grid.Row="0" Margin="24,16,24,0" MaxWidth="1240" HorizontalAlignment="Center">
             <Button Click="BackPostsClick" AutomationProperties.Name="Back" 
-                   CornerRadius="5" Margin="0,0,0,0" HorizontalAlignment="Left">
+                   Style="{StaticResource CompactActionButtonStyle}" HorizontalAlignment="Left">
                 <FontIcon Glyph="&#xE72B;" />
             </Button>
             <TextBlock x:Name="ErrorText" Foreground="Red" Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
@@ -46,7 +46,7 @@
         </Grid>
 
         <ScrollViewer x:Name="PageScrollViewer" Grid.Row="1" Margin="0,10,0,0" ViewChanged="PageScrollViewer_ViewChanged">
-            <StackPanel Margin="20,0,20,20">
+            <StackPanel Margin="24,0,24,24" MaxWidth="1240" HorizontalAlignment="Center">
                 <Grid Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -55,13 +55,16 @@
                     <PersonPicture Grid.Column="0" 
                                   x:Name="ProfileAvatar" 
                                   ProfilePicture="{x:Bind ViewModel.ProfilePhotoUrl, Mode=OneWay}"
-                                  Width="150" Height="150" Margin="50,25,20,0" VerticalAlignment="Top"/>
+                                  Width="120" Height="120" Margin="0,12,20,0" VerticalAlignment="Top"/>
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock x:Name="ProfileNameTextBlock" Text="{x:Bind ViewModel.ProfileName, Mode=OneWay, FallbackValue='Загрузка...'}" 
-                                  Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" Margin="10,20,20,0"/>
+                                  Style="{StaticResource PageTitleTextStyle}"/>
+
+                        <TextBlock Text="{x:Bind ViewModel.PostsCountText, Mode=OneWay, FallbackValue='Загрузка записей на стене'}"
+                                   Opacity="0.7" Margin="0,5,0,12"/>
                         
-                        <StackPanel x:Name="FriendActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="{x:Bind ViewModel.IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel x:Name="FriendActionsPanel" Orientation="Horizontal" Visibility="{x:Bind ViewModel.IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Button x:Name="AddFriendButton" Command="{x:Bind ViewModel.ToggleFriendshipCommand}" Margin="0,0,10,0">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <FontIcon Glyph="&#xE8FA;" FontSize="16"/>
@@ -70,7 +73,7 @@
                             </Button>
                         </StackPanel>
 
-                        <StackPanel x:Name="GroupActionsPanel" Orientation="Horizontal" Margin="10,10,0,10" Visibility="{x:Bind ViewModel.IsGroup, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="10">
+                        <StackPanel x:Name="GroupActionsPanel" Orientation="Horizontal" Visibility="{x:Bind ViewModel.IsGroup, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" Spacing="10">
                             <Button x:Name="JoinLeaveGroupButton" Command="{x:Bind ViewModel.ToggleGroupMembershipCommand}">
                                 <StackPanel Orientation="Horizontal" Spacing="5">
                                     <FontIcon x:Name="JoinLeaveIcon" Glyph="&#xE710;"/>
@@ -80,9 +83,6 @@
                         </StackPanel>
                     </StackPanel>
                 </Grid>
-
-                <TextBlock Text="{x:Bind ViewModel.PostsCountText, Mode=OneWay, FallbackValue='Загрузка записей на стене'}" Style="{ThemeResource SubtitleTextBlockStyle}" 
-                          Margin="60,10,0,10"/>
 
                 <ProgressRing x:Name="LoadingProgressRing" IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}" 
                              Width="50" Height="50" 

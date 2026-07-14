@@ -8,12 +8,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ovkdesktop.Models;
 using ovkdesktop;
+using ovkdesktop.Services;
+using ovkdesktop.Helpers;
 
 namespace ovkdesktop.ViewModels
 {
     public partial class PostsViewModel : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
     {
         private readonly IAPIServiceNewsPosts _apiService;
+        private readonly IOpenVkExecuteService _executeService;
         private string _nextFrom = "";
 
         [ObservableProperty]
@@ -30,9 +33,10 @@ namespace ovkdesktop.ViewModels
 
         private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
 
-        public PostsViewModel(IAPIServiceNewsPosts apiService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
+        public PostsViewModel(IAPIServiceNewsPosts apiService, IOpenVkExecuteService executeService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
         {
             _apiService = apiService;
+            _executeService = executeService;
             _dispatcherService = dispatcherService;
             // Initial load
             LoadNewsPostsCommand.Execute(true);
@@ -45,9 +49,18 @@ namespace ovkdesktop.ViewModels
         }
 
         [RelayCommand]
+        private async Task RefreshAsync()
+        {
+            await LoadNewsPostsAsync(true);
+        }
+
+        [RelayCommand]
         private async Task LoadNewsPostsAsync(bool isInitialLoad)
         {
             if (IsLoading || IsLoadingMore) return;
+
+            var loadTimer = Stopwatch.StartNew();
+            var transport = _executeService.IsEnabled ? "execute" : "legacy";
 
             if (isInitialLoad)
             {
@@ -70,7 +83,7 @@ namespace ovkdesktop.ViewModels
                     return;
                 }
 
-                var data = await _apiService.GetNewsPostsAsync(token.Token, _nextFrom);
+                var data = await _apiService.GetNewsPostsAsync(token.Token, _nextFrom, isInitialLoad);
                 if (data?.Response?.Items == null || !data.Response.Items.Any())
                 {
                     CanLoadMore = false;
@@ -93,7 +106,18 @@ namespace ovkdesktop.ViewModels
                     }
                 }
 
-                var profiles = authorIds.Any() ? await _apiService.GetUsersAsync(token.Token, authorIds) : new Dictionary<int, UserProfile>();
+                var profiles = data.Profiles?
+                    .Where(profile => profile != null && profile.Id != 0)
+                    .GroupBy(profile => profile.Id)
+                    .ToDictionary(group => group.Key, group => group.First())
+                    ?? new Dictionary<int, UserProfile>();
+                var missingAuthorIds = authorIds.Where(id => !profiles.ContainsKey(id)).ToArray();
+                if (missingAuthorIds.Length > 0)
+                {
+                    var additionalProfiles = await _apiService.GetUsersAsync(token.Token, missingAuthorIds);
+                    foreach (var profile in additionalProfiles)
+                        profiles[profile.Key] = profile.Value;
+                }
 
                 _dispatcherService.TryEnqueue(() =>
                 {
@@ -124,6 +148,8 @@ namespace ovkdesktop.ViewModels
 
                         IsLoading = false;
                         IsLoadingMore = false;
+                        loadTimer.Stop();
+                        ApiPerformanceTracker.Record(isInitialLoad ? "feed.initial_ready" : "feed.next_page_ready", transport, loadTimer.ElapsedMilliseconds);
                         Debug.WriteLine("[PostsViewModel] TryEnqueue finished.");
                     }
                     catch (Exception enqueueEx)
@@ -137,6 +163,7 @@ namespace ovkdesktop.ViewModels
                 Debug.WriteLine($"Exception in LoadNewsPostsAsync: {ex}");
                 _dispatcherService.TryEnqueue(() =>
                 {
+                    loadTimer.Stop();
                     IsLoading = false;
                     IsLoadingMore = false;
                 });

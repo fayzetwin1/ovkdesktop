@@ -96,6 +96,8 @@ namespace ovkdesktop.Services
         {
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             options.Converters.Add(new Converters.IntToBoolJsonConverter());
+            options.Converters.Add(new Converters.FlexibleIntConverter());
+            options.Converters.Add(new Models.FlexibleStringJsonConverter());
             return options;
         }
     }

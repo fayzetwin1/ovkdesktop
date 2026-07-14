@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using System.Linq;
 using ovkdesktop.Models;
+using System.Text.Json.Serialization;
 
 namespace ovkdesktop.Services
 {
@@ -14,9 +15,11 @@ namespace ovkdesktop.Services
         private HttpClient httpClient;
         private readonly Dictionary<string, (DateTimeOffset CreatedAt, NewsFeedAPIResponse Response)> cache = new();
         private string instanceUrl;
+        private readonly IOpenVkExecuteService executeService;
 
-        public APIServiceNewsPosts()
+        public APIServiceNewsPosts(IOpenVkExecuteService executeService)
         {
+            this.executeService = executeService;
             InitializeHttpClientAsync();
         }
 
@@ -496,7 +499,7 @@ namespace ovkdesktop.Services
             }
         }
 
-        public async Task<NewsFeedAPIResponse> GetNewsPostsAsync(string token, string nextFrom = "")
+        public async Task<NewsFeedAPIResponse> GetNewsPostsAsync(string token, string nextFrom = "", bool forceRefresh = false)
         {
             try
             {
@@ -507,12 +510,52 @@ namespace ovkdesktop.Services
                     await Task.Delay(500); // give time to initialize
                 }
 
-                if (cache.TryGetValue(nextFrom, out var cachedTuple))
+                string transport = executeService.IsEnabled ? "execute" : "legacy";
+                string cacheKey = $"{transport}:{nextFrom}";
+                if (!forceRefresh && cache.TryGetValue(cacheKey, out var cachedTuple))
                 {
                     if (DateTimeOffset.UtcNow - cachedTuple.CreatedAt < TimeSpan.FromMinutes(5))
                         return cachedTuple.Response;
                     else
-                        cache.Remove(nextFrom);
+                        cache.Remove(cacheKey);
+                }
+
+                if (executeService.IsEnabled)
+                {
+                    try
+                    {
+                        const string code = @"var feed=API.newsfeed.getGlobal({start_from:Args.start_from});
+var users='';var groups='';var i=0;
+while(i<feed.items.length){var id=feed.items[i].from_id;if(id>0){if(users.length>0){users=users+',';}users=users+id;}else{if(id<0){if(groups.length>0){groups=groups+',';}groups=groups+(0-id);}}var h=feed.items[i].copy_history;var j=0;while(h&&j<h.length){var hid=h[j].from_id;if(hid>0){if(users.length>0){users=users+',';}users=users+hid;}else{if(hid<0){if(groups.length>0){groups=groups+',';}groups=groups+(0-hid);}}j=j+1;}i=i+1;}
+var profiles=[];var communities=[];
+if(users.length>0){profiles=API.users.get({user_ids:users,fields:'screen_name,photo_50,photo_100,photo_200'});}
+if(groups.length>0){communities=API.groups.getById({group_ids:groups,fields:'screen_name,photo_50,photo_100,photo_200'});}
+return {feed:feed,profiles:profiles,groups:communities};";
+                        var batch = await executeService.ExecuteAsync<NewsFeedExecuteBatch>(token, code,
+                            new Dictionary<string, string> { ["start_from"] = nextFrom ?? string.Empty });
+                        if (batch?.Feed?.Items != null)
+                        {
+                            var embeddedProfiles = batch.Profiles ?? new List<UserProfile>();
+                            foreach (var group in batch.Groups ?? new List<GroupProfile>())
+                            {
+                                if (group != null && group.Id != 0)
+                                    embeddedProfiles.Add(group.ToUserProfile());
+                            }
+
+                            var executeResult = new NewsFeedAPIResponse
+                            {
+                                Response = batch.Feed,
+                                Profiles = embeddedProfiles
+                            };
+                            cache[cacheKey] = (DateTimeOffset.UtcNow, executeResult);
+                            Debug.WriteLine($"[APIServiceNewsPosts] execute batch returned {batch.Feed.Items.Count} posts and {embeddedProfiles.Count} authors.");
+                            return executeResult;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[APIServiceNewsPosts] Experimental execute batch failed, falling back: {ex.Message}");
+                    }
                 }
 
                 // use older API version for better compatibility
@@ -574,7 +617,7 @@ namespace ovkdesktop.Services
                     }
 
                     // caching result
-                    cache[nextFrom] = (DateTimeOffset.UtcNow, result);
+                    cache[cacheKey] = (DateTimeOffset.UtcNow, result);
 
                     return result;
                 }
@@ -607,6 +650,18 @@ namespace ovkdesktop.Services
                 }
                 return null;
             }
+        }
+
+        private sealed class NewsFeedExecuteBatch
+        {
+            [JsonPropertyName("feed")]
+            public NewsFeedResponse Feed { get; set; }
+
+            [JsonPropertyName("profiles")]
+            public List<UserProfile> Profiles { get; set; }
+
+            [JsonPropertyName("groups")]
+            public List<GroupProfile> Groups { get; set; }
         }
     }
 }
