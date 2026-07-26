@@ -547,6 +547,9 @@ return {feed:feed,profiles:profiles,groups:communities};";
                                 Response = batch.Feed,
                                 Profiles = embeddedProfiles
                             };
+
+                            await BackfillRepostAttachmentsAsync(token, batch.Feed.Items);
+
                             cache[cacheKey] = (DateTimeOffset.UtcNow, executeResult);
                             Debug.WriteLine($"[APIServiceNewsPosts] execute batch returned {batch.Feed.Items.Count} posts and {embeddedProfiles.Count} authors.");
                             return executeResult;
@@ -616,6 +619,8 @@ return {feed:feed,profiles:profiles,groups:communities};";
                         CollectAuthorIds(post, authorIds);
                     }
 
+                    await BackfillRepostAttachmentsAsync(token, result.Response.Items);
+
                     // caching result
                     cache[cacheKey] = (DateTimeOffset.UtcNow, result);
 
@@ -649,6 +654,95 @@ return {feed:feed,profiles:profiles,groups:communities};";
                     Debug.WriteLine($"[API] Inner stack trace: {ex.InnerException.StackTrace}");
                 }
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// newsfeed.getGlobal returns copy_history entries with their attachments
+        /// stripped for some types - photos survive but videos come back as an empty
+        /// array - so a repost of a video rendered as a card with nothing in it. The
+        /// original post still has them, so re-request the reposted posts by id and
+        /// merge what is missing back in. One extra call per page, and only when there
+        /// is actually something to fill.
+        /// </summary>
+        private async Task BackfillRepostAttachmentsAsync(string token, List<NewsFeedPost> posts)
+        {
+            if (posts == null || posts.Count == 0)
+                return;
+
+            // one entry per post id; the same repost can appear in several feed items
+            var missing = new Dictionary<string, List<UserWallPost>>();
+
+            foreach (var post in posts)
+            {
+                if (post?.CopyHistory == null)
+                    continue;
+
+                foreach (var nested in post.CopyHistory)
+                {
+                    if (nested == null || nested.Id == 0)
+                        continue;
+                    if (nested.Attachments != null && nested.Attachments.Count > 0)
+                        continue;
+
+                    string key = $"{nested.OwnerId}_{nested.Id}";
+                    if (!missing.TryGetValue(key, out var list))
+                        missing[key] = list = new List<UserWallPost>();
+                    list.Add(nested);
+                }
+            }
+
+            if (missing.Count == 0)
+                return;
+
+            try
+            {
+                // wall.getById takes at most 100 ids per call
+                foreach (var chunk in missing.Keys.Chunk(100))
+                {
+                    string url = $"method/wall.getById?access_token={token}&posts={string.Join(",", chunk)}&v=5.126";
+                    var response = await httpClient.GetAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                        continue;
+
+                    string json = await response.Content.ReadAsStringAsync();
+
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    options.Converters.Add(new Converters.IntToBoolJsonConverter());
+                    options.Converters.Add(new Converters.FlexibleIntConverter());
+                    options.Converters.Add(new Models.FlexibleStringJsonConverter());
+
+                    var originals = JsonSerializer.Deserialize<APIResponse<List<UserWallPost>>>(json, options);
+                    if (originals?.Response == null)
+                        continue;
+
+                    int filled = 0;
+                    foreach (var original in originals.Response)
+                    {
+                        if (original == null)
+                            continue;
+                        if (original.Attachments == null || original.Attachments.Count == 0)
+                            continue;
+
+                        if (!missing.TryGetValue($"{original.OwnerId}_{original.Id}", out var targets))
+                            continue;
+
+                        foreach (var nested in targets)
+                        {
+                            nested.Attachments = original.Attachments;
+                            if (string.IsNullOrWhiteSpace(nested.Text) && !string.IsNullOrWhiteSpace(original.Text))
+                                nested.Text = original.Text;
+                            filled++;
+                        }
+                    }
+
+                    Debug.WriteLine($"[APIServiceNewsPosts] Backfilled attachments for {filled} reposted posts.");
+                }
+            }
+            catch (Exception ex)
+            {
+                // the feed is perfectly usable without this, so never fail the load
+                Debug.WriteLine($"[APIServiceNewsPosts] Repost attachment backfill failed: {ex.Message}");
             }
         }
 

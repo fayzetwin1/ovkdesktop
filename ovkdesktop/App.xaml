@@ -9,14 +9,10 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
+                <!-- surface colours for the light and the dark palette -->
+                <ResourceDictionary Source="ms-appx:///Themes/ClientPalette.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <SolidColorBrush x:Key="ClientContentBackgroundBrush" Color="#111318"/>
-            <SolidColorBrush x:Key="ClientSidebarBackgroundBrush" Color="#191C22"/>
-            <SolidColorBrush x:Key="ClientSurfaceBrush" Color="#1D2027"/>
-            <SolidColorBrush x:Key="ClientNestedSurfaceBrush" Color="#252932"/>
-            <SolidColorBrush x:Key="ClientPlayerBackgroundBrush" Color="#181B21"/>
-            <!-- Other app resources here -->
+
             <converters:StringFormatConverter x:Key="StringFormatConverter" />
             <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
             <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
@@ -28,20 +24,80 @@
             </Style>
             <Style x:Key="PageSubtitleTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
                 <Setter Property="FontSize" Value="14"/>
-                <Setter Property="Opacity" Value="0.68"/>
+                <Setter Property="Foreground" Value="{ThemeResource ClientSubtleTextBrush}"/>
                 <Setter Property="TextWrapping" Value="Wrap"/>
             </Style>
             <Style x:Key="SurfaceCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{ThemeResource ClientSurfaceBrush}"/>
-                <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource ClientSurfaceStrokeBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="CornerRadius" Value="14"/>
                 <Setter Property="Padding" Value="18"/>
             </Style>
+            <Style x:Key="NestedSurfaceCardStyle" TargetType="Border" BasedOn="{StaticResource SurfaceCardStyle}">
+                <Setter Property="Background" Value="{ThemeResource ClientNestedSurfaceBrush}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Padding" Value="12"/>
+            </Style>
+            <!--
+                Used by PostMediaControl, which builds its attachment cards in code.
+                Code-behind cannot read a themed brush out of Application.Resources
+                directly (the keys live in theme dictionaries), so it applies this style
+                instead and lets XAML resolve the colours per theme.
+            -->
+            <!--
+                Backing plate for photos and video previews. Code-behind applies this and
+                sets CornerRadius inline (inline wins over a Setter), so the placeholder
+                colour still resolves per theme.
+            -->
+            <Style x:Key="MediaFrameStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource ClientNestedSurfaceBrush}"/>
+            </Style>
+
+            <Style x:Key="MediaAttachmentCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{ThemeResource ClientNestedSurfaceBrush}"/>
+                <Setter Property="BorderBrush" Value="{ThemeResource ClientSurfaceStrokeBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="10"/>
+            </Style>
+
             <Style x:Key="CompactActionButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
                 <Setter Property="CornerRadius" Value="8"/>
                 <Setter Property="Padding" Value="11,7"/>
                 <Setter Property="MinWidth" Value="38"/>
+            </Style>
+
+            <!-- section header used across the settings page -->
+            <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource SubtitleTextBlockStyle}">
+                <Setter Property="FontSize" Value="18"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+            <Style x:Key="SettingsHintTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Foreground" Value="{ThemeResource ClientSubtleTextBrush}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+
+            <!-- centred "nothing here yet" block for empty lists -->
+            <Style x:Key="EmptyStateGlyphStyle" TargetType="FontIcon">
+                <Setter Property="FontSize" Value="34"/>
+                <Setter Property="Foreground" Value="{ThemeResource ClientSubtleTextBrush}"/>
+            </Style>
+            <Style x:Key="EmptyStateTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
+                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="TextAlignment" Value="Center"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="EmptyStateBodyStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyTextBlockStyle}">
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Foreground" Value="{ThemeResource ClientSubtleTextBrush}"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="TextAlignment" Value="Center"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="MaxWidth" Value="380"/>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

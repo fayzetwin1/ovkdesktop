@@ -17,7 +17,6 @@
         <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToMediaPlaybackSourceConverter x:Key="StringToMediaPlaybackSourceConverter"/>
-        <converters:IntToColorConverter x:Key="LikeButtonColorConverter"/>
         <converters:ProfileToImageConverter x:Key="ProfileToImageConverter"/>
 
         <DataTemplate x:Key="UnifiedPostTemplate" x:DataType="models:BasePost">
@@ -63,7 +62,7 @@
                           Margin="0,5,0,15"/>
 
                 <TextBlock x:Name="ErrorTextBlock" 
-                          Foreground="Red" 
+                          Foreground="{ThemeResource SystemFillColorCriticalBrush}" 
                           Visibility="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, Converter={StaticResource StringToVisibilityConverter}}" 
                           Text="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
                           TextWrapping="Wrap"
@@ -71,8 +70,11 @@
 
                 <!-- Action buttons -->
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                    <Button Content="Опубликовать" Click="PublishNewPostButton"/>
-                    <Button Content="Редактировать профиль"/>
+                    <Button Content="Опубликовать" Click="PublishNewPostButton" Style="{ThemeResource AccentButtonStyle}"/>
+                    <!-- editing is not implemented yet; disabled instead of silently doing nothing -->
+                    <Button Content="Редактировать профиль"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="Редактирование профиля пока не реализовано в клиенте"/>
                 </StackPanel>
             </StackPanel>
         </Grid>

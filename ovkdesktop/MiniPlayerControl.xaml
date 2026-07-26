@@ -53,7 +53,7 @@
         <Style x:Key="BigSliderStyle" TargetType="Slider">
             <Setter Property="Background" Value="{ThemeResource SliderTrackFill}"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{ThemeResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
             <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}"/>
             <Setter Property="FontSize" Value="{ThemeResource ControlContentThemeFontSize}"/>
             <Setter Property="ManipulationMode" Value="None"/>
@@ -65,7 +65,7 @@
                             <Grid.Resources>
                                 <Style x:Key="SliderThumbStyle" TargetType="Thumb">
                                     <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="Background" Value="{ThemeResource SystemAccentColor}"/>
+                                    <Setter Property="Background" Value="{ThemeResource AccentFillColorDefaultBrush}"/>
                                     <Setter Property="Template">
                                         <Setter.Value>
                                             <ControlTemplate TargetType="Thumb">
@@ -253,7 +253,7 @@
                     PointerReleased="PositionSlider_PointerReleased"
                     Tapped="PositionSlider_Tapped"
                     ThumbToolTipValueConverter="{StaticResource SecondsToTimeStringConverter}"
-                    Foreground="{ThemeResource SystemAccentColor}"/>
+                    Foreground="{ThemeResource AccentFillColorDefaultBrush}"/>
         </Grid>
     </Grid>
 </UserControl>

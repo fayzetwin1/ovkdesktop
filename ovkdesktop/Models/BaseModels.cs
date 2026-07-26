@@ -253,6 +253,17 @@ namespace ovkdesktop.Models
         [JsonIgnore]
         public bool HasRepost => CopyHistory != null && CopyHistory.Count > 0;
 
+        /// <summary>
+        /// True when the post carries nothing at all. OpenVK really does return such
+        /// records (an empty wall entry that someone then reposted), and without a
+        /// placeholder the card just looks like the client failed to render it.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasNoContent =>
+            string.IsNullOrWhiteSpace(Text)
+            && (Attachments == null || Attachments.Count == 0)
+            && !HasRepost;
+
         [JsonIgnore]
         public IReadOnlyList<UserWallPost> DisplayCopyHistory
         {
@@ -956,7 +967,12 @@ namespace ovkdesktop.Models
         {
             if (Sizes == null || !Sizes.Any())
                 return null;
-                
+
+            // prefer a size the image loader can actually fetch - see GetTimelineSize
+            var measured = PickLargestMeasured();
+            if (measured != null)
+                return measured.Url;
+
             // Check photos by priority types
             var priorityTypes = new[] { "w", "z", "y", "x", "m", "s" };
             
@@ -981,24 +997,65 @@ namespace ovkdesktop.Models
         }
 
         [JsonIgnore]
-        public string TimelinePhotoUrl => GetTimelinePhotoUrl();
+        public string TimelinePhotoUrl => GetTimelineSize()?.Url ?? GetLargestPhotoUrl();
 
-        private string GetTimelinePhotoUrl()
+        /// <summary>
+        /// The size entry behind <see cref="TimelinePhotoUrl"/>. Its width and height let
+        /// the feed reserve the right amount of space before the bitmap has downloaded,
+        /// so cards do not jump as images arrive.
+        /// </summary>
+        [JsonIgnore]
+        public PhotoSize TimelineSize => GetTimelineSize();
+
+        private PhotoSize GetTimelineSize()
         {
             if (Sizes == null || !Sizes.Any())
                 return null;
 
-            // photo size priority for timeline (807px or 604px, fallback to larger or smaller)
+            // Sizes that report real width/height are the ones served straight from
+            // cdn.openvk.org. The rest point at api.openvk.org, which answers with a
+            // 301 -> 308 redirect chain onto that same CDN, and BitmapImage refuses to
+            // follow it (E_NETWORK_ERROR) - so those entries simply never render.
+            // Picking a measured size therefore fixes loading and gives us the
+            // dimensions needed to reserve the layout slot in one go.
+            var measured = PickMeasuredForDisplay();
+            if (measured != null)
+                return measured;
+
+            // nothing carries dimensions: fall back to the documented type priority
             var priorityTypes = new[] { "y", "x", "z", "m", "w", "s" };
 
             foreach (var type in priorityTypes)
             {
                 var size = Sizes.FirstOrDefault(s => s.Type == type);
                 if (size != null && !string.IsNullOrEmpty(size.Url))
-                    return size.Url;
+                    return size;
             }
 
-            return GetLargestPhotoUrl();
+            return Sizes.FirstOrDefault(s => !string.IsNullOrEmpty(s.Url));
+        }
+
+        /// <summary>every size that reports real dimensions, i.e. the CDN-hosted ones</summary>
+        private IEnumerable<PhotoSize> MeasuredSizes => (Sizes ?? new List<PhotoSize>())
+            .Where(s => s != null && s.Width > 0 && s.Height > 0 && !string.IsNullOrEmpty(s.Url));
+
+        private PhotoSize PickLargestMeasured() => MeasuredSizes
+            .OrderByDescending(s => (long)s.Width * s.Height)
+            .FirstOrDefault();
+
+        /// <summary>
+        /// The smallest measured size still wide enough for the feed, so a timeline card
+        /// does not pull down a multi-megapixel original just to show it at 900px.
+        /// </summary>
+        private PhotoSize PickMeasuredForDisplay()
+        {
+            const int targetWidth = 800;
+
+            return MeasuredSizes
+                       .Where(s => s.Width >= targetWidth)
+                       .OrderBy(s => (long)s.Width * s.Height)
+                       .FirstOrDefault()
+                   ?? PickLargestMeasured();
         }
     }
 
@@ -1381,7 +1438,11 @@ namespace ovkdesktop.Models
         [JsonPropertyName("player")]
         public string Player { get; set; }
     }
-    public class LastFmConfig
+    /// <summary>
+    /// everything the client persists between launches. still stored in
+    /// ovklastfmcfg.json so that existing installs keep their Last.fm credentials.
+    /// </summary>
+    public class ClientConfig
     {
         [JsonPropertyName("enabled")]
         public bool IsEnabled { get; set; } = false;
@@ -1400,6 +1461,31 @@ namespace ovkdesktop.Models
 
         [JsonPropertyName("experimentalOpenVkApiV2Enabled")]
         public bool ExperimentalOpenVkApiV2Enabled { get; set; } = false;
+
+        // --- appearance ---
+
+        [JsonPropertyName("themeMode")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public AppThemeMode ThemeMode { get; set; } = AppThemeMode.System;
+
+        /// <summary>accent preset id, "system", or "custom"</summary>
+        [JsonPropertyName("accentId")]
+        public string AccentId { get; set; } = AccentPalette.SystemId;
+
+        /// <summary>"#RRGGBB" used when <see cref="AccentId"/> is "custom"</summary>
+        [JsonPropertyName("accentCustomColor")]
+        public string AccentCustomColor { get; set; } = "#8B5CF6";
+
+        // --- window state ---
+
+        [JsonPropertyName("windowWidth")]
+        public int WindowWidth { get; set; }
+
+        [JsonPropertyName("windowHeight")]
+        public int WindowHeight { get; set; }
+
+        [JsonPropertyName("windowMaximized")]
+        public bool WindowMaximized { get; set; }
     }
 
     public class AppSettings

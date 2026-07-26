@@ -7,113 +7,209 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
+    KeyboardAcceleratorPlacementMode="Hidden"
     Background="{ThemeResource ClientContentBackgroundBrush}">
 
-    <Grid>
+    <Page.KeyboardAccelerators>
+        <KeyboardAccelerator Key="Enter" Modifiers="Control" Invoked="PublishAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Escape" Invoked="CancelAccelerator_Invoked"/>
+    </Page.KeyboardAccelerators>
+
+    <Grid Padding="24,16,24,16">
+        <!--
+            Header and scrollable content share ONE width-constrained column. When they
+            each carried their own MaxWidth they were centred against different slots
+            (the ScrollViewer's viewport differs from the page's), so the title sat in
+            one place and the composer card in another.
+        -->
+        <Grid MaxWidth="880" HorizontalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Page header -->
-        <StackPanel Grid.Row="0" Margin="125,105,20,0">
-            <TextBlock Text="Новый пост" Style="{ThemeResource TitleLargeTextBlockStyle}" FontSize="42" />
-            <TextBlock x:Name="ErrorTextBlock" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,10,0,0"/>
-        </StackPanel>
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,12,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Style="{StaticResource CompactActionButtonStyle}"
+                    Click="CancelButton_Click"
+                    VerticalAlignment="Center"
+                    Margin="0,0,14,0"
+                    ToolTipService.ToolTip="Назад (Esc)"
+                    AutomationProperties.Name="Вернуться назад">
+                <FontIcon Glyph="&#xE72B;" FontSize="17"/>
+            </Button>
+            <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="Новая запись" Style="{StaticResource PageTitleTextStyle}"/>
+                <TextBlock x:Name="TargetSubtitle"
+                           Text="Публикация на вашей стене"
+                           Style="{StaticResource PageSubtitleTextStyle}"/>
+            </StackPanel>
+        </Grid>
 
-        <!-- Main content -->
-        <ScrollViewer Grid.Row="1" Margin="125,25,20,20" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="10">
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollMode="Disabled"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14" Padding="0,0,0,24">
 
-                <!-- Media add button -->
-                <DropDownButton Content="Добавить" HorizontalAlignment="Left" x:Name="MediaAddNewPostButton">
-                    <DropDownButton.Flyout>
-                        <MenuFlyout Placement="Bottom">
-                            <MenuFlyoutItem Text="Фото" Click="UploadPhotoButton">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE91B;"/>
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Видео" Click="UploadVideoButton" IsEnabled="False">
-                                <!-- support of video in typenewpostpage will be added in the future -->
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xF131;"/>
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="Музыка" Click="UploadAudioButton" IsEnabled="False">
-                                <!-- support of audio in typenewpostpage will be added in the future -->
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8D6;"/>
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
+                <InfoBar x:Name="ErrorInfoBar"
+                         Severity="Error"
+                         Title="Не удалось опубликовать"
+                         IsOpen="False"
+                         IsClosable="True"/>
 
-                <!-- Text input field -->
-                <TextBox
-                    x:Name="NewPostTextBox"
-                    TextWrapping="Wrap"
-                    AcceptsReturn="True"
-                    IsSpellCheckEnabled="True"
-                    MinHeight="200"
-                    MaxHeight="400"
-                    PlaceholderText="Что у вас нового?"
-                    VerticalAlignment="Stretch" />
+                <!-- Composer -->
+                <Border Style="{StaticResource SurfaceCardStyle}">
+                    <StackPanel Spacing="12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <PersonPicture x:Name="AuthorPicture" Width="44" Height="44" VerticalAlignment="Top"/>
+                            <TextBox x:Name="NewPostTextBox"
+                                     Grid.Column="1"
+                                     Margin="12,0,0,0"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     IsSpellCheckEnabled="True"
+                                     MinHeight="150"
+                                     MaxHeight="360"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     FontSize="15"
+                                     TextChanged="NewPostTextBox_TextChanged"
+                                     PlaceholderText="Что у вас нового?"/>
+                        </Grid>
 
-                <!-- Attachments preview -->
-                <GridView
-                    x:Name="AttachmentsGridView"
-                    IsItemClickEnabled="False"
-                    SelectionMode="None"
-                    CanDragItems="False">
-                    <GridView.ItemTemplate>
-                        <DataTemplate x:DataType="local:AttachmentViewModel">
-                            <Grid CornerRadius="4" Width="120" Height="120">
-                                <Image Source="{x:Bind Thumbnail}" Stretch="UniformToFill"/>
-                                <!-- Overlay for video icon -->
-                                <FontIcon
-                                    Glyph="&#xE714;"
-                                    VerticalAlignment="Center"
-                                    HorizontalAlignment="Center"
-                                    FontSize="32"
-                                    Foreground="White"
-                                    Visibility="{x:Bind IsVideo, Mode=OneWay}"/>
+                        <!-- Attachments -->
+                        <GridView x:Name="AttachmentsGridView"
+                                  IsItemClickEnabled="False"
+                                  SelectionMode="None"
+                                  CanDragItems="False"
+                                  Padding="0"
+                                  Visibility="Collapsed">
+                            <GridView.ItemContainerStyle>
+                                <Style TargetType="GridViewItem">
+                                    <Setter Property="Margin" Value="0,0,8,8"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="MinWidth" Value="0"/>
+                                    <Setter Property="MinHeight" Value="0"/>
+                                </Style>
+                            </GridView.ItemContainerStyle>
+                            <GridView.ItemTemplate>
+                                <DataTemplate x:DataType="local:AttachmentViewModel">
+                                    <Border CornerRadius="10" Width="118" Height="118">
+                                        <Grid>
+                                            <Image Source="{x:Bind Thumbnail}" Stretch="UniformToFill"/>
+                                            <FontIcon Glyph="&#xE714;"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center"
+                                                      FontSize="32"
+                                                      Foreground="White"
+                                                      Visibility="{x:Bind IsVideo, Mode=OneWay}"/>
+                                            <Button Click="RemoveAttachmentButton_Click"
+                                                    DataContext="{x:Bind}"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Top"
+                                                    Margin="6"
+                                                    Width="26" Height="26"
+                                                    Padding="0"
+                                                    BorderThickness="0"
+                                                    Background="#B0000000"
+                                                    CornerRadius="13"
+                                                    ToolTipService.ToolTip="Удалить"
+                                                    AutomationProperties.Name="Удалить вложение">
+                                                <FontIcon FontFamily="{ThemeResource SymbolThemeFontFamily}"
+                                                          Glyph="&#xE711;"
+                                                          FontSize="11"
+                                                          Foreground="White"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </GridView.ItemTemplate>
+                        </GridView>
 
-                                <Button
-                                    Click="RemoveAttachmentButton_Click"
-                                    DataContext="{x:Bind}"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Top"
-                                    Margin="5" 
-                                    Width="24" 
-                                    Height="24"
-                                    Padding="0"
-                                    BorderThickness="0"
-                                    Background="#A0000000"
-                                    CornerRadius="12">
-                                    <ToolTipService.ToolTip>
-                                        <ToolTip Content="Удалить"/>
-                                    </ToolTipService.ToolTip>
-                                    <FontIcon 
-                                        FontFamily="{ThemeResource SymbolThemeFontFamily}"
-                                        Glyph="&#xE711;" 
-                                        FontSize="10" 
-                                        Foreground="White"/>
+                        <Border Height="1" Background="{ThemeResource ClientSurfaceStrokeBrush}"/>
+
+                        <!-- Toolbar -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button x:Name="AddPhotoButton"
+                                        Click="UploadPhotoButton"
+                                        Style="{StaticResource CompactActionButtonStyle}"
+                                        ToolTipService.ToolTip="Прикрепить фотографии"
+                                        AutomationProperties.Name="Прикрепить фотографии">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE91B;" FontSize="15"/>
+                                        <TextBlock Text="Фото"/>
+                                    </StackPanel>
                                 </Button>
-                            </Grid>
-                        </DataTemplate>
-                    </GridView.ItemTemplate>
-                </GridView>
+                                <Button Style="{StaticResource CompactActionButtonStyle}"
+                                        IsEnabled="False"
+                                        ToolTipService.ToolTip="Прикрепление видео пока не реализовано">
+                                    <FontIcon Glyph="&#xF131;" FontSize="15"/>
+                                </Button>
+                                <Button Style="{StaticResource CompactActionButtonStyle}"
+                                        IsEnabled="False"
+                                        ToolTipService.ToolTip="Прикрепление аудио пока не реализовано">
+                                    <FontIcon Glyph="&#xE8D6;" FontSize="15"/>
+                                </Button>
+                            </StackPanel>
 
+                            <TextBlock x:Name="CounterText"
+                                       Grid.Column="2"
+                                       Text="0"
+                                       VerticalAlignment="Center"
+                                       Style="{StaticResource SettingsHintTextStyle}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
-                <!-- Action buttons -->
-                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0">
-                    <Button Content="Опубликовать" Click="PublishNewPostButton" Style="{ThemeResource AccentButtonStyle}"/>
+                <!-- Options -->
+                <Border Style="{StaticResource SurfaceCardStyle}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Параметры записи" FontWeight="SemiBold"/>
+                        <CheckBox x:Name="FriendsOnlyCheckBox"
+                                  Content="Только для друзей"
+                                  ToolTipService.ToolTip="Запись увидят только ваши друзья"/>
+                        <CheckBox x:Name="FromGroupCheckBox"
+                                  Content="Опубликовать от имени сообщества"
+                                  IsChecked="True"
+                                  Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Actions -->
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="PublishButton"
+                            Click="PublishNewPostButton"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            ToolTipService.ToolTip="Опубликовать (Ctrl+Enter)">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <ProgressRing x:Name="PublishProgress"
+                                          IsActive="False"
+                                          Visibility="Collapsed"
+                                          Width="16" Height="16"/>
+                            <TextBlock x:Name="PublishButtonText" Text="Опубликовать"/>
+                        </StackPanel>
+                    </Button>
                     <Button Content="Отмена" Click="CancelButton_Click"/>
                 </StackPanel>
+
             </StackPanel>
         </ScrollViewer>
-
+        </Grid>
     </Grid>
 </Page>

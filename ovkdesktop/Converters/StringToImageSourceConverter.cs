@@ -37,16 +37,10 @@ namespace ovkdesktop.Converters
                     return new BitmapImage(new Uri(DEFAULT_IMAGE_PATH));
                 }
                 
-                // create a BitmapImage from the URL
-                Debug.WriteLine($"[StringToImageSourceConverter] Creating image from URL: {imageUrl}");
-                var bitmap = new BitmapImage(new Uri(imageUrl));
-                
-                if (parameter != null && int.TryParse(parameter.ToString(), out int width))
-                {
-                    bitmap.DecodePixelWidth = width;
-                }
-
-                return bitmap;
+                // ImageUrlHelper handles OpenVK's redirect stubs, which BitmapImage
+                // cannot follow on its own
+                int.TryParse(parameter?.ToString(), out int width);
+                return Helpers.ImageUrlHelper.CreateBitmap(imageUrl, width);
             }
             catch (Exception ex)
             {

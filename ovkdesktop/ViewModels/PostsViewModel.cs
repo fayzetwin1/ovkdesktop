@@ -31,6 +31,17 @@ namespace ovkdesktop.ViewModels
         [ObservableProperty]
         private ObservableCollection<NewsFeedPost> _newsPosts = new();
 
+        /// <summary>true once a load finished and there is still nothing to show</summary>
+        [ObservableProperty]
+        private bool _isEmpty;
+
+        /// <summary>non-empty when the last load failed; surfaced as an InfoBar on the page</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasError))]
+        private string _errorMessage = string.Empty;
+
+        public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
         private readonly ovkdesktop.Services.Interfaces.IDispatcherService _dispatcherService;
 
         public PostsViewModel(IAPIServiceNewsPosts apiService, IOpenVkExecuteService executeService, ovkdesktop.Services.Interfaces.IDispatcherService dispatcherService)
@@ -65,6 +76,8 @@ namespace ovkdesktop.ViewModels
             if (isInitialLoad)
             {
                 IsLoading = true;
+                IsEmpty = false;
+                ErrorMessage = string.Empty;
                 NewsPosts = new ObservableCollection<NewsFeedPost>();
                 _nextFrom = "";
             }
@@ -78,15 +91,17 @@ namespace ovkdesktop.ViewModels
                 var token = await SessionHelper.LoadTokenAsync();
                 if (token == null || string.IsNullOrEmpty(token.Token))
                 {
-                    // Error handling would go here (e.g. triggering an event for the view)
                     Debug.WriteLine("Token not found.");
+                    FinishLoad("Не удалось прочитать токен доступа. Попробуйте войти в аккаунт заново.");
                     return;
                 }
 
                 var data = await _apiService.GetNewsPostsAsync(token.Token, _nextFrom, isInitialLoad);
                 if (data?.Response?.Items == null || !data.Response.Items.Any())
                 {
+                    // an empty page is not an error - it just means the feed ends here
                     CanLoadMore = false;
+                    FinishLoad(null);
                     return;
                 }
 
@@ -148,6 +163,7 @@ namespace ovkdesktop.ViewModels
 
                         IsLoading = false;
                         IsLoadingMore = false;
+                        IsEmpty = NewsPosts.Count == 0;
                         loadTimer.Stop();
                         ApiPerformanceTracker.Record(isInitialLoad ? "feed.initial_ready" : "feed.next_page_ready", transport, loadTimer.ElapsedMilliseconds);
                         Debug.WriteLine("[PostsViewModel] TryEnqueue finished.");
@@ -161,13 +177,24 @@ namespace ovkdesktop.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Exception in LoadNewsPostsAsync: {ex}");
-                _dispatcherService.TryEnqueue(() =>
-                {
-                    loadTimer.Stop();
-                    IsLoading = false;
-                    IsLoadingMore = false;
-                });
+                loadTimer.Stop();
+                FinishLoad("Не удалось загрузить ленту. Проверьте подключение к интернету и доступность инстанса.");
             }
+        }
+
+        /// <summary>
+        /// clears the busy flags on the UI thread. Every early exit has to go through
+        /// this, otherwise the page is left with a spinner that never stops.
+        /// </summary>
+        private void FinishLoad(string errorMessage)
+        {
+            _dispatcherService.TryEnqueue(() =>
+            {
+                IsLoading = false;
+                IsLoadingMore = false;
+                ErrorMessage = errorMessage ?? string.Empty;
+                IsEmpty = NewsPosts.Count == 0;
+            });
         }
 
         private static void ApplyProfiles(BasePost post, IReadOnlyDictionary<int, UserProfile> profiles)

@@ -276,8 +276,56 @@ namespace ovkdesktop
 
         private void NavView_BackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
         {
+            GoBack();
+        }
+
+        private void GoBack()
+        {
             if (ContentFrame.CanGoBack)
                 ContentFrame.GoBack(new SlideNavigationTransitionInfo { Effect = SlideNavigationTransitionEffect.FromLeft });
+        }
+
+        // ---- keyboard shortcuts ----
+
+        private void NavAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+        {
+            args.Handled = true;
+
+            Type pageType = sender.Key switch
+            {
+                Windows.System.VirtualKey.Number1 => typeof(PostsPage),
+                Windows.System.VirtualKey.Number2 => typeof(ProfilePage),
+                Windows.System.VirtualKey.Number3 => typeof(GroupsPage),
+                Windows.System.VirtualKey.Number4 => typeof(MusicPage),
+                Windows.System.VirtualKey.Number5 => typeof(FriendsPage),
+                _ => null
+            };
+
+            if (pageType != null && _currentPageType != pageType)
+                ContentFrame.Navigate(pageType, null, new DrillInNavigationTransitionInfo());
+        }
+
+        private async void RefreshAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+        {
+            args.Handled = true;
+
+            if (ContentFrame.Content is not Services.Interfaces.IRefreshablePage refreshable)
+                return;
+
+            try
+            {
+                await refreshable.RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainPage] Refresh shortcut failed: {ex.Message}");
+            }
+        }
+
+        private void BackAccelerator_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+        {
+            args.Handled = true;
+            GoBack();
         }
         
         // handler of the click on the exit button

@@ -26,6 +26,39 @@ namespace ovkdesktop
         private readonly ScrollPositionKeeper _scrollPosition = new();
         private long _requestedProfileId;
 
+        // the ListView owns the scrolling now, so its inner ScrollViewer is what the
+        // infinite-scroll trigger and the saved position have to work against
+        private ScrollViewer _scrollViewer;
+
+        private void PostsListView_Loaded(object sender, RoutedEventArgs e)
+        {
+            _scrollViewer = FindVisualChild<ScrollViewer>(PostsListView);
+            if (_scrollViewer == null)
+                return;
+
+            _scrollViewer.ViewChanged -= PageScrollViewer_ViewChanged;
+            _scrollViewer.ViewChanged += PageScrollViewer_ViewChanged;
+
+            if (_requestedProfileId != 0 && SavedOffsets.TryGetValue(_requestedProfileId, out var offset))
+                _scrollPosition.Restore(_scrollViewer, offset);
+        }
+
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            int count = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T match)
+                    return match;
+
+                var result = FindVisualChild<T>(child);
+                if (result != null)
+                    return result;
+            }
+            return default;
+        }
+
         private void PostCard_AuthorInvoked(object sender, Controls.PostInvokedEventArgs e)
         {
             if (e.Post.FromId == ViewModel.ProfileId)
@@ -64,15 +97,15 @@ namespace ovkdesktop
                 if (ViewModel.ProfileId != ownerId || ViewModel.Posts.Count == 0)
                     await ViewModel.InitializeAsync(ownerId);
 
-                if (SavedOffsets.TryGetValue(ownerId, out var offset))
-                    DispatcherQueue.TryEnqueue(() => _scrollPosition.Restore(PageScrollViewer, offset));
+                if (_scrollViewer != null && SavedOffsets.TryGetValue(ownerId, out var offset))
+                    DispatcherQueue.TryEnqueue(() => _scrollPosition.Restore(_scrollViewer, offset));
             }
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
-            if (_requestedProfileId != 0)
-                SavedOffsets[_requestedProfileId] = PageScrollViewer.VerticalOffset;
+            if (_requestedProfileId != 0 && _scrollViewer != null)
+                SavedOffsets[_requestedProfileId] = _scrollViewer.VerticalOffset;
             _scrollPosition.CancelPendingRestore();
             base.OnNavigatedFrom(e);
             ViewModel.Cancel();

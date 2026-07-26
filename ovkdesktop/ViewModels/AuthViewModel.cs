@@ -17,7 +17,12 @@ namespace ovkdesktop.ViewModels
         private readonly HttpClient _httpClient;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(InstanceDisplayName))]
         private string instanceUrl = "https://api.openvk.org/";
+
+        /// <summary>host the credentials will be sent to, shown under the title</summary>
+        public string InstanceDisplayName =>
+            Uri.TryCreate(InstanceUrl, UriKind.Absolute, out var uri) ? uri.Host : InstanceUrl;
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(LoginCommand))]

@@ -14,7 +14,12 @@ namespace ovkdesktop.ViewModels
         private readonly IDialogService _dialogService;
         
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(InstanceDisplayName))]
         private string instanceUrl = "https://api.openvk.org/";
+
+        /// <summary>host of the selected instance, for showing on the welcome screen</summary>
+        public string InstanceDisplayName =>
+            Uri.TryCreate(InstanceUrl, UriKind.Absolute, out var uri) ? uri.Host : InstanceUrl;
 
         public WelcomeViewModel(INavigationService navigationService, IDialogService dialogService)
         {
@@ -62,8 +67,9 @@ namespace ovkdesktop.ViewModels
                 {
                     Debug.WriteLine($"[WelcomeViewModel] Error saving instance url: {ex.Message}");
                 }
-                
-                _navigationService.NavigateTo(typeof(AuthPage), InstanceUrl);
+
+                // stay on the welcome screen: picking an instance is a setting, not a
+                // decision to sign in, and jumping straight to the login form was jarring
             }
         }
     }

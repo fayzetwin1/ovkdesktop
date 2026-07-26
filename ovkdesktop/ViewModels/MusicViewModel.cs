@@ -42,6 +42,10 @@ namespace ovkdesktop.ViewModels
         [ObservableProperty]
         private string _myAudioHeaderText = "Мои аудиозаписи";
 
+        /// <summary>drives the "nothing saved yet" block on the first pivot</summary>
+        [ObservableProperty]
+        private bool _isMyAudioEmpty;
+
         [ObservableProperty]
         private string _searchHeaderText = "Рекомендации";
 
@@ -114,8 +118,10 @@ namespace ovkdesktop.ViewModels
                 }
                 else
                 {
-                    MyAudioHeaderText = "You have no saved audios";
+                    MyAudioHeaderText = "Избранных треков пока нет";
                 }
+
+                IsMyAudioEmpty = MyAudioCollection.Count == 0;
             }
             catch (Exception ex)
             {
@@ -367,7 +373,8 @@ namespace ovkdesktop.ViewModels
                             MyAudioCollection.Add(audio);
                         }
                     }
-                    MyAudioHeaderText = MyAudioCollection.Count > 0 ? $"Мои треки ({MyAudioCollection.Count})" : "You have no saved audios";
+                    MyAudioHeaderText = MyAudioCollection.Count > 0 ? $"Мои треки ({MyAudioCollection.Count})" : "Избранных треков пока нет";
+                    IsMyAudioEmpty = MyAudioCollection.Count == 0;
                 });
             }
         }

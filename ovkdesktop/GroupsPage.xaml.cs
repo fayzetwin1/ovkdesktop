@@ -21,7 +21,7 @@ using System.Net.Http;
 
 namespace ovkdesktop
 {
-    public sealed partial class GroupsPage : Page
+    public sealed partial class GroupsPage : Page, Services.Interfaces.IRefreshablePage
     {
         public ObservableCollection<GroupProfile> ManagedGroups { get; } = new();
         public ObservableCollection<GroupProfile> MemberGroups { get; } = new();
@@ -41,6 +41,12 @@ namespace ovkdesktop
             await LoadGroupsAsync();
         }
 
+        public async Task RefreshAsync()
+        {
+            httpClient ??= await SessionHelper.GetConfiguredHttpClientAsync();
+            await LoadGroupsAsync();
+        }
+
         private async Task LoadGroupsAsync()
         {
             LoadingProgressRing.IsActive = true;
@@ -53,7 +59,7 @@ namespace ovkdesktop
                 var ovkToken = await SessionHelper.LoadTokenAsync();
                 if (ovkToken == null || string.IsNullOrEmpty(ovkToken.Token))
                 {
-                    ShowError("�� ������� ��������� �����.");
+                    ShowError("Не удалось загрузить токен.");
                     return;
                 }
 
@@ -85,7 +91,7 @@ namespace ovkdesktop
             catch (Exception ex)
             {
                 Debug.WriteLine($"[GroupsPage] Error loading groups: {ex.Message}");
-                ShowError("�� ������� ��������� ������ ���������.");
+                ShowError("Не удалось загрузить список сообществ.");
             }
             finally
             {
@@ -123,7 +129,7 @@ namespace ovkdesktop
             var dialog = new CreateGroupDialog
             {
                 XamlRoot = this.XamlRoot
-            };
+            }.Themed();
 
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary)
@@ -141,7 +147,7 @@ namespace ovkdesktop
         {
             if (string.IsNullOrWhiteSpace(title))
             {
-                ShowError("�������� ���������� �� ����� ���� ������.");
+                ShowError("Название сообщества не может быть пустым.");
                 return;
             }
 
@@ -164,7 +170,7 @@ namespace ovkdesktop
                 {
                     if (doc.RootElement.TryGetProperty("error", out var errorElement))
                     {
-                        ShowError($"������ ��������: {errorElement.GetProperty("error_msg").GetString()}");
+                        ShowError($"Ошибка создания: {errorElement.GetProperty("error_msg").GetString()}");
                     }
                     else if (doc.RootElement.TryGetProperty("response", out var respElement) && respElement.TryGetProperty("id", out _))
                     {
@@ -173,14 +179,14 @@ namespace ovkdesktop
                     }
                     else
                     {
-                        ShowError("�� ������� ������� ����������. ����������� ����� �� �������.");
+                        ShowError("Не удалось создать сообщество. Неизвестный ответ от сервера.");
                     }
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[GroupsPage] Error creating group: {ex.Message}");
-                ShowError("��������� ������ ��� �������� ����������.");
+                ShowError("Произошла ошибка при создании сообщества.");
             }
             finally
             {

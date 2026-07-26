@@ -28,7 +28,7 @@ namespace ovkdesktop.Services
                 XamlRoot = xamlRoot,
                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
                 DefaultButton = ContentDialogButton.Primary
-            };
+            }.Themed();
             await dialog.ShowAsync();
         }
 
@@ -45,7 +45,7 @@ namespace ovkdesktop.Services
                 SecondaryButtonText = "Проверить",
                 XamlRoot = xamlRoot,
                 DefaultButton = ContentDialogButton.Primary
-            };
+            }.Themed();
 
             RadioButtons instanceOptions = new RadioButtons();
             
@@ -202,7 +202,7 @@ namespace ovkdesktop.Services
                 PrimaryButtonText = "Подтвердить",
                 CloseButtonText = "Отмена",
                 DefaultButton = ContentDialogButton.Primary
-            };
+            }.Themed();
 
             TextBox codeTextBox = new TextBox
             {

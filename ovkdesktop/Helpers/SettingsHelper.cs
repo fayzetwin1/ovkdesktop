@@ -13,12 +13,12 @@ namespace ovkdesktop.Helpers
     public class SettingsHelper
     {
         private const string ConfigFileName = "ovklastfmcfg.json";
-        private LastFmConfig _config;
+        private ClientConfig _config;
 
         // Private constructor prevents direct instantiation
         private SettingsHelper()
         {
-            _config = new LastFmConfig();
+            _config = new ClientConfig();
         }
 
         // Factory method - only way to create an instance
@@ -43,7 +43,7 @@ namespace ovkdesktop.Helpers
                     string json = await File.ReadAllTextAsync(configFilePath);
                     if (!string.IsNullOrEmpty(json))
                     {
-                        var loadedConfig = JsonSerializer.Deserialize<LastFmConfig>(json);
+                        var loadedConfig = JsonSerializer.Deserialize<ClientConfig>(json);
                         if (loadedConfig != null)
                         {
                             _config = loadedConfig;
@@ -90,5 +90,15 @@ namespace ovkdesktop.Helpers
         public string LastFmSessionKey { get => _config.SessionKey; set => _config.SessionKey = value; }
         public string LastFmUsername { get => _config.Username; set => _config.Username = value; }
         public bool ExperimentalOpenVkApiV2Enabled { get => _config.ExperimentalOpenVkApiV2Enabled; set => _config.ExperimentalOpenVkApiV2Enabled = value; }
+
+        // appearance
+        public AppThemeMode ThemeMode { get => _config.ThemeMode; set => _config.ThemeMode = value; }
+        public string AccentId { get => _config.AccentId; set => _config.AccentId = value; }
+        public string AccentCustomColor { get => _config.AccentCustomColor; set => _config.AccentCustomColor = value; }
+
+        // window state
+        public int WindowWidth { get => _config.WindowWidth; set => _config.WindowWidth = value; }
+        public int WindowHeight { get => _config.WindowHeight; set => _config.WindowHeight = value; }
+        public bool WindowMaximized { get => _config.WindowMaximized; set => _config.WindowMaximized = value; }
     }
 }

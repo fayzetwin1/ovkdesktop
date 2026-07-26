@@ -7,51 +7,140 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        
-        <Grid Grid.Row="0">
-            <Button Content="Выбрать инстанс..." Margin="20,20,0,0" HorizontalAlignment="Left" Command="{x:Bind ViewModel.ChangeInstanceCommand}"/>
-        </Grid>
-        
-        <Grid Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="Wide">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="880"/>
+                    </VisualState.StateTriggers>
+                </VisualState>
+                <VisualState x:Name="Narrow">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0"/>
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <!-- one column: brand above, sign-in below -->
+                        <Setter Target="BrandColumn.(Grid.Column)" Value="0"/>
+                        <Setter Target="ActionColumn.(Grid.Column)" Value="0"/>
+                        <Setter Target="ActionColumn.(Grid.Row)" Value="1"/>
+                        <Setter Target="ActionColumn.Margin" Value="0,28,0,0"/>
+                        <Setter Target="ActionColumn.Width" Value="Auto"/>
+                        <Setter Target="BrandColumn.HorizontalAlignment" Value="Center"/>
+                        <Setter Target="BrandText.TextAlignment" Value="Center"/>
+                        <Setter Target="TaglineText.TextAlignment" Value="Center"/>
+                        <Setter Target="Logo.HorizontalAlignment" Value="Center"/>
+                        <Setter Target="ContentGrid.MaxWidth" Value="420"/>
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Grid x:Name="ContentGrid"
+              MaxWidth="860"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Center"
+              Margin="32,0,32,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            
-            <!-- Logo in center -->
-            <Image Grid.Row="0" Source="/Assets/Images/openvklogoScaled.png" Height="250" 
-                   HorizontalAlignment="Center" Margin="0,0,0,20"/>
-            
-            <!-- Text and button in center -->
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" MaxWidth="600">
-                <TextBlock Text="Добро пожаловать в OpenVK Desktop!" 
-                           FontSize="28" Style="{ThemeResource TitleTextBlockStyle}"
-                           TextWrapping="Wrap" HorizontalAlignment="Center"/>
-                <TextBlock Text="Данное приложение является десктоп-клиентом соцсети под названием OpenVK и прочих подобных ему инстансов." 
-                           Margin="0,10,0,20" FontSize="14" Style="{ThemeResource BodyStrongTextBlockStyle}"
-                           TextWrapping="Wrap" TextAlignment="Center"/>
-                <Button Content="Начать общение" FontSize="16" 
-                        Style="{StaticResource AccentButtonStyle}" Command="{x:Bind ViewModel.NavigateToAuthCommand}"
-                        HorizontalAlignment="Center"/>
+
+            <!-- Brand -->
+            <StackPanel x:Name="BrandColumn"
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Spacing="18"
+                        Margin="0,0,48,0">
+                <Image x:Name="Logo"
+                       Source="/Assets/Images/openvklogoScaled.png"
+                       Height="76"
+                       HorizontalAlignment="Left"/>
+                <StackPanel Spacing="10">
+                    <TextBlock x:Name="BrandText"
+                               Text="OpenVK Desktop"
+                               FontSize="40"
+                               FontWeight="SemiBold"
+                               LineHeight="44"
+                               TextWrapping="Wrap"/>
+                    <TextBlock x:Name="TaglineText"
+                               Text="Нативный клиент для OpenVK и совместимых инстансов под десктоп."
+                               Style="{StaticResource PageSubtitleTextStyle}"
+                               MaxWidth="380"
+                               HorizontalAlignment="Left"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Sign in -->
+            <StackPanel x:Name="ActionColumn"
+                        Grid.Column="1"
+                        Width="320"
+                        VerticalAlignment="Center"
+                        Spacing="12">
+
+                <TextBlock Text="Подключение"
+                           Style="{StaticResource SettingsHintTextStyle}"
+                           Margin="2,0,0,0"/>
+
+                <!--
+                    The instance is a quiet row rather than another boxed card: it is a
+                    setting most people never change, so it should not compete with the
+                    sign-in action.
+                -->
+                <Border Background="{ThemeResource ClientSurfaceBrush}"
+                        BorderBrush="{ThemeResource ClientSurfaceStrokeBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="14,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="1">
+                            <TextBlock Text="Инстанс" Style="{StaticResource SettingsHintTextStyle}" FontSize="12"/>
+                            <TextBlock Text="{x:Bind ViewModel.InstanceDisplayName, Mode=OneWay}"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap"/>
+                        </StackPanel>
+                        <HyperlinkButton Grid.Column="1"
+                                         Content="Изменить"
+                                         Padding="6,2"
+                                         VerticalAlignment="Center"
+                                         Command="{x:Bind ViewModel.ChangeInstanceCommand}"
+                                         ToolTipService.ToolTip="Выбрать другой инстанс OpenVK"/>
+                    </Grid>
+                </Border>
+
+                <Button Content="Войти в аккаунт"
+                        Height="40"
+                        HorizontalAlignment="Stretch"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Command="{x:Bind ViewModel.NavigateToAuthCommand}"/>
             </StackPanel>
         </Grid>
-        
-        <StackPanel Grid.Row="2" Orientation="Vertical" HorizontalAlignment="Center" Margin="0,20,0,20">
+
+        <!-- Footer -->
+        <StackPanel VerticalAlignment="Bottom"
+                    HorizontalAlignment="Center"
+                    Spacing="2"
+                    Margin="0,0,0,18">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://openvk.org" Margin="0,0,20,0"/>
-                <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetw.in"/>
-                <HyperlinkButton Content="Telegram канал клиента" NavigateUri="https://telegram.me/ovkdesktop"/>
+                <HyperlinkButton Content="Сайт OpenVK" NavigateUri="https://openvk.org" Padding="8,4"/>
+                <HyperlinkButton Content="Сайт разработчика" NavigateUri="https://fayzetw.in" Padding="8,4"/>
+                <HyperlinkButton Content="Telegram канал" NavigateUri="https://telegram.me/ovkdesktop" Padding="8,4"/>
             </StackPanel>
-            <TextBlock Text="OpenVK Desktop, version: 2.2 Release. Made with love by Fayzetwin :3." 
-                       Margin="0,10,0,0" FontSize="14" Opacity="0.3" Style="{ThemeResource BodyTextBlockStyle}"
+            <TextBlock x:Name="VersionText"
+                       Style="{StaticResource SettingsHintTextStyle}"
+                       FontSize="12"
+                       Opacity="0.7"
                        HorizontalAlignment="Center"/>
         </StackPanel>
     </Grid>

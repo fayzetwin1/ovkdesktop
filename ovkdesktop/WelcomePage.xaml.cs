@@ -13,6 +13,8 @@ namespace ovkdesktop
             this.InitializeComponent();
             ViewModel = ((App)Microsoft.UI.Xaml.Application.Current).Services.GetRequiredService<WelcomeViewModel>();
             this.DataContext = ViewModel;
+
+            VersionText.Text = Helpers.AppInfo.VersionLine;
         }
     }
 }

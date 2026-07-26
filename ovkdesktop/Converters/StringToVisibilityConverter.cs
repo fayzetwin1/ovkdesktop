@@ -15,7 +15,10 @@ namespace ovkdesktop.Converters
         {
             if (parameter == null)
             {
-                return !string.IsNullOrEmpty(value?.ToString()) ? Visibility.Visible : Visibility.Collapsed;
+                // whitespace has to count as empty: posts whose text is just spaces or
+                // newlines would otherwise stay Visible and render an empty strip
+                // inside the card
+                return !string.IsNullOrWhiteSpace(value?.ToString()) ? Visibility.Visible : Visibility.Collapsed;
             }
 
             if (value == null) return Visibility.Collapsed;

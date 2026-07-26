@@ -3,24 +3,149 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     RequestedTheme="Dark">
-    
-    <Grid Background="#E6000000" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <ScrollViewer ZoomMode="Enabled" MinZoomFactor="0.5" MaxZoomFactor="4.0" 
-                      HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <Image x:Name="PreviewImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"/>
+
+    <!--
+        Deliberately always dark: a lightbox has to get out of the way of the photo,
+        so it does not follow the client palette.
+    -->
+    <Grid x:Name="RootGrid"
+          Background="#F0101114"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- clicking the empty space around the photo closes the viewer -->
+        <Grid Grid.RowSpan="2" Tapped="Backdrop_Tapped" Background="Transparent"/>
+
+        <!--
+            The image is capped to the viewport in code (SizeChanged). A zooming
+            ScrollViewer measures its content unconstrained, so without that cap the
+            photo rendered at its full pixel size instead of fitting the window.
+        -->
+        <ScrollViewer x:Name="ImageScrollViewer"
+                      Grid.Row="1"
+                      ZoomMode="Enabled"
+                      MinZoomFactor="1"
+                      MaxZoomFactor="8"
+                      HorizontalScrollBarVisibility="Hidden"
+                      VerticalScrollBarVisibility="Hidden"
+                      HorizontalScrollMode="Auto"
+                      VerticalScrollMode="Auto"
+                      HorizontalAlignment="Stretch"
+                      VerticalAlignment="Stretch"
+                      SizeChanged="ImageScrollViewer_SizeChanged"
+                      ViewChanged="ImageScrollViewer_ViewChanged"
+                      DoubleTapped="Image_DoubleTapped">
+            <Image x:Name="PreviewImage"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
         </ScrollViewer>
-        
-        <!-- Top padding of 50px ensures buttons are positioned below the standard title bar (where Minimize/Maximize/Close system buttons are located) -->
-        <Grid VerticalAlignment="Top" Padding="20,45,20,20">
-            <Button Content="Закрыть" Click="CloseButton_Click" HorizontalAlignment="Left" Style="{ThemeResource AccentButtonStyle}"/>
-            
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-                <Button Content="Копировать" Click="CopyButton_Click"/>
-                <Button Content="Скачать" Click="SaveButton_Click"/>
+
+        <ProgressRing x:Name="LoadingRing"
+                      Grid.Row="1"
+                      IsActive="True"
+                      Width="46" Height="46"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center"/>
+
+        <TextBlock x:Name="ErrorText"
+                   Grid.Row="1"
+                   Text="Не удалось загрузить изображение"
+                   Visibility="Collapsed"
+                   Opacity="0.75"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+
+        <!--
+            One floating pill holds every control, so nothing is stranded at the far
+            edges of a wide window. Top margin clears the system caption buttons.
+        -->
+        <Border Grid.Row="0"
+                HorizontalAlignment="Center"
+                Margin="0,44,0,0"
+                CornerRadius="24"
+                Background="#59000000"
+                BorderBrush="#26FFFFFF"
+                BorderThickness="1"
+                Padding="8,7">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Click="CloseButton_Click"
+                        Width="36" Height="36" Padding="0" CornerRadius="18"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Закрыть (Esc)"
+                        AutomationProperties.Name="Закрыть">
+                    <FontIcon Glyph="&#xE711;" FontSize="15"/>
+                </Button>
+
+                <Border Width="1" Margin="2,4" Background="#33FFFFFF"/>
+
+                <Button Click="ZoomOutButton_Click"
+                        Width="36" Height="36" Padding="0" CornerRadius="18"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Уменьшить (−)"
+                        AutomationProperties.Name="Уменьшить">
+                    <FontIcon Glyph="&#xE71F;" FontSize="15"/>
+                </Button>
+                <TextBlock x:Name="ZoomText"
+                           Text="100%"
+                           Opacity="0.8"
+                           FontSize="13"
+                           MinWidth="46"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"/>
+                <Button Click="ZoomInButton_Click"
+                        Width="36" Height="36" Padding="0" CornerRadius="18"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Увеличить (+)"
+                        AutomationProperties.Name="Увеличить">
+                    <FontIcon Glyph="&#xE8A3;" FontSize="15"/>
+                </Button>
+
+                <Border Width="1" Margin="2,4" Background="#33FFFFFF"/>
+
+                <Button Click="OpenInBrowserButton_Click"
+                        Width="36" Height="36" Padding="0" CornerRadius="18"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Открыть в браузере"
+                        AutomationProperties.Name="Открыть в браузере">
+                    <FontIcon Glyph="&#xE774;" FontSize="15"/>
+                </Button>
+                <Button Click="CopyButton_Click"
+                        Width="36" Height="36" Padding="0" CornerRadius="18"
+                        Background="Transparent" BorderThickness="0"
+                        ToolTipService.ToolTip="Копировать"
+                        AutomationProperties.Name="Копировать">
+                    <FontIcon Glyph="&#xE8C8;" FontSize="15"/>
+                </Button>
+                <Button x:Name="SaveButton"
+                        Click="SaveButton_Click"
+                        Height="36" Padding="14,0" CornerRadius="18"
+                        Style="{ThemeResource AccentButtonStyle}"
+                        ToolTipService.ToolTip="Сохранить на диск"
+                        AutomationProperties.Name="Скачать">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE896;" FontSize="15"/>
+                        <TextBlock Text="Скачать"/>
+                    </StackPanel>
+                </Button>
             </StackPanel>
-        </Grid>
-        
-        <ProgressRing x:Name="LoadingRing" IsActive="True" Width="50" Height="50" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- status line for save/copy results -->
+        <Border x:Name="StatusBar"
+                Grid.Row="1"
+                Visibility="Collapsed"
+                Background="#CC000000"
+                CornerRadius="8"
+                Padding="14,8"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,22">
+            <TextBlock x:Name="StatusText" FontSize="13"/>
+        </Border>
     </Grid>
 </UserControl>

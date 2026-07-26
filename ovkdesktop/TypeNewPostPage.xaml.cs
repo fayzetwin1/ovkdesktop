@@ -50,6 +50,7 @@ namespace ovkdesktop
         private readonly ObservableCollection<AttachmentViewModel> _attachments = new();
         private System.Net.Http.HttpClient httpClient;
         private int? ownerIdForPost = null;
+        private bool _isPublishing;
 
         public TypeNewPostPage()
         {
@@ -84,6 +85,8 @@ namespace ovkdesktop
                 ownerIdForPost = null;
                 Debug.WriteLine("[TypeNewPostPage] Will post to current user's wall.");
             }
+
+            ApplyTargetUi();
         }
 
         private async void UploadPhotoButton(object sender, RoutedEventArgs e)
@@ -134,6 +137,63 @@ namespace ovkdesktop
                 Thumbnail = thumbnail,
                 Type = type
             });
+
+            UpdateAttachmentsVisibility();
+        }
+
+        private void UpdateAttachmentsVisibility() =>
+            AttachmentsGridView.Visibility = _attachments.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        /// <summary>
+        /// Shows where the post is going and offers the options that only make sense for
+        /// that target: friends_only on your own wall, from_group on a community wall.
+        /// </summary>
+        private void ApplyTargetUi()
+        {
+            bool isGroup = ownerIdForPost.HasValue && ownerIdForPost.Value < 0;
+
+            TargetSubtitle.Text = isGroup
+                ? "Публикация в сообществе"
+                : "Публикация на вашей стене";
+
+            FromGroupCheckBox.Visibility = isGroup ? Visibility.Visible : Visibility.Collapsed;
+            FriendsOnlyCheckBox.Visibility = isGroup ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void NewPostTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            int length = NewPostTextBox.Text?.Length ?? 0;
+            CounterText.Text = length > 0 ? length.ToString() : "0";
+            UpdatePublishState();
+        }
+
+        private void UpdatePublishState()
+        {
+            bool hasContent = !string.IsNullOrWhiteSpace(NewPostTextBox.Text) || _attachments.Count > 0;
+            PublishButton.IsEnabled = hasContent && !_isPublishing;
+        }
+
+        private void SetPublishing(bool publishing)
+        {
+            _isPublishing = publishing;
+            PublishProgress.IsActive = publishing;
+            PublishProgress.Visibility = publishing ? Visibility.Visible : Visibility.Collapsed;
+            PublishButtonText.Text = publishing ? "Публикуем…" : "Опубликовать";
+            AddPhotoButton.IsEnabled = !publishing;
+            UpdatePublishState();
+        }
+
+        private void PublishAccelerator_Invoked(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+        {
+            args.Handled = true;
+            if (PublishButton.IsEnabled)
+                PublishNewPostButton(PublishButton, new RoutedEventArgs());
+        }
+
+        private void CancelAccelerator_Invoked(Microsoft.UI.Xaml.Input.KeyboardAccelerator sender, Microsoft.UI.Xaml.Input.KeyboardAcceleratorInvokedEventArgs args)
+        {
+            args.Handled = true;
+            CancelButton_Click(this, new RoutedEventArgs());
         }
 
         private void RemoveAttachmentButton_Click(object sender, RoutedEventArgs e)
@@ -141,6 +201,7 @@ namespace ovkdesktop
             if ((sender as FrameworkElement)?.DataContext is AttachmentViewModel attachmentToRemove)
             {
                 _attachments.Remove(attachmentToRemove);
+                UpdateAttachmentsVisibility();
             }
         }
 
@@ -154,8 +215,8 @@ namespace ovkdesktop
 
         private void ShowError(string message)
         {
-            ErrorTextBlock.Text = message;
-            ErrorTextBlock.Visibility = Visibility.Visible;
+            ErrorInfoBar.Message = message;
+            ErrorInfoBar.IsOpen = true;
         }
 
         private async Task<OVKDataBody> LoadTokenAsync()
@@ -285,6 +346,24 @@ namespace ovkdesktop
 
         private async void PublishNewPostButton(object sender, RoutedEventArgs e)
         {
+            if (_isPublishing)
+                return;
+
+            ErrorInfoBar.IsOpen = false;
+            SetPublishing(true);
+
+            try
+            {
+                await PublishAsync();
+            }
+            finally
+            {
+                SetPublishing(false);
+            }
+        }
+
+        private async Task PublishAsync()
+        {
             if (httpClient == null)
             {
                 await InitializeHttpClientAsync();
@@ -294,6 +373,10 @@ namespace ovkdesktop
             var api = new APIServiceNewPost(httpClient);
             string message = NewPostTextBox.Text.Trim();
             if (string.IsNullOrEmpty(message) && _attachments.Count == 0) return;
+
+            bool isGroup = ownerIdForPost.HasValue && ownerIdForPost.Value < 0;
+            bool friendsOnly = !isGroup && FriendsOnlyCheckBox.IsChecked == true;
+            bool fromGroup = isGroup && FromGroupCheckBox.IsChecked == true;
 
             OVKDataBody tokenBody = await LoadTokenAsync();
             if (string.IsNullOrEmpty(tokenBody?.Token)) { ShowError("Нет токена"); return; }
@@ -326,7 +409,9 @@ namespace ovkdesktop
                 ownerId: targetOwnerId,
                 accessToken: token,
                 message: message,
-                attachments: attachmentsParam
+                attachments: attachmentsParam,
+                friendsOnly: friendsOnly,
+                fromGroup: fromGroup
             );
 
             if (success)
@@ -358,7 +443,13 @@ namespace ovkdesktop
                 int id = root.GetProperty("id").GetInt32();
                 return id.ToString();
             }
-            public async Task<bool> PostToWallAsync(string ownerId, string accessToken, string message, string attachments = null)
+            public async Task<bool> PostToWallAsync(
+                string ownerId,
+                string accessToken,
+                string message,
+                string attachments = null,
+                bool friendsOnly = false,
+                bool fromGroup = false)
             {
                 var parameters = new Dictionary<string, string>
                 {
@@ -372,9 +463,15 @@ namespace ovkdesktop
                     parameters.Add("attachments", attachments);
                 }
 
-                if (int.TryParse(ownerId, out int id) && id < 0)
+                // from_group only means anything on a community wall
+                if (fromGroup && int.TryParse(ownerId, out int id) && id < 0)
                 {
                     parameters.Add("from_group", "1");
+                }
+
+                if (friendsOnly)
+                {
+                    parameters.Add("friends_only", "1");
                 }
 
                 var content = new FormUrlEncodedContent(parameters);

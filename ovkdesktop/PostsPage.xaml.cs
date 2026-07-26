@@ -9,7 +9,7 @@ using ovkdesktop.Helpers;
 
 namespace ovkdesktop
 {
-    public sealed partial class PostsPage : Page
+    public sealed partial class PostsPage : Page, Services.Interfaces.IRefreshablePage
     {
         public PostsViewModel ViewModel { get; }
 
@@ -19,6 +19,12 @@ namespace ovkdesktop
             NavigationCacheMode = NavigationCacheMode.Required;
             ViewModel = CommunityToolkit.Mvvm.DependencyInjection.Ioc.Default.GetRequiredService<PostsViewModel>();
             this.DataContext = ViewModel;
+        }
+
+        public System.Threading.Tasks.Task RefreshAsync()
+        {
+            ViewModel.RefreshCommand.Execute(null);
+            return System.Threading.Tasks.Task.CompletedTask;
         }
 
         private readonly ScrollPositionKeeper _scrollPosition = new();
@@ -71,7 +77,7 @@ namespace ovkdesktop
                 Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
                 CloseButtonText = "OK",
                 XamlRoot = XamlRoot
-            };
+            }.Themed();
             await dialog.ShowAsync();
         }
 
@@ -179,7 +185,7 @@ namespace ovkdesktop
                     Content = success ? "Запись успешно репостнута на вашу стену." : "Не удалось сделать репост.",
                     CloseButtonText = "OK",
                     XamlRoot = this.XamlRoot
-                };
+                }.Themed();
                 await dialog.ShowAsync();
             }
         }

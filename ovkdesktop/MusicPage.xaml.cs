@@ -7,7 +7,7 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 
 namespace ovkdesktop
 {
-    public sealed partial class MusicPage : Page
+    public sealed partial class MusicPage : Page, Services.Interfaces.IRefreshablePage
     {
         public MusicViewModel ViewModel { get; }
 
@@ -57,6 +57,12 @@ namespace ovkdesktop
         private void RefreshButton_Click(object sender, RoutedEventArgs e)
         {
             ViewModel.RefreshCommand.Execute(null);
+        }
+
+        public System.Threading.Tasks.Task RefreshAsync()
+        {
+            ViewModel.RefreshCommand.Execute(null);
+            return System.Threading.Tasks.Task.CompletedTask;
         }
     }
 }

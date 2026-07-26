@@ -8,5 +8,9 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel x:Name="MediaContainer" Orientation="Vertical" />
+    <!-- media is left-aligned: centred blocks read as unfinished next to left-aligned text -->
+    <StackPanel x:Name="MediaContainer"
+                Orientation="Vertical"
+                Spacing="8"
+                HorizontalAlignment="Left" />
 </UserControl>

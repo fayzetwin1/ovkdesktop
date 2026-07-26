@@ -264,7 +264,7 @@ namespace ovkdesktop
                     Content = message,
                     CloseButtonText = "OK",
                     XamlRoot = this.XamlRoot
-                };
+                }.Themed();
                 await dialog.ShowAsync();
             }
             catch (Exception ex)
@@ -382,7 +382,7 @@ namespace ovkdesktop
                     Content = "Comment sent successfully",
                     CloseButtonText = "OK",
                     XamlRoot = this.XamlRoot
-                };
+                }.Themed();
                 await successDialog.ShowAsync();
             }
             catch (OperationCanceledException) when (navigationCts?.IsCancellationRequested == true)

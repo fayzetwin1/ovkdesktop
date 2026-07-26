@@ -106,7 +106,7 @@ namespace ovkdesktop
             public List<FriendStatus> Response { get; set; }
         }
     }
-    public sealed partial class FriendsPage : Page
+    public sealed partial class FriendsPage : Page, Services.Interfaces.IRefreshablePage
     {
 
         public ObservableCollection<Models.Friends> Friends { get; } = new();
@@ -155,6 +155,14 @@ namespace ovkdesktop
             }
         }
 
+
+        public async Task RefreshAsync()
+        {
+            if (apiService == null)
+                return;
+
+            await LoadFriendsDataAsync();
+        }
 
         private async Task LoadFriendsDataAsync()
         {
@@ -224,8 +232,9 @@ namespace ovkdesktop
                     }
 
                     int count = response.Response.Count;
-                    FriendsCount.Text = $"Всего друзей: {count}";
-                    
+                    FriendsCount.Text = count > 0 ? $"Всего друзей: {count}" : "Друзей пока нет";
+                    NoFriendsPanel.Visibility = Friends.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
                     _currentFriendsOffset += response.Response.Items.Count;
                     if (Friends.Count >= count || response.Response.Items.Count == 0)
                     {
@@ -239,7 +248,7 @@ namespace ovkdesktop
             }
             catch (Exception ex)
             {
-                ShowError($"error of load friends: {ex.Message}");
+                ShowError($"Не удалось загрузить список друзей: {ex.Message}");
                 Debug.WriteLine($"exception: {ex}");
             }
             finally
@@ -452,7 +461,7 @@ namespace ovkdesktop
                 CloseButtonText = "Отмена",
                 DefaultButton = ContentDialogButton.Close,
                 XamlRoot = this.XamlRoot
-            };
+            }.Themed();
 
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary)

@@ -54,7 +54,7 @@
                         <TextBlock Text="Создать сообщество"/>
                     </StackPanel>
                 </Button>
-                <TextBlock x:Name="ErrorTextBlock" Foreground="Red" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                <TextBlock x:Name="ErrorTextBlock" Foreground="{ThemeResource SystemFillColorCriticalBrush}" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,10,0,0"/>
             </StackPanel>
 
             <ScrollViewer x:Name="ContentScrollViewer" Grid.Row="1" HorizontalContentAlignment="Stretch">

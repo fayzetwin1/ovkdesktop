@@ -7,7 +7,25 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Background="{ThemeResource ClientContentBackgroundBrush}">
+    Background="{ThemeResource ClientContentBackgroundBrush}"
+    KeyboardAcceleratorPlacementMode="Hidden">
+
+    <!--
+        PlacementMode is Hidden because the accelerators below live on the Page itself:
+        with the default Auto, WinUI renders their tooltip against the accelerator owner,
+        so "Ctrl+1" followed the pointer around the whole window.
+    -->
+    <Page.KeyboardAccelerators>
+        <!-- Ctrl+1..5 jump straight to a section, F5 / Ctrl+R reloads it -->
+        <KeyboardAccelerator Key="Number1" Modifiers="Control" Invoked="NavAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Number2" Modifiers="Control" Invoked="NavAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Number3" Modifiers="Control" Invoked="NavAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Number4" Modifiers="Control" Invoked="NavAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Number5" Modifiers="Control" Invoked="NavAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="F5" Invoked="RefreshAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="R" Modifiers="Control" Invoked="RefreshAccelerator_Invoked"/>
+        <KeyboardAccelerator Key="Left" Modifiers="Menu" Invoked="BackAccelerator_Invoked"/>
+    </Page.KeyboardAccelerators>
 
     <Grid x:Name="RootGrid" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <Grid.RowDefinitions>
@@ -26,23 +44,26 @@
                             OpenPaneLength="260"
                             HorizontalAlignment="Stretch"
                             ItemInvoked="NavView_ItemInvoked">
-                <NavigationView.Resources>
-                    <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#191C22"/>
-                    <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#191C22"/>
-                </NavigationView.Resources>
+                <!-- pane colours come from Themes/ClientPalette.xaml so they follow the theme -->
                 <NavigationView.MenuItems>
-                    <NavigationViewItem x:Name="NewsItem" Content="Новости" Icon="Message" Tag="news"/>
-                    <NavigationViewItem x:Name="ProfileItem" Content="Профиль" Icon="Contact" Tag="profile"/>
-                    <NavigationViewItem x:Name="GroupsItem" Content="Сообщества" Tag="groups">
+                    <NavigationViewItem x:Name="NewsItem" Content="Новости" Icon="Message" Tag="news"
+                                        ToolTipService.ToolTip="Новости (Ctrl+1)"/>
+                    <NavigationViewItem x:Name="ProfileItem" Content="Профиль" Icon="Contact" Tag="profile"
+                                        ToolTipService.ToolTip="Профиль (Ctrl+2)"/>
+                    <NavigationViewItem x:Name="GroupsItem" Content="Сообщества" Tag="groups"
+                                        ToolTipService.ToolTip="Сообщества (Ctrl+3)">
                         <NavigationViewItem.Icon>
                             <FontIcon Glyph="&#xE902;"/>
                         </NavigationViewItem.Icon>
                     </NavigationViewItem>
-                    <NavigationViewItem x:Name="MusicItem" Content="Музыка" Icon="MusicInfo" Tag="music"/>
-                    <NavigationViewItem x:Name="FriendsItem" Content="Друзья" Icon="People" Tag="friends"/>
+                    <NavigationViewItem x:Name="MusicItem" Content="Музыка" Icon="MusicInfo" Tag="music"
+                                        ToolTipService.ToolTip="Музыка (Ctrl+4)"/>
+                    <NavigationViewItem x:Name="FriendsItem" Content="Друзья" Icon="People" Tag="friends"
+                                        ToolTipService.ToolTip="Друзья (Ctrl+5)"/>
                 </NavigationView.MenuItems>
                 <NavigationView.FooterMenuItems>
-                    <NavigationViewItem x:Name="SettingsItem" Content="Настройки" Icon="Setting" Tag="settings"/>
+                    <NavigationViewItem x:Name="SettingsItem" Content="Настройки" Icon="Setting" Tag="settings"
+                                        ToolTipService.ToolTip="Настройки клиента"/>
                 </NavigationView.FooterMenuItems>
                 <Frame x:Name="ContentFrame" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
             </NavigationView>

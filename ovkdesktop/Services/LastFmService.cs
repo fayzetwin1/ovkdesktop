@@ -109,7 +109,7 @@ namespace ovkdesktop.Services
                     PrimaryButtonText = "Продолжить",
                     CloseButtonText = "Отмена",
                     XamlRoot = xamlRoot
-                };
+                }.Themed();
 
                 var result = await dialog.ShowAsync();
                 if (result != ContentDialogResult.Primary)

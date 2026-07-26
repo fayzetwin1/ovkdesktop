@@ -15,6 +15,7 @@
         <converters:TimeSpanToStringConverter x:Key="TimeSpanToStringConverter"/>
         <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:BoolToSymbolConverter x:Key="BoolToSymbolConverter"/>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
         <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
         <converters:SecondsToTimeStringConverter x:Key="SecondsToTimeStringConverter"/>
         
@@ -49,11 +50,17 @@
                            Text="{x:Bind Duration, Mode=OneWay, Converter={StaticResource TimeSpanToStringConverter}}" 
                            Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.8"/>
                 
-                <!-- button to add to favorites -->
-                <Button Grid.Column="3" Width="40" Height="40" Padding="0" Background="Transparent"
+                <!-- button to add to favorites; the colours come from the theme palette -->
+                <Button Grid.Column="3" Width="40" Height="40" Padding="0" Background="Transparent" BorderThickness="0"
                         Click="FavoriteButton_Click" ToolTipService.ToolTip="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToSymbolConverter}, ConverterParameter='Убрать из избранного|Добавить в избранное'}">
-                    <FontIcon Glyph="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToSymbolConverter}, ConverterParameter='&#xEB52;|&#xE00B;'}" 
-                              FontSize="16" Foreground="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToSymbolConverter}, ConverterParameter='#E91E63|#808080'}" />
+                    <Grid>
+                        <FontIcon Glyph="&#xE00B;" FontSize="16"
+                                  Foreground="{ThemeResource ClientSubtleTextBrush}"
+                                  Visibility="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                        <FontIcon Glyph="&#xEB52;" FontSize="16"
+                                  Foreground="{ThemeResource ClientLikeActiveBrush}"
+                                  Visibility="{x:Bind IsAdded, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </Grid>
                 </Button>
             </Grid>
         </DataTemplate>
@@ -105,10 +112,19 @@
                                   Margin="0,0,0,10"
                                   Background="Transparent"/>
                         
-                        <ProgressRing x:Name="MyAudioLoadingRing" IsActive="{x:Bind ViewModel.IsLoadingMyAudio, Mode=OneWay}" 
-                                      Width="50" Height="50" 
+                        <ProgressRing x:Name="MyAudioLoadingRing" IsActive="{x:Bind ViewModel.IsLoadingMyAudio, Mode=OneWay}"
+                                      Width="50" Height="50"
                                       VerticalAlignment="Center" HorizontalAlignment="Center"
                                       Grid.RowSpan="2"/>
+
+                        <StackPanel Grid.Row="1" Spacing="12"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Visibility="{x:Bind ViewModel.IsMyAudioEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <FontIcon Glyph="&#xE00B;" Style="{StaticResource EmptyStateGlyphStyle}"/>
+                            <TextBlock Text="Здесь пока пусто" Style="{StaticResource EmptyStateTitleStyle}"/>
+                            <TextBlock Text="Добавляйте треки в избранное сердечком на вкладках «Популярные» и «Поиск» — они появятся здесь."
+                                       Style="{StaticResource EmptyStateBodyStyle}"/>
+                        </StackPanel>
                     </Grid>
                 </PivotItem>
                 

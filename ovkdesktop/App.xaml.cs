@@ -46,6 +46,11 @@ namespace ovkdesktop
         public static MainWindow MainWindowInstance { get; internal set; }
 
         /// <summary>
+        /// palette and accent colour of the client; available once OnLaunched has run
+        /// </summary>
+        public static Services.IThemeService ThemeService { get; private set; }
+
+        /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
         /// executed, and as such is the logical equivalent of main() or WinMain().
         /// </summary>
@@ -100,7 +105,12 @@ namespace ovkdesktop
 
                 Frame rootFrame = new Frame();
                 m_window.Content = rootFrame;
-                
+
+                // the theme has to be applied to the root before the first page renders,
+                // otherwise the user sees a flash of the wrong palette
+                ThemeService = Services.GetRequiredService<Services.IThemeService>();
+                ThemeService.Initialize(rootFrame);
+
                 ((Services.NavigationService)navigationService).Initialize(rootFrame);
 
                 // --- block 3: navigation and activation ---
@@ -127,6 +137,7 @@ namespace ovkdesktop
             // Services
             services.AddSingleton<Services.INavigationService, Services.NavigationService>();
             services.AddSingleton<Services.IDialogService, Services.DialogService>();
+            services.AddSingleton<Services.IThemeService, Services.ThemeService>();
             services.AddSingleton<Services.IAPIServiceNewsPosts, Services.APIServiceNewsPosts>();
             services.AddSingleton<Services.IAPIServiceMusic, Services.APIServiceMusic>();
             services.AddSingleton<Services.IAPIServiceProfile, Services.APIServiceProfile>();

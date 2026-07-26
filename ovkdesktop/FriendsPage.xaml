@@ -102,6 +102,15 @@
                           IsActive="True" Width="50" Height="50"
                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
+            <StackPanel x:Name="NoFriendsPanel"
+                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Spacing="12" Visibility="Collapsed">
+                <FontIcon Glyph="&#xE716;" Style="{StaticResource EmptyStateGlyphStyle}"/>
+                <TextBlock Text="Список друзей пуст" Style="{StaticResource EmptyStateTitleStyle}"/>
+                <TextBlock Text="Найдите знакомых на сайте инстанса — здесь появятся все, кто примет вашу заявку."
+                           Style="{StaticResource EmptyStateBodyStyle}"/>
+            </StackPanel>
+
             <ListView x:Name="FriendsListView"
                       ItemsSource="{x:Bind Friends}"
                       Loaded="FriendsListView_Loaded"

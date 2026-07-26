@@ -21,15 +21,8 @@ namespace ovkdesktop.Converters
                     try
                     {
                         // 3. Create and return image
-                        var bitmap = new BitmapImage(new Uri(profile.BestAvailablePhoto));
-                        
-                        // Parse DecodePixelWidth if provided
-                        if (parameter != null && int.TryParse(parameter.ToString(), out int width))
-                        {
-                            bitmap.DecodePixelWidth = width;
-                        }
-
-                        return bitmap;
+                        int.TryParse(parameter?.ToString(), out int width);
+                        return Helpers.ImageUrlHelper.CreateBitmap(profile.BestAvailablePhoto, width);
                     }
                     catch (Exception)
                     {

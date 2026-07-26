@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Surface colours of the client, split per theme.
+
+    Everything here must be consumed with {ThemeResource ...} (never StaticResource),
+    otherwise the value is frozen at load time and switching between the light and the
+    dark palette at runtime stops working.
+
+    The accent colours are NOT defined here - ThemeService installs those into
+    Application.Resources as mutable brushes so that changing the accent repaints the
+    UI without a restart.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.ThemeDictionaries>
+
+        <ResourceDictionary x:Key="Dark">
+            <SolidColorBrush x:Key="ClientContentBackgroundBrush" Color="#111318"/>
+            <SolidColorBrush x:Key="ClientSidebarBackgroundBrush" Color="#191C22"/>
+            <SolidColorBrush x:Key="ClientSurfaceBrush" Color="#1D2027"/>
+            <SolidColorBrush x:Key="ClientNestedSurfaceBrush" Color="#252932"/>
+            <SolidColorBrush x:Key="ClientPlayerBackgroundBrush" Color="#181B21"/>
+            <SolidColorBrush x:Key="ClientSurfaceStrokeBrush" Color="#2A2F39"/>
+            <SolidColorBrush x:Key="ClientSubtleTextBrush" Color="#9AA3B2"/>
+            <SolidColorBrush x:Key="ClientOverlayScrimBrush" Color="#E6000000"/>
+            <SolidColorBrush x:Key="ClientMediaScrimBrush" Color="#A0000000"/>
+            <SolidColorBrush x:Key="ClientLikeActiveBrush" Color="#FF5C8A"/>
+
+            <!-- NavigationView pane, so the sidebar follows the palette -->
+            <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#191C22"/>
+            <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#191C22"/>
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="ClientContentBackgroundBrush" Color="#F5F6F8"/>
+            <SolidColorBrush x:Key="ClientSidebarBackgroundBrush" Color="#EBEDF1"/>
+            <SolidColorBrush x:Key="ClientSurfaceBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="ClientNestedSurfaceBrush" Color="#F1F3F7"/>
+            <SolidColorBrush x:Key="ClientPlayerBackgroundBrush" Color="#ECEEF2"/>
+            <SolidColorBrush x:Key="ClientSurfaceStrokeBrush" Color="#DFE3EA"/>
+            <SolidColorBrush x:Key="ClientSubtleTextBrush" Color="#5B6472"/>
+            <SolidColorBrush x:Key="ClientOverlayScrimBrush" Color="#E6101216"/>
+            <SolidColorBrush x:Key="ClientMediaScrimBrush" Color="#A0000000"/>
+            <SolidColorBrush x:Key="ClientLikeActiveBrush" Color="#D81B60"/>
+
+            <SolidColorBrush x:Key="NavigationViewDefaultPaneBackground" Color="#EBEDF1"/>
+            <SolidColorBrush x:Key="NavigationViewExpandedPaneBackground" Color="#EBEDF1"/>
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent"/>
+        </ResourceDictionary>
+
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

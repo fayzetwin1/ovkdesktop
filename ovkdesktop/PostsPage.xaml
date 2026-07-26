@@ -22,13 +22,19 @@
     </Page.Resources>
 
     <Grid>
+        <!--
+            The list uses Stretch + MaxWidth rather than Center. With Center the ListView
+            shrinks to its content, so while the feed was empty or still loading the whole
+            column (header included) visibly narrowed and then snapped back once posts
+            arrived. Stretch keeps the width stable and MaxWidth still centres the column.
+        -->
         <ListView x:Name="PostsListView"
                   Loaded="PostsListView_Loaded"
                   ItemsSource="{x:Bind ViewModel.NewsPosts, Mode=OneWay}"
                   ItemTemplate="{StaticResource UnifiedPostTemplate}"
                   SelectionMode="None"
                   MaxWidth="1240"
-                  HorizontalAlignment="Center"
+                  HorizontalAlignment="Stretch"
                   Margin="24,12,24,0"
                   ShowsScrollingPlaceholders="False">
             
@@ -78,12 +84,41 @@
         </ListView>
 
         <!-- Initial Loading Overlay -->
-        <StackPanel HorizontalAlignment="Center" 
-                    VerticalAlignment="Center" 
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
                     Spacing="15"
                     Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
             <ProgressRing IsActive="True" Width="44" Height="44" />
             <TextBlock Text="Собираем свежие публикации…" Style="{StaticResource PageSubtitleTextStyle}" HorizontalAlignment="Center"/>
         </StackPanel>
+
+        <!-- Nothing to show -->
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="12"
+                    MaxWidth="420"
+                    Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+            <FontIcon Glyph="&#xE7BA;" Style="{StaticResource EmptyStateGlyphStyle}"/>
+            <TextBlock Text="Лента пока пуста" Style="{StaticResource EmptyStateTitleStyle}"/>
+            <TextBlock Text="Подпишитесь на людей и сообщества — их публикации появятся здесь."
+                       Style="{StaticResource EmptyStateBodyStyle}"/>
+            <Button Content="Обновить"
+                    Command="{x:Bind ViewModel.RefreshCommand}"
+                    HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Load failure -->
+        <InfoBar Severity="Error"
+                 Title="Не удалось обновить ленту"
+                 Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay}"
+                 IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                 IsClosable="False"
+                 VerticalAlignment="Top"
+                 MaxWidth="1240"
+                 Margin="24,24,24,0">
+            <InfoBar.ActionButton>
+                <Button Content="Повторить" Command="{x:Bind ViewModel.RefreshCommand}"/>
+            </InfoBar.ActionButton>
+        </InfoBar>
     </Grid>
 </Page>

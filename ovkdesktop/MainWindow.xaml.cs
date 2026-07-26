@@ -64,13 +64,12 @@ namespace ovkdesktop
             AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
 
             ApplyWindowIcon(appWindow);
-            appWindow.Resize(new Windows.Graphics.SizeInt32(1600, 900));
 
             SetScreenSize();
             _presenter.IsResizable = true;
             _presenter.IsMaximizable = true;
 #endif
-            
+
             // Note: setting the minimum window size is not supported directly in WinUI 3
             // To implement this functionality, you will need to use Win32 API
 
@@ -78,15 +77,135 @@ namespace ovkdesktop
 
             // use the global instance of AudioPlayerService from App
             _audioPlayerService = Ioc.Default.GetRequiredService<AudioPlayerService>();
-            
+
             // setting the window title
             Title = "OpenVK Desktop";
-            
-            // setting the size and centering the window
-            SetWindowSize(1280, 720);
-            CenterWindow();
+
+            RestoreWindowPlacement();
 
             Debug.WriteLine("[MainWindow] Initialized");
+        }
+
+        /// <summary>
+        /// brings back the size the window had when it was last closed,
+        /// falling back to a sensible default on the first launch
+        /// </summary>
+        private void RestoreWindowPlacement()
+        {
+            const int defaultWidth = 1280;
+            const int defaultHeight = 800;
+            const int minWidth = 900;
+            const int minHeight = 600;
+
+            int width = defaultWidth;
+            int height = defaultHeight;
+            bool maximized = false;
+
+            try
+            {
+                var settings = Ioc.Default.GetRequiredService<SettingsHelper>();
+
+                if (settings.WindowWidth >= minWidth && settings.WindowHeight >= minHeight)
+                {
+                    width = settings.WindowWidth;
+                    height = settings.WindowHeight;
+                }
+
+                maximized = settings.WindowMaximized;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindow] Could not read the stored window size: {ex.Message}");
+            }
+
+            SetWindowSize(width, height);
+            CenterWindow();
+
+#if WINDOWS
+            if (maximized)
+                _presenter?.Maximize();
+#endif
+        }
+
+        /// <summary>
+        /// remembers the current window geometry so the next launch reopens the same way
+        /// </summary>
+        private void SaveWindowPlacement()
+        {
+#if WINDOWS
+            try
+            {
+                if (_apw == null)
+                    return;
+
+                var settings = Ioc.Default.GetRequiredService<SettingsHelper>();
+                bool maximized = _presenter?.State == OverlappedPresenterState.Maximized;
+
+                settings.WindowMaximized = maximized;
+
+                // only store the restored size; the maximized one is not worth keeping
+                if (!maximized)
+                {
+                    settings.WindowWidth = _apw.Size.Width;
+                    settings.WindowHeight = _apw.Size.Height;
+                }
+
+                // fire and forget: the window is going away and nothing awaits this
+                _ = settings.SaveAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindow] Could not store the window size: {ex.Message}");
+            }
+#endif
+        }
+
+        /// <summary>
+        /// keeps the system caption buttons legible when the client palette changes
+        /// </summary>
+        public void ApplyTitleBarTheme(bool isDark)
+        {
+#if WINDOWS
+            try
+            {
+                if (!AppWindowTitleBar.IsCustomizationSupported())
+                    return;
+
+                var hWnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+                var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+                var titleBar = AppWindow.GetFromWindowId(windowId)?.TitleBar;
+                if (titleBar == null)
+                    return;
+
+                var background = isDark
+                    ? Windows.UI.Color.FromArgb(255, 0x19, 0x1C, 0x22)
+                    : Windows.UI.Color.FromArgb(255, 0xEB, 0xED, 0xF1);
+                var foreground = isDark
+                    ? Windows.UI.Color.FromArgb(255, 0xF2, 0xF3, 0xF5)
+                    : Windows.UI.Color.FromArgb(255, 0x1B, 0x1E, 0x24);
+                var hover = isDark
+                    ? Windows.UI.Color.FromArgb(255, 0x2A, 0x2F, 0x39)
+                    : Windows.UI.Color.FromArgb(255, 0xDC, 0xE0, 0xE6);
+
+                titleBar.BackgroundColor = background;
+                titleBar.InactiveBackgroundColor = background;
+                titleBar.ForegroundColor = foreground;
+                titleBar.InactiveForegroundColor = foreground;
+
+                titleBar.ButtonBackgroundColor = background;
+                titleBar.ButtonInactiveBackgroundColor = background;
+                titleBar.ButtonForegroundColor = foreground;
+                titleBar.ButtonInactiveForegroundColor = foreground;
+                titleBar.ButtonHoverBackgroundColor = hover;
+                titleBar.ButtonHoverForegroundColor = foreground;
+                titleBar.ButtonPressedBackgroundColor = hover;
+                titleBar.ButtonPressedForegroundColor = foreground;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainWindow] Could not theme the title bar: {ex.Message}");
+            }
+#endif
         }
 
 #if WINDOWS
@@ -198,9 +317,11 @@ namespace ovkdesktop
         {
             try
             {
+                SaveWindowPlacement();
+
                     // free the resources of the audio player
                 _audioPlayerService?.Dispose();
-                
+
                 Debug.WriteLine("[MainWindow] Disposed audio player service");
             }
             catch (Exception ex)

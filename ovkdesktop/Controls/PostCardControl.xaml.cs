@@ -69,11 +69,11 @@ namespace ovkdesktop.Controls
             if (dependencyObject is not PostCardControl control || args.NewValue is not bool isNested)
                 return;
 
-            control.CardBorder.Padding = isNested ? new Thickness(12) : new Thickness(16);
-            control.CardBorder.CornerRadius = isNested ? new CornerRadius(6) : new CornerRadius(8);
-            control.CardBorder.BorderThickness = isNested ? new Thickness(0) : new Thickness(1);
-            if (isNested && Application.Current.Resources["ClientNestedSurfaceBrush"] is Brush nestedBrush)
-                control.CardBorder.Background = nestedBrush;
+
+            string styleKey = isNested ? "NestedSurfaceCardStyle" : "SurfaceCardStyle";
+            if (Application.Current.Resources[styleKey] is Style cardStyle)
+                control.CardBorder.Style = cardStyle;
+
             control.AuthorPicture.Width = control.AuthorPicture.Height = isNested ? 38 : 48;
         }
 
